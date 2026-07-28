@@ -23,6 +23,8 @@ def _check_mcmeta(ctx, mc):
         png = meta.with_suffix("")  # drop .mcmeta -> foo.png
         if not png.exists():
             continue
+        if not is_valid_png(png):
+            continue
         w, h = png_size(png)
         # square-frame assumption: frame height == width; height must be a multiple
         if w and h % w != 0:
