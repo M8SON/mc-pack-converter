@@ -1,5 +1,5 @@
 {
-  "_comment": "Textures removed so modern Minecraft renders its own (correct) version. 1.8.9 chest textures mis-map on the modern chest model because Mojang rearranged the UV faces (verified: content differs while the alpha silhouette is unchanged). A full art-preserving remap is complex; dropping yields a correct chest and is ideal for faithful-style packs. Paths are relative to assets/minecraft/.",
+  "_comment": "Textures removed so modern Minecraft renders its own (correct) version. Two cases, both verified against vanilla old-vs-new: (1) 1.8.9 chest textures mis-map on the modern chest model (Mojang rearranged the UV faces - content moved while the alpha silhouette is unchanged, causing a dark square on the lid). (2) Container-GUI backgrounds whose slot layout drifted so much between 1.8.9 and modern that a 1.8.9 background misaligns with modern's functional slots (inventory added an offhand slot + shifted the 2x2 crafting grid; anvil and enchanting-table GUIs were redesigned). A full art-preserving remap is complex; dropping yields correct, aligned vanilla versions and is ideal for faithful-style packs. Remove an entry to keep the custom texture (at the cost of the mis-map/misalignment). Paths relative to assets/minecraft/.",
   "drop": [
     "textures/entity/chest/normal.png",
     "textures/entity/chest/normal.png.mcmeta",
@@ -9,6 +9,9 @@
     "textures/entity/chest/trapped_double.png",
     "textures/entity/chest/christmas.png",
     "textures/entity/chest/christmas_double.png",
-    "textures/entity/chest/ender.png"
+    "textures/entity/chest/ender.png",
+    "textures/gui/container/inventory.png",
+    "textures/gui/container/anvil.png",
+    "textures/gui/container/enchanting_table.png"
   ]
 }
