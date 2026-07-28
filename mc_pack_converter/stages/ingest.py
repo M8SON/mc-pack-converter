@@ -11,10 +11,19 @@ def _find_pack_root(base: Path) -> Path:
             return child
     return base
 
+def _check_no_zip_slip(zf: zipfile.ZipFile, workdir: Path) -> None:
+    base = workdir.resolve()
+    for member in zf.infolist():
+        target = (workdir / member.filename).resolve()
+        if target != base and base not in target.parents:
+            raise FatalConversionError(
+                f"zip entry escapes working dir: {member.filename}")
+
 def prepare_working_copy(source: Path, workdir: Path) -> Path:
     workdir.mkdir(parents=True, exist_ok=True)
     if source.is_file() and source.suffix.lower() == ".zip":
         with zipfile.ZipFile(source) as zf:
+            _check_no_zip_slip(zf, workdir)
             zf.extractall(workdir)
         return _find_pack_root(workdir)
     dest = workdir / source.name
