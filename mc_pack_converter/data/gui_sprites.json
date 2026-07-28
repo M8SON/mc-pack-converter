@@ -1,0 +1,39 @@
+{
+  "textures/gui/widgets.png": {
+    "dir": "textures/gui/sprites/hud",
+    "sprites": [
+      {"name": "hotbar", "x": 0, "y": 0, "w": 182, "h": 22},
+      {"name": "hotbar_selection", "x": 0, "y": 22, "w": 24, "h": 22}
+    ],
+    "ninepatch": {}
+  },
+  "textures/gui/icons.png": {
+    "dir": "textures/gui/sprites/hud",
+    "sprites": [
+      {"name": "crosshair", "x": 0, "y": 0, "w": 16, "h": 16},
+      {"name": "armor_empty", "x": 16, "y": 9, "w": 9, "h": 9},
+      {"name": "armor_half", "x": 25, "y": 9, "w": 9, "h": 9},
+      {"name": "armor_full", "x": 34, "y": 9, "w": 9, "h": 9},
+      {"name": "food_empty", "x": 16, "y": 27, "w": 9, "h": 9},
+      {"name": "food_half", "x": 61, "y": 27, "w": 9, "h": 9},
+      {"name": "food_full", "x": 52, "y": 27, "w": 9, "h": 9},
+      {"name": "experience_bar_background", "x": 0, "y": 64, "w": 182, "h": 5},
+      {"name": "experience_bar_progress", "x": 0, "y": 69, "w": 182, "h": 5},
+      {"name": "jump_bar_background", "x": 0, "y": 84, "w": 182, "h": 5},
+      {"name": "jump_bar_progress", "x": 0, "y": 89, "w": 182, "h": 5},
+      {"name": "heart/container", "x": 16, "y": 0, "w": 9, "h": 9},
+      {"name": "heart/full", "x": 52, "y": 0, "w": 9, "h": 9},
+      {"name": "heart/half", "x": 61, "y": 0, "w": 9, "h": 9},
+      {"name": "heart/container_hardcore", "x": 16, "y": 45, "w": 9, "h": 9},
+      {"name": "heart/hardcore_full", "x": 52, "y": 45, "w": 9, "h": 9},
+      {"name": "heart/hardcore_half", "x": 61, "y": 45, "w": 9, "h": 9},
+      {"name": "heart/poisoned_full", "x": 88, "y": 0, "w": 9, "h": 9},
+      {"name": "heart/poisoned_half", "x": 97, "y": 0, "w": 9, "h": 9},
+      {"name": "heart/withered_full", "x": 124, "y": 0, "w": 9, "h": 9},
+      {"name": "heart/withered_half", "x": 133, "y": 0, "w": 9, "h": 9},
+      {"name": "heart/absorbing_full", "x": 160, "y": 0, "w": 9, "h": 9},
+      {"name": "heart/absorbing_half", "x": 169, "y": 0, "w": 9, "h": 9}
+    ],
+    "ninepatch": {}
+  }
+}
