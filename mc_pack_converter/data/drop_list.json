@@ -1,0 +1,14 @@
+{
+  "_comment": "Textures removed so modern Minecraft renders its own (correct) version. 1.8.9 chest textures mis-map on the modern chest model because Mojang rearranged the UV faces (verified: content differs while the alpha silhouette is unchanged). A full art-preserving remap is complex; dropping yields a correct chest and is ideal for faithful-style packs. Paths are relative to assets/minecraft/.",
+  "drop": [
+    "textures/entity/chest/normal.png",
+    "textures/entity/chest/normal.png.mcmeta",
+    "textures/entity/chest/normal_double.png",
+    "textures/entity/chest/normal_double.png.mcmeta",
+    "textures/entity/chest/trapped.png",
+    "textures/entity/chest/trapped_double.png",
+    "textures/entity/chest/christmas.png",
+    "textures/entity/chest/christmas_double.png",
+    "textures/entity/chest/ender.png"
+  ]
+}
