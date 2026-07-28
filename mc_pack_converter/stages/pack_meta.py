@@ -11,6 +11,12 @@ def pack_meta(ctx: ConversionContext) -> None:
     if not new_fmt:
         raise FatalConversionError(f"no pack_format for target {ctx.target}")
     old_fmt = data["pack"].get("pack_format")
-    data["pack"]["pack_format"] = new_fmt
+    # Minecraft 1.21.9+ (all 26.x) replaced the single `pack_format` int with
+    # `min_format`/`max_format`. Emitting the legacy field makes the pack show
+    # as red "incompatible"; the modern fields make it compatible.
+    data["pack"].pop("pack_format", None)
+    data["pack"]["min_format"] = new_fmt
+    data["pack"]["max_format"] = new_fmt
     meta.write_text(json.dumps(data, indent=2))
-    ctx.add("pack_meta", Severity.INFO, f"pack_format {old_fmt} -> {new_fmt}")
+    ctx.add("pack_meta", Severity.INFO,
+            f"pack_format {old_fmt} -> min/max_format {new_fmt} (modern schema)")

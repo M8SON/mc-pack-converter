@@ -29,7 +29,8 @@ def test_golden_conversion(tmp_path):
         import json
 
         meta = json.loads(zf.read("pack.mcmeta"))
-        assert meta["pack"]["pack_format"] == 88
+        assert meta["pack"]["min_format"] == 88  # 26.2, modern min/max schema
+        assert meta["pack"]["max_format"] == 88
 
 
 def test_convert_cleans_temp_dir(mini_pack, tmp_path):
