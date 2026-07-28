@@ -29,6 +29,8 @@ def _fix_ctm(ctx: ConversionContext, ctm_dir: Path) -> None:
     for prop in ctm_dir.rglob("*.properties"):
         text = prop.read_text()
         props = parse_properties(text)
+        if "method" not in props:
+            continue
         if "matchBlocks" in props or "matchTiles" in props:
             continue
         folder = prop.parent.relative_to(ctm_dir).as_posix()

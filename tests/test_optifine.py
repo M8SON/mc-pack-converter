@@ -24,3 +24,27 @@ def test_ctm_matchblocks_appended(mini_pack):
     optifine_translate(ctx)
     txt = (root/"assets/minecraft/optifine/ctm/glass/glass.properties").read_text()
     assert "matchBlocks=minecraft:glass" in txt
+
+def test_ctm_no_method_is_skipped(mini_pack):
+    original = b"tiles=0-3\n"
+    root = mini_pack({
+        "assets/minecraft/optifine/ctm/foo/config.properties": original,
+    })
+    ctx = ConversionContext(root=root)
+    optifine_translate(ctx)
+    txt = (root/"assets/minecraft/optifine/ctm/foo/config.properties").read_text()
+    assert txt == original.decode()
+    assert not any("matchBlocks" in f.message for f in ctx.findings)
+
+def test_ctm_unknown_folder_warns(mini_pack):
+    original = b"method=ctm\ntiles=0-3\n"
+    root = mini_pack({
+        "assets/minecraft/optifine/ctm/mystery/mystery.properties": original,
+    })
+    ctx = ConversionContext(root=root)
+    optifine_translate(ctx)
+    txt = (root/"assets/minecraft/optifine/ctm/mystery/mystery.properties").read_text()
+    assert txt == original.decode()
+    assert "matchBlocks" not in txt
+    assert any(f.severity is Severity.WARNING and "mystery" in f.message
+               for f in ctx.findings)
