@@ -5,14 +5,22 @@ from mc_pack_converter.stages.optifine import optifine_translate, parse_properti
 def test_parse_properties():
     assert parse_properties("a=1\n# c\nb=2\n") == {"a":"1","b":"2"}
 
-def test_sky_dangling_source_warns(mini_pack):
+def test_sky_missing_source_layer_removed(mini_pack):
+    # A sky layer whose source image is absent renders as the magenta
+    # missing-texture; the stage removes the broken layer (and keeps others).
     root = mini_pack({
         "assets/minecraft/optifine/sky/world0/sky4.properties":
             b"source=./starfield01.png\nblend=add\n",
+        "assets/minecraft/optifine/sky/world0/sky1.properties":
+            b"source=./clouds.png\nblend=add\n",
+        "assets/minecraft/optifine/sky/world0/clouds.png": b"\x89PNG",
     })
     ctx = ConversionContext(root=root)
     optifine_translate(ctx)
-    assert any(f.severity is Severity.WARNING and "starfield01" in f.message
+    sky = root / "assets/minecraft/optifine/sky/world0"
+    assert not (sky / "sky4.properties").exists()   # broken layer removed
+    assert (sky / "sky1.properties").exists()        # good layer kept
+    assert any(f.severity is Severity.INFO and "starfield01" in f.message
                for f in ctx.findings)
 
 def test_ctm_matchblocks_appended(mini_pack):

@@ -24,8 +24,12 @@ def _check_sky(ctx: ConversionContext, sky_dir: Path) -> None:
             continue
         target = (prop.parent / src).resolve()
         if not target.exists():
-            ctx.add("optifine", Severity.WARNING,
-                    f"sky source missing: {src}", str(prop))
+            # A sky layer pointing at a missing image renders as the magenta
+            # missing-texture. Remove the broken layer so the rest of the sky
+            # still shows (the source file is absent from the pack itself).
+            prop.unlink()
+            ctx.add("optifine", Severity.INFO,
+                    f"removed sky layer with missing source {src}", str(prop))
 
 def _replace_match_line(text: str, key: str, value: str) -> str:
     lines = text.splitlines(keepends=True)
