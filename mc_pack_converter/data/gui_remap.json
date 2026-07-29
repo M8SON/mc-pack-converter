@@ -1,11 +1,9 @@
 {
-  "_comment": "Proportional GUI texture remaps (ref-relative, so any resolution works). Ports agentdid127/ResourcePackConverter InventoryConverter: keep the whole custom inventory and relocate the status-effect strip to its modern position. op = [x1,y1,x2,y2,dstX,dstY,flip]; flip '' = none. Preserves the pack's custom inventory art (vs dropping to vanilla).",
+  "_comment": "Proportional GUI texture remaps (ref-relative, any resolution). Each 'move' crops a region [x,y,w,h] (ref coords), clears the old spot to transparent, and pastes it at [dstX,dstY]. Used to realign GUI elements that Mojang repositioned. inventory: the 2x2 crafting grid + arrow + result moved (-10,+8) between 1.8.9 and modern (derived by matching vanilla old-vs-new); shift it to the modern position so it lines up with the functional slots. Clearing to transparent suits this pack's see-through inventory.",
   "textures/gui/container/inventory.png": {
     "ref": [256, 256],
-    "ops": [
-      [0, 0, 256, 256, 0, 0, ""],
-      [0, 166, 16, 198, 0, 198, ""],
-      [104, 166, 120, 198, 16, 198, ""]
+    "moves": [
+      {"from": [78, 24, 76, 36], "to": [88, 16]}
     ]
   }
 }
