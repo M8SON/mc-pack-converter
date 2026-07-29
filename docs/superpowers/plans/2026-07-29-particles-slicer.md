@@ -389,16 +389,24 @@ In `tools/gen_slices.py`, add after the `BOX` regex:
 # The helper arguments are literal integer arithmetic ("1 * 2"), so the
 # generator evaluates them directly.
 BFN = re.compile(r"\bb(256|128)\(([^()]*)\)")
-INT_EXPR = re.compile(r"[\d\s+*\-()]+")
 PARTICLE_REF = 128
 SKIPPED_HELPERS = {"effect": 0, "sweep": 0}
 
 
 def as_int(expr: str) -> int:
     """Evaluate a literal integer arithmetic expression from the Java source."""
-    if not INT_EXPR.fullmatch(expr.strip()):
+    def ev(n):
+        if isinstance(n, ast.Constant) and isinstance(n.value, int):
+            return n.value
+        if isinstance(n, ast.UnaryOp) and isinstance(n.op, ast.USub):
+            return -ev(n.operand)
+        if isinstance(n, ast.BinOp) and isinstance(
+                n.op, (ast.Add, ast.Sub, ast.Mult)):
+            l, r = ev(n.left), ev(n.right)
+            return (l + r if isinstance(n.op, ast.Add)
+                    else l - r if isinstance(n.op, ast.Sub) else l * r)
         raise ValueError(f"not an integer expression: {expr!r}")
-    return int(eval(expr, {"__builtins__": {}}, {}))
+    return ev(ast.parse(expr.strip(), mode="eval").body)
 
 
 def parse_box(expr: str) -> list[int] | None:
@@ -414,7 +422,7 @@ def parse_box(expr: str) -> list[int] | None:
     return None
 ```
 
-`eval` runs only over a string that fully matched `INT_EXPR` (digits, whitespace, `+ - * ( )`), with builtins stripped, against source vendored into this repo.
+No `eval`: the walker accepts only integer constants, unary minus, and `+ - *`, and raises `ValueError` on anything else. Add `import ast` to the module's imports (the existing import line is `import json, re, sys`).
 
 - [ ] **Step 4: Add the helper-call parser**
 
