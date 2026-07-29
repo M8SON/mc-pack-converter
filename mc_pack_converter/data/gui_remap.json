@@ -3,7 +3,7 @@
   "textures/gui/container/inventory.png": {
     "ref": [256, 256],
     "moves": [
-      {"from": [78, 24, 76, 36], "to": [88, 16]}
+      {"from": [86, 22, 77, 40], "to": [96, 14]}
     ]
   }
 }
