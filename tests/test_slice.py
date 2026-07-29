@@ -88,6 +88,9 @@ def test_zero_size_crop_is_left_to_vanilla(mini_pack, monkeypatch):
     ctx = ConversionContext(root=root)
     slice_atlases(ctx)
     assert not (root / "assets/minecraft/textures/gui/sprites/hud/tiny.png").exists()
+    # Must be the deliberate skip, not the fail-soft handler swallowing
+    # PIL's "cannot write empty image" on a 0x0 crop.
+    assert any("left to vanilla" in f.message for f in ctx.findings)
 
 
 def test_clip_with_empty_region_is_left_to_vanilla(mini_pack, monkeypatch):
