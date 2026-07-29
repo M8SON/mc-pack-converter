@@ -23,13 +23,15 @@ def _opaque_black_fraction(path: Path) -> float:
         with Image.open(path) as im:
             im = im.convert("RGBA")
             im.thumbnail((128, 128))
-            px = list(im.getdata())
+            data = im.tobytes()
     except Exception:
         return 0.0
-    if not px:
+    n = len(data) // 4
+    if n == 0:
         return 0.0
-    black = sum(1 for r, g, b, a in px if a > 250 and max(r, g, b) < 30)
-    return black / len(px)
+    black = sum(1 for i in range(0, len(data), 4)
+                if data[i + 3] > 250 and max(data[i], data[i + 1], data[i + 2]) < 30)
+    return black / n
 
 
 def _check_sky(ctx: ConversionContext, sky_dir: Path) -> None:
