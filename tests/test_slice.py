@@ -59,3 +59,57 @@ def test_missing_atlas_is_skipped(mini_pack, monkeypatch):
     ctx = ConversionContext(root=root)
     slice_atlases(ctx)  # must not raise
     assert any(f.stage == "slice" and f.severity is Severity.INFO for f in ctx.findings)
+
+
+def test_transparent_region_is_left_to_vanilla(mini_pack, monkeypatch):
+    # A 1.8.9 atlas has no pixels where a modern sprite lives. Writing a
+    # transparent PNG would OVERRIDE vanilla and render it invisible in-game,
+    # so no file may be written at all.
+    root = mini_pack()
+    _put(root, "assets/minecraft/textures/gui/widgets.png", (256, 256), (0, 0, 0, 0))
+    monkeypatch.setattr(slice_mod, "load_table", lambda n: [
+        {"input": "assets/minecraft/textures/gui/widgets.png",
+         "output": "assets/minecraft/textures/gui/sprites/hud/hotbar.png",
+         "box": [0, 0, 182, 22, 256, 256], "op": "crop"}])
+    ctx = ConversionContext(root=root)
+    slice_atlases(ctx)
+    assert not (root / "assets/minecraft/textures/gui/sprites/hud/hotbar.png").exists()
+    assert any("left to vanilla" in f.message for f in ctx.findings)
+
+
+def test_zero_size_crop_is_left_to_vanilla(mini_pack, monkeypatch):
+    # A box that scales down to zero pixels must not produce a file.
+    root = mini_pack()
+    _put(root, "assets/minecraft/textures/gui/widgets.png", (16, 16))
+    monkeypatch.setattr(slice_mod, "load_table", lambda n: [
+        {"input": "assets/minecraft/textures/gui/widgets.png",
+         "output": "assets/minecraft/textures/gui/sprites/hud/tiny.png",
+         "box": [0, 0, 1, 1, 512, 512], "op": "crop"}])
+    ctx = ConversionContext(root=root)
+    slice_atlases(ctx)
+    assert not (root / "assets/minecraft/textures/gui/sprites/hud/tiny.png").exists()
+
+
+def test_clip_with_empty_region_is_left_to_vanilla(mini_pack, monkeypatch):
+    root = mini_pack()
+    _put(root, "assets/minecraft/textures/gui/widgets.png", (256, 256), (0, 0, 0, 0))
+    monkeypatch.setattr(slice_mod, "load_table", lambda n: [
+        {"input": "assets/minecraft/textures/gui/widgets.png",
+         "output": "assets/minecraft/textures/gui/sprites/hud/clipped.png",
+         "box": [0, 0, 32, 32, 256, 256], "op": "clip"}])
+    ctx = ConversionContext(root=root)
+    slice_atlases(ctx)
+    assert not (root / "assets/minecraft/textures/gui/sprites/hud/clipped.png").exists()
+
+
+def test_opaque_region_still_written(mini_pack, monkeypatch):
+    # Guard: the skip rule must not suppress real art.
+    root = mini_pack()
+    _put(root, "assets/minecraft/textures/gui/widgets.png", (256, 256), (10, 20, 30, 255))
+    monkeypatch.setattr(slice_mod, "load_table", lambda n: [
+        {"input": "assets/minecraft/textures/gui/widgets.png",
+         "output": "assets/minecraft/textures/gui/sprites/hud/hotbar.png",
+         "box": [0, 0, 182, 22, 256, 256], "op": "crop"}])
+    ctx = ConversionContext(root=root)
+    slice_atlases(ctx)
+    assert (root / "assets/minecraft/textures/gui/sprites/hud/hotbar.png").exists()

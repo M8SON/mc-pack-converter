@@ -24,6 +24,18 @@ def _scaled_rect(box: list[int], w: int, h: int) -> tuple[int, int, int, int]:
     return (x * w // tw, y * h // th, bw * w // tw, bh * h // th)
 
 
+def _is_empty(im: Image.Image) -> bool:
+    """True if the region has no visible pixels.
+
+    A 1.8.9 atlas has nothing where sprites added in later versions live.
+    Writing that empty region out would OVERRIDE vanilla's sprite rather than
+    fall back to it, making the element invisible in-game.
+    """
+    if im.width == 0 or im.height == 0:
+        return True
+    return im.getchannel("A").getbbox() is None
+
+
 def _copy_meta(src: Path, dst: Path) -> None:
     meta = src.with_name(src.name + ".mcmeta")
     if meta.exists():
@@ -34,6 +46,7 @@ def slice_atlases(ctx: ConversionContext) -> None:
     root = ctx.root
     made = 0
     skipped_special = 0
+    left_to_vanilla = 0
     for rec in load_table("slices"):
         src = root / rec["input"]
         if not src.exists():
@@ -55,6 +68,11 @@ def slice_atlases(ctx: ConversionContext) -> None:
                     im = im.convert("RGBA")
                     px, py, pw, ph = _scaled_rect(rec["box"], im.width, im.height)
                     sub = im.crop((px, py, px + pw, py + ph))
+                    if _is_empty(sub):
+                        left_to_vanilla += 1
+                        ctx.add("slice", Severity.INFO,
+                                "source region empty; left to vanilla", rec["output"])
+                        continue
                     if op == "clip":
                         canvas = Image.new("RGBA", im.size, (0, 0, 0, 0))
                         canvas.paste(sub, (px, py))
@@ -66,5 +84,7 @@ def slice_atlases(ctx: ConversionContext) -> None:
         except Exception as exc:  # fail-soft per sprite
             ctx.add("slice", Severity.WARNING, f"slice failed: {exc!r}", rec["output"])
     ctx.add("slice", Severity.INFO,
-            f"produced {made} gui sprites"
+            f"produced {made} sprites"
+            + (f"; {left_to_vanilla} left to vanilla (empty source region)"
+               if left_to_vanilla else "")
             + (f"; {skipped_special} special skipped" if skipped_special else ""))
