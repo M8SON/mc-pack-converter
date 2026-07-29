@@ -1,0 +1,11 @@
+{
+  "_comment": "Proportional GUI texture remaps (ref-relative, so any resolution works). Ports agentdid127/ResourcePackConverter InventoryConverter: keep the whole custom inventory and relocate the status-effect strip to its modern position. op = [x1,y1,x2,y2,dstX,dstY,flip]; flip '' = none. Preserves the pack's custom inventory art (vs dropping to vanilla).",
+  "textures/gui/container/inventory.png": {
+    "ref": [256, 256],
+    "ops": [
+      [0, 0, 256, 256, 0, 0, ""],
+      [0, 166, 16, 198, 0, 198, ""],
+      [104, 166, 120, 198, 16, 198, ""]
+    ]
+  }
+}

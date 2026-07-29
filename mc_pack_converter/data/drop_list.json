@@ -1,7 +1,6 @@
 {
   "_comment": "Textures removed so modern Minecraft renders its own (correct) version. Cases, all verified against vanilla old-vs-new: (1) The horse was reworked in 1.11 - the 1.8.9 texture fills only ~28% of the UV the modern model reads -> mostly invisible horse, and (unlike the chest) the re-unwrap has no clean remap. (2) Container-GUI backgrounds whose slot layout drifted so much between 1.8.9 and modern that a 1.8.9 background misaligns with modern's functional slots (inventory added an offhand slot + shifted the 2x2 crafting grid; anvil and enchanting-table GUIs were redesigned). Dropping yields correct, aligned vanilla versions and is ideal for faithful-style packs. Remove an entry to keep the custom texture (at the cost of the mis-map/misalignment). (Chests are NOT dropped - they are remapped by the chest stage, preserving custom art.) Paths relative to assets/minecraft/.",
   "drop": [
-    "textures/gui/container/inventory.png",
     "textures/gui/container/anvil.png",
     "textures/gui/container/enchanting_table.png",
     "textures/entity/horse/horse_black.png",
