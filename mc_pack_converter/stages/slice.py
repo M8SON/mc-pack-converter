@@ -80,6 +80,7 @@ def slice_atlases(ctx: ConversionContext) -> None:
                     else:  # crop
                         sub.save(dst)
             _copy_meta(src, dst)
+            ctx.sliced.append((rec["input"], rec["output"]))
             made += 1
         except Exception as exc:  # fail-soft per sprite
             ctx.add("slice", Severity.WARNING, f"slice failed: {exc!r}", rec["output"])

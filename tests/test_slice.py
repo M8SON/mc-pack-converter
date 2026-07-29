@@ -116,3 +116,29 @@ def test_opaque_region_still_written(mini_pack, monkeypatch):
     ctx = ConversionContext(root=root)
     slice_atlases(ctx)
     assert (root / "assets/minecraft/textures/gui/sprites/hud/hotbar.png").exists()
+
+
+def test_written_sprites_are_recorded_on_the_context(mini_pack, monkeypatch):
+    root = mini_pack()
+    _put(root, "assets/minecraft/textures/particle/particles.png", (128, 128))
+    monkeypatch.setattr(slice_mod, "load_table", lambda n: [
+        {"input": "assets/minecraft/textures/particle/particles.png",
+         "output": "assets/minecraft/textures/particle/flame.png",
+         "box": [0, 24, 8, 8, 128, 128], "op": "crop"}])
+    ctx = ConversionContext(root=root)
+    slice_atlases(ctx)
+    assert ctx.sliced == [("assets/minecraft/textures/particle/particles.png",
+                           "assets/minecraft/textures/particle/flame.png")]
+
+
+def test_skipped_sprites_are_not_recorded(mini_pack, monkeypatch):
+    root = mini_pack()
+    _put(root, "assets/minecraft/textures/particle/particles.png", (128, 128),
+         (0, 0, 0, 0))
+    monkeypatch.setattr(slice_mod, "load_table", lambda n: [
+        {"input": "assets/minecraft/textures/particle/particles.png",
+         "output": "assets/minecraft/textures/particle/flame.png",
+         "box": [0, 24, 8, 8, 128, 128], "op": "crop"}])
+    ctx = ConversionContext(root=root)
+    slice_atlases(ctx)
+    assert ctx.sliced == []

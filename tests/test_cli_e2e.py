@@ -50,3 +50,25 @@ def test_main_returns_0_on_clean_pack(mini_pack, tmp_path):
     clean_root = mini_pack()
     clean_out = tmp_path / "clean.zip"
     assert main(["convert", str(clean_root), "-o", str(clean_out)]) == 0
+
+
+def test_contact_sheet_written_beside_archive(tmp_path, mini_pack):
+    from PIL import Image
+    root = mini_pack()
+    atlas = root / "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png"
+    atlas.parent.mkdir(parents=True, exist_ok=True)
+    Image.new("RGBA", (256, 256), (10, 120, 200, 255)).save(atlas)
+    out = tmp_path / "converted.zip"
+    convert(root, out, target="26.1.2", report_only=False)
+    sheet = tmp_path / "converted-slices.png"
+    assert sheet.exists(), "contact sheet not written next to the archive"
+    with zipfile.ZipFile(out) as zf:
+        assert "converted-slices.png" not in zf.namelist()
+        assert not any(n.endswith("-slices.png") for n in zf.namelist())
+
+
+def test_no_contact_sheet_when_nothing_sliced(tmp_path, mini_pack):
+    root = mini_pack()
+    out = tmp_path / "plain.zip"
+    convert(root, out, target="26.1.2", report_only=False)
+    assert not (tmp_path / "plain-slices.png").exists()
