@@ -1,7 +1,7 @@
 # 1.14 Slicer Port: Particles, Paintings, Explosion — Design
 
 **Date:** 2026-07-29
-**Status:** Approved design, pre-implementation
+**Status:** Implemented on `feature/slicer-1.14`
 **Proving-ground fixture:** `M8SON 1.8 PVP PACK` (a "Faithful 32x32 edit", `pack_format: 1`)
 **Builds on:** `2026-07-28-mc-pack-converter-design.md`
 

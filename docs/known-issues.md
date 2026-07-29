@@ -12,10 +12,10 @@ pixels. Kept here for the record; the reproduce block below now reports 0.
 **Fix lives in:** `docs/superpowers/specs/2026-07-29-particles-slicer-design.md`
 **Affects:** `M8SON-converted-26.1.2-FRESH.zip` (2026-07-28 21:50) and every earlier build
 
-`stages/slice.py` crops a region from a 1.8.9 atlas and writes it unconditionally.
-For any modern GUI element whose region is blank in a 1.8.9 atlas, that writes a
-fully-transparent PNG — which **overrides** vanilla rather than falling back to it,
-so the element renders invisible.
+`stages/slice.py` cropped a region from a 1.8.9 atlas and wrote it unconditionally.
+For any modern GUI element whose region was blank in a 1.8.9 atlas, that wrote a
+fully-transparent PNG — which **overrode** vanilla rather than falling back to it,
+so the element rendered invisible.
 
 Measured on a real run of `master` @ `623cc45`: **23 of 153** produced
 `gui/sprites` are fully transparent.
@@ -34,12 +34,33 @@ Measured on a real run of `master` @ `623cc45`: **23 of 153** produced
 **Fix:** skip a crop whose alpha bbox is `None`, log it INFO, let vanilla show
 through. Applies to all slice records, not just new ones.
 
-**Reproduce:**
+**Reproduce:** this must be scoped to sprites the slicer itself produced —
+cross-referenced against `mc_pack_converter/data/slices.json`. The pack ships
+23 fully-transparent textures of its own on purpose (19 clear-glass CTM tiles,
+a transparent `environment/clouds.png`, blank
+`redstone_dust_{cross,line}_overlay` and `leather_chestplate_overlay`) — those
+are the source pack's intent, not slicer output, and an unscoped count will
+wrongly include them.
 
 ```bash
 .venv/bin/python -m mc_pack_converter.cli convert "../M8SON 1.8 PVP PACK" \
-  -o /tmp/out --target 26.1.2
-# then count PNGs under /tmp/out whose alpha channel bbox is None
+  -o /tmp/out.zip --target 26.1.2
+.venv/bin/python - <<'EOF'
+import json, zipfile
+from io import BytesIO
+from PIL import Image
+with zipfile.ZipFile("/tmp/out.zip") as zf:
+    slice_outs = {r["output"] for r in
+                  json.load(open("mc_pack_converter/data/slices.json"))}
+    empty = []
+    for n in zf.namelist():
+        if n not in slice_outs:
+            continue
+        with Image.open(BytesIO(zf.read(n))) as im:
+            if im.convert("RGBA").getchannel("A").getbbox() is None:
+                empty.append(n)
+    print("transparent slicer-produced sprites:", len(empty), empty[:5])
+EOF
 ```
 
 ---
