@@ -2,15 +2,42 @@
 and modern, preserving the pack's custom art (instead of dropping to vanilla).
 
 Data-driven via data/gui_remap.json. Each "move" crops a region (proportional
-to 'ref', so any resolution works), clears the old location to transparent, and
-pastes it at the new location. Currently: the survival inventory's 2x2 crafting
-grid + result, which shifted (-10,+8) — derived by matching Mojang's vanilla
-1.8.9 vs modern inventory.png — so it lines up with the modern functional slots.
+to 'ref', so any resolution works), heals the vacated spot by filling it with
+the pack's own background (sampled from a ring just outside the region — dominant
+colour), then pastes the region at the new location. Sampling the background
+makes this work for BOTH see-through inventories (fills transparent) and solid
+panel inventories (fills the panel colour), rather than assuming transparency.
+
+Currently: the survival inventory's 2x2 crafting grid + arrow + result, which
+shifted (-10,+8) between 1.8.9 and modern (derived by matching Mojang's vanilla
+1.8.9 vs modern inventory.png), so it lines up with the modern functional slots.
 """
 from __future__ import annotations
+from collections import Counter
 from PIL import Image
 from ..pipeline import ConversionContext, Severity
 from ..data import load_table
+
+
+def _sample_bg(img: Image.Image, box: tuple[int, int, int, int], m: int = 3):
+    """Dominant colour of a ring just outside `box` — the local background."""
+    x0, y0, x1, y1 = box
+    w, h = img.size
+    px = img.load()
+    ring = []
+    for x in range(max(0, x0 - m), min(w, x1 + m)):
+        for y in range(max(0, y0 - m), y0):
+            ring.append(px[x, y])
+        for y in range(y1, min(h, y1 + m)):
+            ring.append(px[x, y])
+    for y in range(max(0, y0 - m), min(h, y1 + m)):
+        for x in range(max(0, x0 - m), x0):
+            ring.append(px[x, y])
+        for x in range(x1, min(w, x1 + m)):
+            ring.append(px[x, y])
+    if not ring:
+        return (0, 0, 0, 0)
+    return Counter(ring).most_common(1)[0][0]
 
 
 def gui_remap(ctx: ConversionContext) -> None:
@@ -30,7 +57,7 @@ def gui_remap(ctx: ConversionContext) -> None:
             tx, ty = mv["to"]
             box = (round(fx * sw), round(fy * sh), round((fx + fw) * sw), round((fy + fh) * sh))
             piece = img.crop(box)
-            img.paste((0, 0, 0, 0), box)          # clear old spot (transparent bg)
+            img.paste(_sample_bg(img, box), box)   # heal old spot with local background
             img.paste(piece, (round(tx * sw), round(ty * sh)))
         img.save(p)
         count += 1
