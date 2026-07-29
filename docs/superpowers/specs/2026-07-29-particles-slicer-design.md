@@ -194,12 +194,22 @@ Unit tests stay synthetic and fast; the real 65MB pack is verified by hand.
 - three input sprites produce a sheet of the expected dimensions, non-blank
 
 **Real-pack run** (manual)
-- **zero** fully-transparent PNGs anywhere in the output, down from 23
+- **zero** fully-transparent *slicer-produced* sprites, down from 23 of 153
+
+  Scoped to sprites the slice stage wrote (cross-referenced against
+  `slices.json`) — not to every PNG in the pack. A blank sprite the slicer
+  wrote overrides vanilla and is a bug; a blank texture the pack itself ships
+  is the author's intent. M8SON deliberately ships 23 fully-transparent
+  textures — 19 clear-glass CTM tiles, a transparent `environment/clouds.png`,
+  and blank `redstone_dust_{cross,line}_overlay` / `leather_chestplate_overlay`
+  — all already transparent in the source under their pre-rename paths. They
+  are not defects and must not be "fixed".
 
 ## Success criteria
 
 1. `pytest` green — 58 existing plus the new tests.
-2. Real-pack conversion produces zero fully-transparent output PNGs.
+2. Real-pack conversion produces zero fully-transparent *slicer-produced*
+   sprites (scope as above).
 3. 91 new sprites land in `textures/particle/` (75 particle sprites + 16 explosion
    frames — all 16 explosion cells are confirmed non-empty in this pack),
    `textures/entity/fishing_hook.png` exists, and 27 land in `textures/painting/`

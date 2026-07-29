@@ -642,14 +642,20 @@ print("fishing_hook:", (R / "entity/fishing_hook.png").exists())
 for name in ["critical_hit", "enchanted_hit", "flame", "explosion_0"]:
     p = R / "particle" / f"{name}.png"
     print(f"  {name}: exists={p.exists()}", Image.open(p).size if p.exists() else "")
-allpng = [p for p in Path("/tmp/sliced").rglob("*.png")]
-empty = [p for p in allpng
+import json
+slice_outs = {r["output"] for r in
+              json.load(open("mc_pack_converter/data/slices.json"))}
+produced = [p for p in Path("/tmp/sliced").rglob("*.png")
+            if str(p.relative_to("/tmp/sliced")) in slice_outs]
+empty = [p for p in produced
          if Image.open(p).convert("RGBA").getchannel("A").getbbox() is None]
-print("PNGs:", len(allpng), "fully transparent:", len(empty))
+print("slicer-produced sprites:", len(produced), "fully transparent:", len(empty))
 EOF
 ```
 
 Expected: `particle sprites: 92` (75 particle + 16 explosion + the pack's pre-existing `footprint.png`), `paintings: 27`, `fishing_hook: True`, all four named sprites present, and **`fully transparent: 0`**.
+
+**Only slicer-produced sprites are checked, deliberately.** A blank sprite the slice stage wrote is a bug — it overrides vanilla for an element the pack never drew. A blank texture the pack itself ships is the author's intent. This pack ships 23 of the latter (19 clear-glass CTM tiles, a transparent `environment/clouds.png`, and blank `redstone_dust_{cross,line}_overlay` / `leather_chestplate_overlay`), all fully transparent in the source under their pre-rename paths. Do not treat them as defects and do not "fix" them.
 
 The 15 particle names that do not appear are correct absences — `glitter_0..7`, `nautilus` and `damage` are blank in a 1.8.9 atlas, and `bubble_pop_0..4` sit below a 128-tall canvas. All fall back to vanilla.
 
@@ -1056,23 +1062,27 @@ with zipfile.ZipFile(Z) as zf:
     for n in ["particle/critical_hit.png", "particle/enchanted_hit.png",
               "particle/explosion_0.png", "painting/kebab.png"]:
         print(f"  {n}: {T + n in names}")
+    slice_outs = {r["output"] for r in
+                  json.load(open("mc_pack_converter/data/slices.json"))}
     empty = []
     for n in names:
-        if not n.endswith(".png"):
+        if n not in slice_outs:
             continue
         with Image.open(BytesIO(zf.read(n))) as im:
             if im.convert("RGBA").getchannel("A").getbbox() is None:
                 empty.append(n)
-    print("fully transparent PNGs:", len(empty), empty[:5])
+    print("transparent slicer-produced sprites:", len(empty), empty[:5])
     meta = json.loads(zf.read("pack.mcmeta"))
     print("pack.mcmeta:", meta["pack"]["min_format"], meta["pack"]["max_format"])
     print("build tag:", meta["pack"]["description"])
 EOF
 ```
 
-Expected: `particle/: 93` — 75 particle sprites + 16 explosion frames + the pack's own `footprint.png` + the now-dead `particles.png` source atlas, which stays by design. `painting/: 28` (27 sprites + the source atlas). `fishing_hook: True`, all four named sprites `True`, **`fully transparent PNGs: 0`**, `min_format`/`max_format` both `84`, and a `[conv 26.1.2 <MMDD-HHMM>]` build tag.
+Expected: `particle/: 93` — 75 particle sprites + 16 explosion frames + the pack's own `footprint.png` + the now-dead `particles.png` source atlas, which stays by design. `painting/: 28` (27 sprites + the source atlas). `fishing_hook: True`, all four named sprites `True`, **`transparent slicer-produced sprites: 0`**, `min_format`/`max_format` both `84`, and a `[conv 26.1.2 <MMDD-HHMM>]` build tag.
 
-Do not proceed if `fully transparent PNGs` is non-zero.
+Do not proceed if `transparent slicer-produced sprites` is non-zero.
+
+**Only slicer-produced sprites are checked, deliberately.** A blank sprite the slice stage wrote overrides vanilla and is a bug; a blank texture the pack itself ships is the author's intent. This pack ships 23 of the latter (19 clear-glass CTM tiles, a transparent `environment/clouds.png`, blank `redstone_dust_{cross,line}_overlay` and `leather_chestplate_overlay`) — all fully transparent in the source pack under their pre-rename paths. Leave them alone.
 
 - [ ] **Step 3: Mark the defect fixed**
 
