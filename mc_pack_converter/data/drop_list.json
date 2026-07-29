@@ -3,6 +3,10 @@
   "drop": [
     "textures/gui/container/anvil.png",
     "textures/gui/container/enchanting_table.png",
+    "textures/gui/container/creative_inventory/tabs.png",
+    "textures/gui/container/creative_inventory/tab_items.png",
+    "textures/gui/container/creative_inventory/tab_item_search.png",
+    "textures/gui/container/creative_inventory/tab_inventory.png",
     "textures/entity/horse/horse_black.png",
     "textures/entity/horse/horse_brown.png",
     "textures/entity/horse/horse_chestnut.png",

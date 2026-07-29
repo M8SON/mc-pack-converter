@@ -16,9 +16,26 @@ def parse_properties(text: str) -> dict[str, str]:
         out[k.strip()] = v.strip()
     return out
 
+def _opaque_black_fraction(path: Path) -> float:
+    """Fraction of pixels that are opaque AND near-black (downsampled estimate)."""
+    from PIL import Image
+    try:
+        with Image.open(path) as im:
+            im = im.convert("RGBA")
+            im.thumbnail((128, 128))
+            px = list(im.getdata())
+    except Exception:
+        return 0.0
+    if not px:
+        return 0.0
+    black = sum(1 for r, g, b, a in px if a > 250 and max(r, g, b) < 30)
+    return black / len(px)
+
+
 def _check_sky(ctx: ConversionContext, sky_dir: Path) -> None:
     for prop in sky_dir.rglob("*.properties"):
-        props = parse_properties(prop.read_text())
+        text = prop.read_text()
+        props = parse_properties(text)
         src = props.get("source")
         if not src:
             continue
@@ -30,6 +47,14 @@ def _check_sky(ctx: ConversionContext, sky_dir: Path) -> None:
             prop.unlink()
             ctx.add("optifine", Severity.INFO,
                     f"removed sky layer with missing source {src}", str(prop))
+            continue
+        # blend=replace with a fully-opaque texture that has large black regions
+        # paints a black square over the sky. Switch to blend=add so black
+        # becomes invisible while bright pixels (clouds/stars) still show.
+        if props.get("blend") == "replace" and _opaque_black_fraction(target) > 0.10:
+            prop.write_text(re.sub(r"(?m)^\s*blend\s*=\s*replace\s*$", "blend=add", text))
+            ctx.add("optifine", Severity.INFO,
+                    f"sky {prop.name}: blend replace->add (opaque-black {src})", str(prop))
 
 def _replace_match_line(text: str, key: str, value: str) -> str:
     lines = text.splitlines(keepends=True)

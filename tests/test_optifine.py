@@ -95,3 +95,33 @@ def test_ctm_unknown_folder_warns(mini_pack):
     assert "matchBlocks" not in txt
     assert any(f.severity is Severity.WARNING and "mystery" in f.message
                for f in ctx.findings)
+
+def test_sky_replace_with_black_texture_becomes_add(mini_pack):
+    from PIL import Image
+    root = mini_pack({
+        "assets/minecraft/optifine/sky/world0/sky1.properties":
+            b"source=./cloud2.png\nblend=replace\nrotate=true\n",
+    })
+    sky = root / "assets/minecraft/optifine/sky/world0"
+    # opaque, mostly-black cloud texture
+    Image.new("RGBA", (16, 16), (0, 0, 0, 255)).save(sky / "cloud2.png")
+    from mc_pack_converter.stages.optifine import optifine_translate
+    from mc_pack_converter.pipeline import ConversionContext
+    ctx = ConversionContext(root=root)
+    optifine_translate(ctx)
+    txt = (sky / "sky1.properties").read_text()
+    assert "blend=add" in txt and "blend=replace" not in txt
+
+def test_sky_replace_with_opaque_nonblack_stays_replace(mini_pack):
+    from PIL import Image
+    root = mini_pack({
+        "assets/minecraft/optifine/sky/world0/sky3.properties":
+            b"source=./cloud1.png\nblend=replace\n",
+    })
+    sky = root / "assets/minecraft/optifine/sky/world0"
+    Image.new("RGBA", (16, 16), (120, 160, 255, 255)).save(sky / "cloud1.png")  # day sky, no black
+    from mc_pack_converter.stages.optifine import optifine_translate
+    from mc_pack_converter.pipeline import ConversionContext
+    ctx = ConversionContext(root=root)
+    optifine_translate(ctx)
+    assert "blend=replace" in (sky / "sky3.properties").read_text()
