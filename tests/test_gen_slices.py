@@ -134,3 +134,22 @@ def test_full_1_14_source_record_counts(gen):
     # every particles.png record sits on the 128 reference
     assert all(r["box"][4:] == [128, 128] for r in recs
                if r["input"].endswith("particle/particles.png"))
+
+
+def test_shipped_slices_table_contains_1_14_records():
+    """Guard against regenerating slices.json without the 1.14 records."""
+    import json
+    from pathlib import Path
+    table = json.loads(
+        (Path(__file__).parent.parent / "mc_pack_converter" / "data"
+         / "slices.json").read_text())
+    assert len(table) == 543
+    by_out = {r["output"]: r for r in table}
+    assert by_out["assets/minecraft/textures/particle/critical_hit.png"]["box"] == \
+        [8, 32, 8, 8, 128, 128]
+    assert by_out["assets/minecraft/textures/painting/kebab.png"]["box"] == \
+        [0, 0, 16, 16, 256, 256]
+    assert by_out["assets/minecraft/textures/particle/explosion_0.png"]["box"] == \
+        [0, 0, 32, 32, 128, 128]
+    assert "assets/minecraft/textures/entity/fishing_hook.png" in by_out
+    assert not any("/textures/mob_effect/" in o for o in by_out)
