@@ -7,7 +7,8 @@ Verified findings only — each entry says how it was measured.
 
 ## 1. Fully-transparent sprites override vanilla (invisible in-game)
 
-**Status:** open in shipped builds · fix specified, not yet implemented
+**Status:** FIXED 2026-07-29 — `stages/slice.py` skips crops with no visible
+pixels. Kept here for the record; the reproduce block below now reports 0.
 **Fix lives in:** `docs/superpowers/specs/2026-07-29-particles-slicer-design.md`
 **Affects:** `M8SON-converted-26.1.2-FRESH.zip` (2026-07-28 21:50) and every earlier build
 
