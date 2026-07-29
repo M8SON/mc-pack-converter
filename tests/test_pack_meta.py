@@ -16,7 +16,8 @@ def test_pack_meta_uses_modern_min_max_schema(mini_pack, monkeypatch):
     assert data["pack"]["min_format"] == 99
     assert data["pack"]["max_format"] == 99
     assert "pack_format" not in data["pack"]
-    assert data["pack"]["description"] == "test"
+    assert data["pack"]["description"].startswith("test")
+    assert "[conv " in data["pack"]["description"]  # build tag for freshness check
 
 def test_pack_format_26_2_is_real_value():
     assert load_table("pack_format")["26.2"] > 1
