@@ -1037,7 +1037,7 @@ Run:
 
 ```bash
 .venv/bin/python -m mc_pack_converter.cli convert "../M8SON 1.8 PVP PACK" \
-  -o ../M8SON-converted-26.1.2.zip --target 26.1.2 | tail -20
+  -o ../M8SON-converted-26.1.2-slicer.zip --target 26.1.2 | tail -20
 ```
 
 Target `26.1.2`, not the `26.2` default — that is the Minecraft version being tested against.
@@ -1051,7 +1051,7 @@ Run:
 import json, zipfile
 from io import BytesIO
 from PIL import Image
-Z = "../M8SON-converted-26.1.2.zip"
+Z = "../M8SON-converted-26.1.2-slicer.zip"
 with zipfile.ZipFile(Z) as zf:
     names = zf.namelist()
     T = "assets/minecraft/textures/"
