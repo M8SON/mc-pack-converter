@@ -6,6 +6,7 @@ from .stages import STAGES
 from .stages.ingest import prepare_working_copy
 from .stages.package import write_output
 from .report import render_conversion_report, render_null_texture_report
+from .contact_sheet import ATLAS_1_14, build_contact_sheet
 
 def convert(source: Path, out_path: Path, target: str,
             report_only: bool) -> ConversionContext:
@@ -23,6 +24,15 @@ def convert(source: Path, out_path: Path, target: str,
         }
         if not report_only:
             write_output(ctx, out_path, reports)
+            sheet = out_path.with_name(out_path.stem + "-slices.png")
+            rels = [out for src, out in ctx.sliced if src in ATLAS_1_14]
+            try:
+                n = build_contact_sheet(ctx.root, rels, sheet)
+                if n:
+                    print(f"contact sheet: {sheet} ({n} sprites)")
+            except Exception as exc:  # fail-soft: a review artifact, not the product
+                ctx.add("contact_sheet", Severity.WARNING,
+                        f"contact sheet failed: {exc!r}")
         return ctx
     finally:
         shutil.rmtree(workroot, ignore_errors=True)

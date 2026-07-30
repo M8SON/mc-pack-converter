@@ -1,5 +1,1747 @@
 [
 {
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/back.png",
+"box": [
+240,
+0,
+16,
+16,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/kebab.png",
+"box": [
+0,
+0,
+16,
+16,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/aztec.png",
+"box": [
+16,
+0,
+16,
+16,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/alban.png",
+"box": [
+32,
+0,
+16,
+16,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/aztec2.png",
+"box": [
+48,
+0,
+16,
+16,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/bomb.png",
+"box": [
+64,
+0,
+16,
+16,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/plant.png",
+"box": [
+80,
+0,
+16,
+16,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/wasteland.png",
+"box": [
+96,
+0,
+16,
+16,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/pool.png",
+"box": [
+0,
+32,
+32,
+16,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/courbet.png",
+"box": [
+32,
+32,
+32,
+16,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/sea.png",
+"box": [
+64,
+32,
+32,
+16,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/sunset.png",
+"box": [
+96,
+32,
+32,
+16,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/creebet.png",
+"box": [
+128,
+32,
+32,
+16,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/wanderer.png",
+"box": [
+0,
+64,
+16,
+32,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/graham.png",
+"box": [
+16,
+64,
+16,
+32,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/match.png",
+"box": [
+0,
+128,
+32,
+32,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/bust.png",
+"box": [
+32,
+128,
+32,
+32,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/stage.png",
+"box": [
+64,
+128,
+32,
+32,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/void.png",
+"box": [
+96,
+128,
+32,
+32,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/skull_and_roses.png",
+"box": [
+128,
+128,
+32,
+32,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/wither.png",
+"box": [
+160,
+128,
+32,
+32,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/fighters.png",
+"box": [
+0,
+96,
+64,
+32,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/pointer.png",
+"box": [
+0,
+192,
+64,
+64,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/pigscene.png",
+"box": [
+64,
+192,
+64,
+64,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/burning_skull.png",
+"box": [
+128,
+192,
+64,
+64,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/skeleton.png",
+"box": [
+192,
+64,
+64,
+48,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png",
+"output": "assets/minecraft/textures/painting/donkey_kong.png",
+"box": [
+192,
+112,
+64,
+48,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/generic_0.png",
+"box": [
+0,
+0,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/generic_1.png",
+"box": [
+8,
+0,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/generic_2.png",
+"box": [
+16,
+0,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/generic_3.png",
+"box": [
+24,
+0,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/generic_4.png",
+"box": [
+32,
+0,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/generic_5.png",
+"box": [
+40,
+0,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/generic_6.png",
+"box": [
+48,
+0,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/generic_7.png",
+"box": [
+56,
+0,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/splash_0.png",
+"box": [
+24,
+8,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/splash_1.png",
+"box": [
+32,
+8,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/splash_2.png",
+"box": [
+40,
+8,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/splash_3.png",
+"box": [
+48,
+8,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_a.png",
+"box": [
+8,
+112,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_b.png",
+"box": [
+16,
+112,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_c.png",
+"box": [
+24,
+112,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_d.png",
+"box": [
+32,
+112,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_e.png",
+"box": [
+40,
+112,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_f.png",
+"box": [
+48,
+112,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_g.png",
+"box": [
+56,
+112,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_h.png",
+"box": [
+64,
+112,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_i.png",
+"box": [
+72,
+112,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_j.png",
+"box": [
+80,
+112,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_k.png",
+"box": [
+88,
+112,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_l.png",
+"box": [
+96,
+112,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_m.png",
+"box": [
+104,
+112,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_n.png",
+"box": [
+112,
+112,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_o.png",
+"box": [
+120,
+112,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_p.png",
+"box": [
+0,
+120,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_q.png",
+"box": [
+8,
+120,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_r.png",
+"box": [
+16,
+120,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_s.png",
+"box": [
+24,
+120,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_t.png",
+"box": [
+32,
+120,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_u.png",
+"box": [
+40,
+120,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_v.png",
+"box": [
+48,
+120,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_w.png",
+"box": [
+56,
+120,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_x.png",
+"box": [
+64,
+120,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_y.png",
+"box": [
+72,
+120,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/sga_z.png",
+"box": [
+80,
+120,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/effect_0.png",
+"box": [
+0,
+64,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/effect_1.png",
+"box": [
+8,
+64,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/effect_2.png",
+"box": [
+16,
+64,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/effect_3.png",
+"box": [
+24,
+64,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/effect_4.png",
+"box": [
+32,
+64,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/effect_5.png",
+"box": [
+40,
+64,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/effect_6.png",
+"box": [
+48,
+64,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/effect_7.png",
+"box": [
+56,
+64,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/glitter_0.png",
+"box": [
+0,
+88,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/glitter_1.png",
+"box": [
+8,
+88,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/glitter_2.png",
+"box": [
+16,
+88,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/glitter_3.png",
+"box": [
+24,
+88,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/glitter_4.png",
+"box": [
+32,
+88,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/glitter_5.png",
+"box": [
+40,
+88,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/glitter_6.png",
+"box": [
+48,
+88,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/glitter_7.png",
+"box": [
+56,
+88,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/spark_0.png",
+"box": [
+0,
+80,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/spark_1.png",
+"box": [
+8,
+80,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/spark_2.png",
+"box": [
+16,
+80,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/spark_3.png",
+"box": [
+24,
+80,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/spark_4.png",
+"box": [
+32,
+80,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/spark_5.png",
+"box": [
+40,
+80,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/spark_6.png",
+"box": [
+48,
+80,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/spark_7.png",
+"box": [
+56,
+80,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/spell_0.png",
+"box": [
+0,
+72,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/spell_1.png",
+"box": [
+8,
+72,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/spell_2.png",
+"box": [
+16,
+72,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/spell_3.png",
+"box": [
+24,
+72,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/spell_4.png",
+"box": [
+32,
+72,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/spell_5.png",
+"box": [
+40,
+72,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/spell_6.png",
+"box": [
+48,
+72,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/spell_7.png",
+"box": [
+56,
+72,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/bubble_pop_0.png",
+"box": [
+0,
+131,
+16,
+16,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/bubble_pop_1.png",
+"box": [
+16,
+131,
+16,
+16,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/bubble_pop_2.png",
+"box": [
+32,
+131,
+16,
+16,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/bubble_pop_3.png",
+"box": [
+48,
+131,
+16,
+16,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/bubble_pop_4.png",
+"box": [
+64,
+131,
+16,
+16,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/flash.png",
+"box": [
+32,
+16,
+32,
+32,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/nautilus.png",
+"box": [
+0,
+104,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/note.png",
+"box": [
+0,
+32,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/angry.png",
+"box": [
+8,
+40,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/bubble.png",
+"box": [
+0,
+16,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/damage.png",
+"box": [
+24,
+32,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/flame.png",
+"box": [
+0,
+24,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/lava.png",
+"box": [
+8,
+24,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/heart.png",
+"box": [
+0,
+40,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/glint.png",
+"box": [
+16,
+40,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/enchanted_hit.png",
+"box": [
+16,
+32,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/critical_hit.png",
+"box": [
+8,
+32,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/drip_hang.png",
+"box": [
+0,
+56,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/drip_fall.png",
+"box": [
+8,
+56,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/particle/drip_land.png",
+"box": [
+16,
+56,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/particle/particles.png",
+"output": "assets/minecraft/textures/entity/fishing_hook.png",
+"box": [
+8,
+16,
+8,
+8,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/entity/explosion.png",
+"output": "assets/minecraft/textures/particle/explosion_0.png",
+"box": [
+0,
+0,
+32,
+32,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/entity/explosion.png",
+"output": "assets/minecraft/textures/particle/explosion_1.png",
+"box": [
+32,
+0,
+32,
+32,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/entity/explosion.png",
+"output": "assets/minecraft/textures/particle/explosion_2.png",
+"box": [
+64,
+0,
+32,
+32,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/entity/explosion.png",
+"output": "assets/minecraft/textures/particle/explosion_3.png",
+"box": [
+96,
+0,
+32,
+32,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/entity/explosion.png",
+"output": "assets/minecraft/textures/particle/explosion_4.png",
+"box": [
+0,
+32,
+32,
+32,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/entity/explosion.png",
+"output": "assets/minecraft/textures/particle/explosion_5.png",
+"box": [
+32,
+32,
+32,
+32,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/entity/explosion.png",
+"output": "assets/minecraft/textures/particle/explosion_6.png",
+"box": [
+64,
+32,
+32,
+32,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/entity/explosion.png",
+"output": "assets/minecraft/textures/particle/explosion_7.png",
+"box": [
+96,
+32,
+32,
+32,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/entity/explosion.png",
+"output": "assets/minecraft/textures/particle/explosion_8.png",
+"box": [
+0,
+64,
+32,
+32,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/entity/explosion.png",
+"output": "assets/minecraft/textures/particle/explosion_9.png",
+"box": [
+32,
+64,
+32,
+32,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/entity/explosion.png",
+"output": "assets/minecraft/textures/particle/explosion_10.png",
+"box": [
+64,
+64,
+32,
+32,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/entity/explosion.png",
+"output": "assets/minecraft/textures/particle/explosion_11.png",
+"box": [
+96,
+64,
+32,
+32,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/entity/explosion.png",
+"output": "assets/minecraft/textures/particle/explosion_12.png",
+"box": [
+0,
+96,
+32,
+32,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/entity/explosion.png",
+"output": "assets/minecraft/textures/particle/explosion_13.png",
+"box": [
+32,
+96,
+32,
+32,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/entity/explosion.png",
+"output": "assets/minecraft/textures/particle/explosion_14.png",
+"box": [
+64,
+96,
+32,
+32,
+128,
+128
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/entity/explosion.png",
+"output": "assets/minecraft/textures/particle/explosion_15.png",
+"box": [
+96,
+96,
+32,
+32,
+128,
+128
+],
+"op": "crop"
+},
+{
 "input": "assets/minecraft/textures/gui/chat_tags.png",
 "output": "assets/minecraft/textures/gui/sprites/icon/chat_modified.png",
 "box": [

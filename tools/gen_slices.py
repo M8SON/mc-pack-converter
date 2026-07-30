@@ -13,7 +13,7 @@ Output record shape (list): {"input": path, "output": path,
 Entries whose input is under assets/realms/ are dropped (never in a texture pack).
 """
 from __future__ import annotations
-import json, re, sys
+import ast, json, re, sys
 from pathlib import Path
 
 SRC = Path(__file__).parent / "slicer_src"
@@ -79,6 +79,94 @@ def balanced(s: str, open_idx: int) -> str:
 STR = re.compile(r'"((?:[^"\\]|\\.)*)"')
 BOX = re.compile(r"new\s+Box\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)")
 
+# --- 1.14 slicer helpers ---------------------------------------------------
+# tools/slicer_src/slicer_1.14.java wraps every output in one of five private
+# helpers, all reducing to a single primitive:
+#   gridSprite(x,y,w,h,xOff,yOff,xScale,yScale)
+#     -> Box(xScale*x + xOff, yScale*y + yOff, w*xScale, h*yScale, 256, 256)
+# The helper arguments are literal integer arithmetic ("1 * 2"), so the
+# generator evaluates them directly.
+BFN = re.compile(r"\bb(256|128)\(([^()]*)\)")
+PARTICLE_REF = 128
+SKIPPED_HELPERS = {"effect": 0, "sweep": 0}
+
+
+def as_int(expr: str) -> int:
+    """Evaluate a literal integer arithmetic expression from the Java source."""
+    def ev(n):
+        if isinstance(n, ast.Constant) and isinstance(n.value, int):
+            return n.value
+        if isinstance(n, ast.UnaryOp) and isinstance(n.op, ast.USub):
+            return -ev(n.operand)
+        if isinstance(n, ast.BinOp) and isinstance(
+                n.op, (ast.Add, ast.Sub, ast.Mult)):
+            l, r = ev(n.left), ev(n.right)
+            return (l + r if isinstance(n.op, ast.Add)
+                    else l - r if isinstance(n.op, ast.Sub) else l * r)
+        raise ValueError(f"not an integer expression: {expr!r}")
+    return ev(ast.parse(expr.strip(), mode="eval").body)
+
+
+def parse_box(expr: str) -> list[int] | None:
+    """Resolve `new Box(...)`, `b256(...)` or `b128(...)` to [x,y,w,h,tw,th]."""
+    m = BOX.search(expr)
+    if m:
+        return [int(g) for g in m.groups()]
+    m = BFN.search(expr)
+    if m:
+        ref = int(m.group(1))
+        x, y, w, h = (as_int(a) for a in split_top_level(m.group(2)))
+        return [x, y, w, h, ref, ref]
+    return None
+
+
+HELPER = re.compile(r"(painting|particle|explosion|effect|sweep)\s*\(")
+
+
+def parse_helper_output(expr: str, input_path: str) -> dict | None:
+    """Resolve a 1.14 helper call to a record, or None if not one / not ported.
+
+    Not ported, deliberately:
+      effect() - the 18px effect grid inside inventory.png was rearranged in
+                 1.9, so these coordinates would mis-map a 1.8.9 pack.
+      sweep()  - needs the slicer's SQUARE post-op; the texture is 1.9+.
+    """
+    expr = expr.strip()
+    m = HELPER.match(expr)
+    if not m:
+        return None
+    fn = m.group(1)
+    if fn in SKIPPED_HELPERS:
+        SKIPPED_HELPERS[fn] += 1
+        return None
+    args = split_top_level(balanced(expr, expr.index("(")))
+    name = STR.match(args[0]).group(1)
+    nums = [as_int(a) for a in args[1:]]
+    if fn == "painting":
+        x, y, w, h = nums
+        return {"input": input_path,
+                "output": f"assets/minecraft/textures/painting/{name}.png",
+                "box": [16 * x, 16 * y, 16 * w, 16 * h, 256, 256], "op": "crop"}
+    if fn == "explosion":
+        x, y = nums
+        return {"input": input_path,
+                "output": f"assets/minecraft/textures/particle/{name}.png",
+                "box": [32 * x, 32 * y, 32, 32, 128, 128], "op": "crop"}
+    # particle(n,x,y) | particle(n,x,y,w,h) | particle(n,x,y,xOff,yOff,w,h)
+    if len(nums) == 2:
+        x, y = nums
+        w = h = 1
+        xoff = yoff = 0
+    elif len(nums) == 4:
+        x, y, w, h = nums
+        xoff = yoff = 0
+    else:
+        x, y, xoff, yoff, w, h = nums
+    return {"input": input_path,
+            "output": f"assets/minecraft/textures/particle/{name}.png",
+            "box": [8 * x + xoff, 8 * y + yoff, 8 * w, 8 * h, 256, 256],
+            "op": "crop"}
+
 
 def parse_name_to_path(expr: str) -> str | None:
     """Resolve a nameToPath("ns","name") call or a bare string literal to a path."""
@@ -101,9 +189,8 @@ def parse_output(expr: str, input_path: str) -> dict | None:
         return None
     out_path = strs[0]
     special = ".apply(" in expr
-    box = BOX.search(expr)
-    if box:
-        b = [int(g) for g in box.groups()]
+    b = parse_box(expr)
+    if b:
         op = "special" if special else "crop"
         return {"input": input_path, "output": out_path, "box": b, "op": op}
     return None
@@ -123,10 +210,31 @@ def parse_entry(entry: str) -> list[dict]:
         in_path = parse_name_to_path(args[0])
         if not in_path:
             return recs
+        particle_helper_recs = []
         for out_expr in args[1:]:
-            r = parse_output(out_expr, in_path)
+            r = parse_helper_output(out_expr, in_path) or parse_output(out_expr, in_path)
             if r:
                 recs.append(r)
+                m = HELPER.match(out_expr.strip())
+                if m and m.group(1) == "particle":
+                    particle_helper_recs.append(r)
+        if in_path.endswith("textures/particle/particles.png"):
+            # 1.13 kept the 8px cell size and GREW the canvas (1.8.9 is
+            # 128x128, 1.13.2 is 256x256 at the same coordinates), so restate
+            # these boxes against a 128 reference. Proportional scaling then
+            # yields cell = width/16, correct for a 1x or a 4x 1.8.9 atlas.
+            for r in recs:
+                if r["box"][4:] == [256, 256]:
+                    r["box"][4:] = [PARTICLE_REF, PARTICLE_REF]
+        # Guard the rebase invariant independently of the endswith check above:
+        # every particle()-derived record must land on the 128 reference. If a
+        # future input-path form ever stops matching textures/particle/particles.png
+        # above, the rebase silently stops firing and this catches it loudly
+        # instead of shipping quarter-size sprites.
+        for r in particle_helper_recs:
+            assert r["box"][4:] == [PARTICLE_REF, PARTICLE_REF], (
+                f"particle()-derived record escaped the 128 rebase with a "
+                f"256 reference: {r['output']!r} (input={in_path!r})")
     elif fn == "copy":
         p = name_to_path("minecraft", STR.match(args[0]).group(1))
         recs.append({"input": p, "output": p, "box": [0, 0, 1, 1, 1, 1], "op": "copy"})
@@ -173,6 +281,9 @@ def main() -> int:
         recs = parse_file(p)
         all_recs.extend(recs)
         print(f"{src}: {len(recs)} slice records")
+    for fn, n in SKIPPED_HELPERS.items():
+        if n:
+            print(f"skipped {n} {fn}() outputs (not ported - see spec)")
     # drop realms inputs (never in a resource pack); dedupe by (input,output)
     seen, cleaned = set(), []
     for r in all_recs:

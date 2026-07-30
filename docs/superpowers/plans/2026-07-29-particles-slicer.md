@@ -34,7 +34,7 @@ Fixes the 23 invisible sprites documented in `docs/known-issues.md` §1. Indepen
 - Consumes: nothing from earlier tasks.
 - Produces: `_is_empty(im: Image.Image) -> bool` in `mc_pack_converter/stages/slice.py`. No other task calls it directly.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `tests/test_slice.py`:
 
@@ -93,13 +93,13 @@ def test_opaque_region_still_written(mini_pack, monkeypatch):
     assert (root / "assets/minecraft/textures/gui/sprites/hud/hotbar.png").exists()
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `.venv/bin/python -m pytest tests/test_slice.py -v`
 
 Expected: `test_transparent_region_is_left_to_vanilla`, `test_zero_size_crop_is_left_to_vanilla` and `test_clip_with_empty_region_is_left_to_vanilla` FAIL — the files get written because nothing checks emptiness. `test_opaque_region_still_written` passes already.
 
-- [ ] **Step 3: Add the `_is_empty` helper**
+- [x] **Step 3: Add the `_is_empty` helper**
 
 In `mc_pack_converter/stages/slice.py`, add after `_scaled_rect`:
 
@@ -118,7 +118,7 @@ def _is_empty(im: Image.Image) -> bool:
 
 Checking the alpha channel's bbox specifically — not `im.getbbox()` — so a transparent region carrying nonzero RGB still counts as empty.
 
-- [ ] **Step 4: Apply the rule in `slice_atlases`**
+- [x] **Step 4: Apply the rule in `slice_atlases`**
 
 In `slice_atlases`, change the counter setup from:
 
@@ -152,7 +152,7 @@ Then in the non-`copy` branch, insert the check immediately after `sub` is compu
 
 The rest of the branch is unchanged. `continue` advances the record loop, skipping both the write and `made += 1`.
 
-- [ ] **Step 5: Update the summary finding**
+- [x] **Step 5: Update the summary finding**
 
 Replace the closing `ctx.add` with:
 
@@ -166,13 +166,13 @@ Replace the closing `ctx.add` with:
 
 "gui sprites" becomes "sprites" because after Task 3 this stage also produces particle and painting sprites.
 
-- [ ] **Step 6: Run the full suite**
+- [x] **Step 6: Run the full suite**
 
 Run: `.venv/bin/python -m pytest -q`
 
 Expected: 62 passed (58 existing + 4 new). If an existing test fails, the skip rule is suppressing real art — investigate rather than relaxing the test.
 
-- [ ] **Step 7: Verify the fix against the real pack**
+- [x] **Step 7: Verify the fix against the real pack**
 
 Run:
 
@@ -192,7 +192,7 @@ EOF
 
 Expected: `sprites: 130 fully transparent: 0` — down from 153 produced with 23 transparent. If any transparent sprite remains, `_is_empty` is not reached on that code path.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add mc_pack_converter/stages/slice.py tests/test_slice.py
@@ -227,7 +227,7 @@ Skip any crop with no visible pixels and log it, so vanilla shows through."
   - `PARTICLE_REF: int` = `128`
   - Existing `parse_entry(entry: str) -> list[dict]` keeps its signature.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/test_gen_slices.py`:
 
@@ -370,13 +370,13 @@ def test_full_1_14_source_record_counts(gen):
                if r["input"].endswith("particle/particles.png"))
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `.venv/bin/python -m pytest tests/test_gen_slices.py -v`
 
 Expected: every test errors with `AttributeError: module 'gen_slices' has no attribute 'as_int'` (and similar) — none of the new functions exist yet.
 
-- [ ] **Step 3: Add the arithmetic evaluator and box resolver**
+- [x] **Step 3: Add the arithmetic evaluator and box resolver**
 
 In `tools/gen_slices.py`, add after the `BOX` regex:
 
@@ -389,16 +389,24 @@ In `tools/gen_slices.py`, add after the `BOX` regex:
 # The helper arguments are literal integer arithmetic ("1 * 2"), so the
 # generator evaluates them directly.
 BFN = re.compile(r"\bb(256|128)\(([^()]*)\)")
-INT_EXPR = re.compile(r"[\d\s+*\-()]+")
 PARTICLE_REF = 128
 SKIPPED_HELPERS = {"effect": 0, "sweep": 0}
 
 
 def as_int(expr: str) -> int:
     """Evaluate a literal integer arithmetic expression from the Java source."""
-    if not INT_EXPR.fullmatch(expr.strip()):
+    def ev(n):
+        if isinstance(n, ast.Constant) and isinstance(n.value, int):
+            return n.value
+        if isinstance(n, ast.UnaryOp) and isinstance(n.op, ast.USub):
+            return -ev(n.operand)
+        if isinstance(n, ast.BinOp) and isinstance(
+                n.op, (ast.Add, ast.Sub, ast.Mult)):
+            l, r = ev(n.left), ev(n.right)
+            return (l + r if isinstance(n.op, ast.Add)
+                    else l - r if isinstance(n.op, ast.Sub) else l * r)
         raise ValueError(f"not an integer expression: {expr!r}")
-    return int(eval(expr, {"__builtins__": {}}, {}))
+    return ev(ast.parse(expr.strip(), mode="eval").body)
 
 
 def parse_box(expr: str) -> list[int] | None:
@@ -414,9 +422,9 @@ def parse_box(expr: str) -> list[int] | None:
     return None
 ```
 
-`eval` runs only over a string that fully matched `INT_EXPR` (digits, whitespace, `+ - * ( )`), with builtins stripped, against source vendored into this repo.
+No `eval`: the walker accepts only integer constants, unary minus, and `+ - *`, and raises `ValueError` on anything else. Add `import ast` to the module's imports (the existing import line is `import json, re, sys`).
 
-- [ ] **Step 4: Add the helper-call parser**
+- [x] **Step 4: Add the helper-call parser**
 
 Add below `parse_box`:
 
@@ -471,7 +479,7 @@ def parse_helper_output(expr: str, input_path: str) -> dict | None:
 
 Note `particle` emits a `256` reference here; the rebase to `128` happens once, per input, in Step 6 — one place expresses that decision.
 
-- [ ] **Step 5: Route helper calls in `parse_output`**
+- [x] **Step 5: Route helper calls in `parse_output`**
 
 In `parse_output`, replace:
 
@@ -496,7 +504,7 @@ with:
 
 That is what lets the bare `fishing_hook` output resolve its `b256(...)` box.
 
-- [ ] **Step 6: Wire helpers and the rebase into `parse_entry`**
+- [x] **Step 6: Wire helpers and the rebase into `parse_entry`**
 
 In `parse_entry`, replace the `if fn == "input":` block with:
 
@@ -519,7 +527,7 @@ In `parse_entry`, replace the `if fn == "input":` block with:
                     r["box"][4:] = [PARTICLE_REF, PARTICLE_REF]
 ```
 
-- [ ] **Step 7: Report skipped helpers in `main`**
+- [x] **Step 7: Report skipped helpers in `main`**
 
 In `main()`, after the per-file loop, before the dedupe:
 
@@ -529,13 +537,13 @@ In `main()`, after the per-file loop, before the dedupe:
             print(f"skipped {n} {fn}() outputs (not ported - see spec)")
 ```
 
-- [ ] **Step 8: Run the tests to verify they pass**
+- [x] **Step 8: Run the tests to verify they pass**
 
 Run: `.venv/bin/python -m pytest tests/test_gen_slices.py -v`
 
 Expected: all 12 tests PASS. If `test_full_1_14_source_record_counts` reports a different total, do not adjust the expected number — find the records the parser is dropping or duplicating.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add tools/gen_slices.py tests/test_gen_slices.py
@@ -562,7 +570,7 @@ coordinates at half the size. effect() and sweep() stay unported."
 - Consumes: `tools/gen_slices.py` from Task 2.
 - Produces: `slices.json` with 543 records. Task 5's contact sheet relies on the particle/painting outputs existing.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `tests/test_gen_slices.py`:
 
@@ -586,13 +594,13 @@ def test_shipped_slices_table_contains_1_14_records():
     assert not any("/textures/mob_effect/" in o for o in by_out)
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `.venv/bin/python -m pytest tests/test_gen_slices.py::test_shipped_slices_table_contains_1_14_records -v`
 
 Expected: FAIL — `assert 409 == 543`.
 
-- [ ] **Step 3: Regenerate the table**
+- [x] **Step 3: Regenerate the table**
 
 Run: `.venv/bin/python tools/gen_slices.py`
 
@@ -608,13 +616,13 @@ TOTAL: 543 records -> .../mc_pack_converter/data/slices.json
 
 The per-file counts for `slicer_1.20.2.java` and `slicer262.java` must not change — they summed to 409 before this work, and the 543 total is the check on that.
 
-- [ ] **Step 4: Run the full suite**
+- [x] **Step 4: Run the full suite**
 
 Run: `.venv/bin/python -m pytest -q`
 
 Expected: 75 passed (62 after Task 1 + 12 from Task 2 + this one).
 
-- [ ] **Step 5: Verify against the real pack**
+- [x] **Step 5: Verify against the real pack**
 
 Run:
 
@@ -634,18 +642,24 @@ print("fishing_hook:", (R / "entity/fishing_hook.png").exists())
 for name in ["critical_hit", "enchanted_hit", "flame", "explosion_0"]:
     p = R / "particle" / f"{name}.png"
     print(f"  {name}: exists={p.exists()}", Image.open(p).size if p.exists() else "")
-allpng = [p for p in Path("/tmp/sliced").rglob("*.png")]
-empty = [p for p in allpng
+import json
+slice_outs = {r["output"] for r in
+              json.load(open("mc_pack_converter/data/slices.json"))}
+produced = [p for p in Path("/tmp/sliced").rglob("*.png")
+            if str(p.relative_to("/tmp/sliced")) in slice_outs]
+empty = [p for p in produced
          if Image.open(p).convert("RGBA").getchannel("A").getbbox() is None]
-print("PNGs:", len(allpng), "fully transparent:", len(empty))
+print("slicer-produced sprites:", len(produced), "fully transparent:", len(empty))
 EOF
 ```
 
 Expected: `particle sprites: 92` (75 particle + 16 explosion + the pack's pre-existing `footprint.png`), `paintings: 27`, `fishing_hook: True`, all four named sprites present, and **`fully transparent: 0`**.
 
+**Only slicer-produced sprites are checked, deliberately.** A blank sprite the slice stage wrote is a bug — it overrides vanilla for an element the pack never drew. A blank texture the pack itself ships is the author's intent. This pack ships 23 of the latter (19 clear-glass CTM tiles, a transparent `environment/clouds.png`, and blank `redstone_dust_{cross,line}_overlay` / `leather_chestplate_overlay`), all fully transparent in the source under their pre-rename paths. Do not treat them as defects and do not "fix" them.
+
 The 15 particle names that do not appear are correct absences — `glitter_0..7`, `nautilus` and `damage` are blank in a 1.8.9 atlas, and `bubble_pop_0..4` sit below a 128-tall canvas. All fall back to vanilla.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add mc_pack_converter/data/slices.json tests/test_gen_slices.py
@@ -672,7 +686,7 @@ atlases."
   - `build_contact_sheet(root: Path, rel_paths: list[str], out_path: Path) -> bool` — writes a PNG, returns `False` if there was nothing to draw.
   - Task 5 calls both.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/test_contact_sheet.py`:
 
@@ -743,13 +757,13 @@ def test_atlas_set_names_the_three_1_14_sources():
     }
 ```
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `.venv/bin/python -m pytest tests/test_contact_sheet.py -v`
 
 Expected: collection error — `ModuleNotFoundError: No module named 'mc_pack_converter.contact_sheet'`.
 
-- [ ] **Step 3: Write the module**
+- [x] **Step 3: Write the module**
 
 Create `mc_pack_converter/contact_sheet.py`:
 
@@ -826,13 +840,13 @@ def build_contact_sheet(root: Path, rel_paths: list[str], out_path: Path) -> boo
     return True
 ```
 
-- [ ] **Step 4: Run to verify they pass**
+- [x] **Step 4: Run to verify they pass**
 
 Run: `.venv/bin/python -m pytest tests/test_contact_sheet.py -v`
 
 Expected: 6 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add mc_pack_converter/contact_sheet.py tests/test_contact_sheet.py
@@ -856,7 +870,7 @@ checkerboard so alpha reads, for review before loading the pack in-game."
 - Consumes: `build_contact_sheet`, `ATLAS_1_14` from Task 4.
 - Produces: `ConversionContext.sliced: list[tuple[str, str]]` — `(input_atlas, output_sprite)` for each sprite actually written.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `tests/test_slice.py`:
 
@@ -912,13 +926,13 @@ def test_no_contact_sheet_when_nothing_sliced(tmp_path, mini_pack):
     assert not (tmp_path / "plain-slices.png").exists()
 ```
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `.venv/bin/python -m pytest tests/test_slice.py tests/test_cli_e2e.py -v`
 
 Expected: the two slice tests fail with `AttributeError: 'ConversionContext' object has no attribute 'sliced'`; `test_contact_sheet_written_beside_archive` fails on the missing sheet.
 
-- [ ] **Step 3: Add the field to the context**
+- [x] **Step 3: Add the field to the context**
 
 In `mc_pack_converter/pipeline.py`, in `ConversionContext`:
 
@@ -932,7 +946,7 @@ class ConversionContext:
     """(input atlas, output sprite) for every sprite the slice stage wrote."""
 ```
 
-- [ ] **Step 4: Record written sprites in the slice stage**
+- [x] **Step 4: Record written sprites in the slice stage**
 
 In `mc_pack_converter/stages/slice.py`, in the `try` block, change:
 
@@ -949,7 +963,7 @@ to:
             made += 1
 ```
 
-- [ ] **Step 5: Render the sheet in `convert`**
+- [x] **Step 5: Render the sheet in `convert`**
 
 In `mc_pack_converter/cli.py`, add to the imports:
 
@@ -979,13 +993,13 @@ with:
 
 It runs before the `finally` clause removes the working copy, and writes outside `ctx.root` so `write_output` cannot zip it.
 
-- [ ] **Step 6: Run the full suite**
+- [x] **Step 6: Run the full suite**
 
 Run: `.venv/bin/python -m pytest -q`
 
 Expected: 85 passed (75 after Task 3 + 6 from Task 4 + 4 here).
 
-- [ ] **Step 7: Generate the sheet for the real pack and look at it**
+- [x] **Step 7: Generate the sheet for the real pack and look at it**
 
 Run:
 
@@ -998,7 +1012,7 @@ The line is printed by `convert` before `main` prints the reports, so grep for i
 
 Expected: `contact sheet: /tmp/review-slices.png (119 sprites)` — 75 particle + 16 explosion + 27 painting + `fishing_hook`, which is also cut from `particles.png`. Open the PNG and confirm the sprites look like the pack's art, not garbage or fragments. **Misaligned box math shows up here as sprites cut across cell boundaries** — that is the check this sheet exists for.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add mc_pack_converter/pipeline.py mc_pack_converter/stages/slice.py \
@@ -1017,18 +1031,18 @@ git commit -m "feat: write a sprite contact sheet beside the output archive"
 - Consumes: everything above.
 - Produces: nothing consumed by later tasks.
 
-- [ ] **Step 1: Build the deliverable**
+- [x] **Step 1: Build the deliverable**
 
 Run:
 
 ```bash
 .venv/bin/python -m mc_pack_converter.cli convert "../M8SON 1.8 PVP PACK" \
-  -o ../M8SON-converted-26.1.2.zip --target 26.1.2 | tail -20
+  -o ../M8SON-converted-26.1.2-slicer.zip --target 26.1.2 | tail -20
 ```
 
 Target `26.1.2`, not the `26.2` default — that is the Minecraft version being tested against.
 
-- [ ] **Step 2: Confirm every success criterion from the spec**
+- [x] **Step 2: Confirm every success criterion from the spec**
 
 Run:
 
@@ -1037,7 +1051,7 @@ Run:
 import json, zipfile
 from io import BytesIO
 from PIL import Image
-Z = "../M8SON-converted-26.1.2.zip"
+Z = "../M8SON-converted-26.1.2-slicer.zip"
 with zipfile.ZipFile(Z) as zf:
     names = zf.namelist()
     T = "assets/minecraft/textures/"
@@ -1048,25 +1062,29 @@ with zipfile.ZipFile(Z) as zf:
     for n in ["particle/critical_hit.png", "particle/enchanted_hit.png",
               "particle/explosion_0.png", "painting/kebab.png"]:
         print(f"  {n}: {T + n in names}")
+    slice_outs = {r["output"] for r in
+                  json.load(open("mc_pack_converter/data/slices.json"))}
     empty = []
     for n in names:
-        if not n.endswith(".png"):
+        if n not in slice_outs:
             continue
         with Image.open(BytesIO(zf.read(n))) as im:
             if im.convert("RGBA").getchannel("A").getbbox() is None:
                 empty.append(n)
-    print("fully transparent PNGs:", len(empty), empty[:5])
+    print("transparent slicer-produced sprites:", len(empty), empty[:5])
     meta = json.loads(zf.read("pack.mcmeta"))
     print("pack.mcmeta:", meta["pack"]["min_format"], meta["pack"]["max_format"])
     print("build tag:", meta["pack"]["description"])
 EOF
 ```
 
-Expected: `particle/: 93` — 75 particle sprites + 16 explosion frames + the pack's own `footprint.png` + the now-dead `particles.png` source atlas, which stays by design. `painting/: 28` (27 sprites + the source atlas). `fishing_hook: True`, all four named sprites `True`, **`fully transparent PNGs: 0`**, `min_format`/`max_format` both `84`, and a `[conv 26.1.2 <MMDD-HHMM>]` build tag.
+Expected: `particle/: 93` — 75 particle sprites + 16 explosion frames + the pack's own `footprint.png` + the now-dead `particles.png` source atlas, which stays by design. `painting/: 28` (27 sprites + the source atlas). `fishing_hook: True`, all four named sprites `True`, **`transparent slicer-produced sprites: 0`**, `min_format`/`max_format` both `84`, and a `[conv 26.1.2 <MMDD-HHMM>]` build tag.
 
-Do not proceed if `fully transparent PNGs` is non-zero.
+Do not proceed if `transparent slicer-produced sprites` is non-zero.
 
-- [ ] **Step 3: Mark the defect fixed**
+**Only slicer-produced sprites are checked, deliberately.** A blank sprite the slice stage wrote overrides vanilla and is a bug; a blank texture the pack itself ships is the author's intent. This pack ships 23 of the latter (19 clear-glass CTM tiles, a transparent `environment/clouds.png`, blank `redstone_dust_{cross,line}_overlay` and `leather_chestplate_overlay`) — all fully transparent in the source pack under their pre-rename paths. Leave them alone.
+
+- [x] **Step 3: Mark the defect fixed**
 
 In `docs/known-issues.md`, replace the status line of §1:
 
@@ -1083,14 +1101,14 @@ pixels. Kept here for the record; the reproduce block below now reports 0.
 
 Leave §2 (mob-effect icons) untouched — still open.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/known-issues.md
 git commit -m "docs: mark the transparent-slice-output defect fixed"
 ```
 
-- [ ] **Step 5: Hand off for in-game verification**
+- [x] **Step 5: Hand off for in-game verification**
 
 Report to the user, with the numbers from Step 2:
 

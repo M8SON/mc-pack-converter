@@ -1,7 +1,7 @@
 # 1.14 Slicer Port: Particles, Paintings, Explosion — Design
 
 **Date:** 2026-07-29
-**Status:** Approved design, pre-implementation
+**Status:** Implemented on `feature/slicer-1.14`
 **Proving-ground fixture:** `M8SON 1.8 PVP PACK` (a "Faithful 32x32 edit", `pack_format: 1`)
 **Builds on:** `2026-07-28-mc-pack-converter-design.md`
 
@@ -77,7 +77,7 @@ empty in a 1.8.9 atlas (`glitter_0..7`, `nautilus`, `damage`) and 5 more
 
 ## Architecture
 
-Five files change. No new stage, no new op, no new concept in the pipeline.
+Six files change. No new stage, no new op, no new concept in the pipeline.
 
 | file | change |
 |---|---|
@@ -85,6 +85,7 @@ Five files change. No new stage, no new op, no new concept in the pipeline.
 | `tools/gen_slices.py` | expand the 1.14 helper calls into records |
 | `mc_pack_converter/data/slices.json` | regenerated: 409 → 543 records (+27 painting, +90 particle, +16 explosion, +1 fishing_hook) |
 | `mc_pack_converter/stages/slice.py` | skip empty crops; record them as findings |
+| `mc_pack_converter/pipeline.py` | `ConversionContext` gains the `sliced` field |
 | `mc_pack_converter/contact_sheet.py` (new) + `cli.py` | emit the review sheet |
 
 ### Generator: helper expansion
@@ -148,7 +149,8 @@ it is what fixes the 23 invisible sprites.
 ### Contact sheet
 
 `contact_sheet.py` builds one labelled grid PNG from the sprites produced off the
-three 1.14 atlases (~104 tiles): 64px nearest-neighbour tiles, 8 per row, a
+three 1.14 atlases (119 tiles: 75 particle + 16 explosion + 27 painting +
+`fishing_hook`): 64px nearest-neighbour tiles, 8 per row, a
 checkerboard behind each so alpha reads, sprite name captioned under each tile in
 PIL's default bitmap font.
 
@@ -194,12 +196,22 @@ Unit tests stay synthetic and fast; the real 65MB pack is verified by hand.
 - three input sprites produce a sheet of the expected dimensions, non-blank
 
 **Real-pack run** (manual)
-- **zero** fully-transparent PNGs anywhere in the output, down from 23
+- **zero** fully-transparent *slicer-produced* sprites, down from 23 of 153
+
+  Scoped to sprites the slice stage wrote (cross-referenced against
+  `slices.json`) — not to every PNG in the pack. A blank sprite the slicer
+  wrote overrides vanilla and is a bug; a blank texture the pack itself ships
+  is the author's intent. M8SON deliberately ships 23 fully-transparent
+  textures — 19 clear-glass CTM tiles, a transparent `environment/clouds.png`,
+  and blank `redstone_dust_{cross,line}_overlay` / `leather_chestplate_overlay`
+  — all already transparent in the source under their pre-rename paths. They
+  are not defects and must not be "fixed".
 
 ## Success criteria
 
 1. `pytest` green — 58 existing plus the new tests.
-2. Real-pack conversion produces zero fully-transparent output PNGs.
+2. Real-pack conversion produces zero fully-transparent *slicer-produced*
+   sprites (scope as above).
 3. 91 new sprites land in `textures/particle/` (75 particle sprites + 16 explosion
    frames — all 16 explosion cells are confirmed non-empty in this pack),
    `textures/entity/fishing_hook.png` exists, and 27 land in `textures/painting/`

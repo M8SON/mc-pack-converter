@@ -25,6 +25,8 @@ class ConversionContext:
     root: Path
     findings: list[Finding] = field(default_factory=list)
     target: str = "26.2"
+    sliced: list[tuple[str, str]] = field(default_factory=list)
+    """(input atlas, output sprite) for every sprite the slice stage wrote."""
 
     def add(self, stage: str, severity: Severity, message: str,
             path: str | None = None) -> None:
