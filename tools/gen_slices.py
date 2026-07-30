@@ -210,10 +210,14 @@ def parse_entry(entry: str) -> list[dict]:
         in_path = parse_name_to_path(args[0])
         if not in_path:
             return recs
+        particle_helper_recs = []
         for out_expr in args[1:]:
             r = parse_helper_output(out_expr, in_path) or parse_output(out_expr, in_path)
             if r:
                 recs.append(r)
+                m = HELPER.match(out_expr.strip())
+                if m and m.group(1) == "particle":
+                    particle_helper_recs.append(r)
         if in_path.endswith("textures/particle/particles.png"):
             # 1.13 kept the 8px cell size and GREW the canvas (1.8.9 is
             # 128x128, 1.13.2 is 256x256 at the same coordinates), so restate
@@ -222,6 +226,15 @@ def parse_entry(entry: str) -> list[dict]:
             for r in recs:
                 if r["box"][4:] == [256, 256]:
                     r["box"][4:] = [PARTICLE_REF, PARTICLE_REF]
+        # Guard the rebase invariant independently of the endswith check above:
+        # every particle()-derived record must land on the 128 reference. If a
+        # future input-path form ever stops matching textures/particle/particles.png
+        # above, the rebase silently stops firing and this catches it loudly
+        # instead of shipping quarter-size sprites.
+        for r in particle_helper_recs:
+            assert r["box"][4:] == [PARTICLE_REF, PARTICLE_REF], (
+                f"particle()-derived record escaped the 128 rebase with a "
+                f"256 reference: {r['output']!r} (input={in_path!r})")
     elif fn == "copy":
         p = name_to_path("minecraft", STR.match(args[0]).group(1))
         recs.append({"input": p, "output": p, "box": [0, 0, 1, 1, 1, 1], "op": "copy"})

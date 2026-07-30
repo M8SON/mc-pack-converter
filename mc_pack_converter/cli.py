@@ -26,8 +26,13 @@ def convert(source: Path, out_path: Path, target: str,
             write_output(ctx, out_path, reports)
             sheet = out_path.with_name(out_path.stem + "-slices.png")
             rels = [out for src, out in ctx.sliced if src in ATLAS_1_14]
-            if build_contact_sheet(ctx.root, rels, sheet):
-                print(f"contact sheet: {sheet} ({len(rels)} sprites)")
+            try:
+                n = build_contact_sheet(ctx.root, rels, sheet)
+                if n:
+                    print(f"contact sheet: {sheet} ({n} sprites)")
+            except Exception as exc:  # fail-soft: a review artifact, not the product
+                ctx.add("contact_sheet", Severity.WARNING,
+                        f"contact sheet failed: {exc!r}")
         return ctx
     finally:
         shutil.rmtree(workroot, ignore_errors=True)

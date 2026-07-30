@@ -14,7 +14,7 @@ def test_sheet_lays_out_one_tile_per_sprite(tmp_path):
     for r in rels:
         _sprite(tmp_path, r)
     out = tmp_path / "sheet.png"
-    assert build_contact_sheet(tmp_path, rels, out) is True
+    assert build_contact_sheet(tmp_path, rels, out) == 3
     with Image.open(out) as im:
         # 3 sprites -> one row of 8 columns
         assert im.size == (8 * 104, 1 * 88)
@@ -33,7 +33,7 @@ def test_sheet_wraps_to_multiple_rows(tmp_path):
 
 def test_sheet_returns_false_with_nothing_to_draw(tmp_path):
     out = tmp_path / "sheet.png"
-    assert build_contact_sheet(tmp_path, [], out) is False
+    assert build_contact_sheet(tmp_path, [], out) == 0
     assert not out.exists()
 
 
@@ -42,7 +42,7 @@ def test_sheet_ignores_missing_files(tmp_path):
     out = tmp_path / "sheet.png"
     assert build_contact_sheet(
         tmp_path, ["textures/particle/real.png", "textures/particle/gone.png"],
-        out) is True
+        out) == 1
     with Image.open(out) as im:
         assert im.size == (8 * 104, 1 * 88)
 
@@ -69,7 +69,7 @@ def test_sheet_shows_checkerboard_through_transparent_region(tmp_path):
     im.save(p)
 
     out = tmp_path / "sheet.png"
-    assert build_contact_sheet(tmp_path, [rel], out) is True
+    assert build_contact_sheet(tmp_path, [rel], out) == 1
     with Image.open(out) as sheet:
         sheet = sheet.convert("RGBA")
         # The single tile sits at sheet-space (20, 6)-(84, 70): opaque sprite

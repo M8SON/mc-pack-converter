@@ -72,3 +72,22 @@ def test_no_contact_sheet_when_nothing_sliced(tmp_path, mini_pack):
     out = tmp_path / "plain.zip"
     convert(root, out, target="26.1.2", report_only=False)
     assert not (tmp_path / "plain-slices.png").exists()
+
+
+def test_contact_sheet_failure_does_not_abort_conversion(tmp_path, mini_pack, monkeypatch):
+    # The archive is already written by the time the sheet is rendered; a
+    # cosmetic review artifact must never fail an otherwise-successful
+    # conversion (fail-soft).
+    from mc_pack_converter import cli as cli_mod
+    from mc_pack_converter.pipeline import Severity
+
+    def _boom(*a, **kw):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(cli_mod, "build_contact_sheet", _boom)
+    root = mini_pack()
+    out = tmp_path / "converted.zip"
+    ctx = convert(root, out, target="26.1.2", report_only=False)
+    assert out.exists()
+    assert any(f.severity is Severity.WARNING and "contact sheet" in f.message
+               for f in ctx.findings)

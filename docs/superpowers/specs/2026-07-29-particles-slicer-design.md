@@ -77,7 +77,7 @@ empty in a 1.8.9 atlas (`glitter_0..7`, `nautilus`, `damage`) and 5 more
 
 ## Architecture
 
-Five files change. No new stage, no new op, no new concept in the pipeline.
+Six files change. No new stage, no new op, no new concept in the pipeline.
 
 | file | change |
 |---|---|
@@ -85,6 +85,7 @@ Five files change. No new stage, no new op, no new concept in the pipeline.
 | `tools/gen_slices.py` | expand the 1.14 helper calls into records |
 | `mc_pack_converter/data/slices.json` | regenerated: 409 → 543 records (+27 painting, +90 particle, +16 explosion, +1 fishing_hook) |
 | `mc_pack_converter/stages/slice.py` | skip empty crops; record them as findings |
+| `mc_pack_converter/pipeline.py` | `ConversionContext` gains the `sliced` field |
 | `mc_pack_converter/contact_sheet.py` (new) + `cli.py` | emit the review sheet |
 
 ### Generator: helper expansion
@@ -148,7 +149,8 @@ it is what fixes the 23 invisible sprites.
 ### Contact sheet
 
 `contact_sheet.py` builds one labelled grid PNG from the sprites produced off the
-three 1.14 atlases (~104 tiles): 64px nearest-neighbour tiles, 8 per row, a
+three 1.14 atlases (119 tiles: 75 particle + 16 explosion + 27 painting +
+`fishing_hook`): 64px nearest-neighbour tiles, 8 per row, a
 checkerboard behind each so alpha reads, sprite name captioned under each tile in
 PIL's default bitmap font.
 

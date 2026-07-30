@@ -41,15 +41,16 @@ def _checkerboard() -> Image.Image:
     return board
 
 
-def build_contact_sheet(root: Path, rel_paths: list[str], out_path: Path) -> bool:
+def build_contact_sheet(root: Path, rel_paths: list[str], out_path: Path) -> int:
     """Render each rel_path (relative to root) as a labelled tile.
 
-    Returns False, writing nothing, if there is nothing to draw.
+    Returns the number of tiles drawn. Writes nothing and returns 0 (falsy,
+    same as the old bare-bool False) if there is nothing to draw.
     """
     entries = [(r, root / r) for r in sorted(rel_paths)]
     entries = [(r, p) for r, p in entries if p.exists()]
     if not entries:
-        return False
+        return 0
     rows = (len(entries) + COLS - 1) // COLS
     sheet = Image.new("RGBA", (COLS * CELL_W, rows * CELL_H), BG)
     board = _checkerboard()
@@ -67,4 +68,4 @@ def build_contact_sheet(root: Path, rel_paths: list[str], out_path: Path) -> boo
         draw.text((ox, oy + TILE + 2), Path(rel).stem[:NAME_CHARS], fill=TEXT)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     sheet.save(out_path)
-    return True
+    return len(entries)
