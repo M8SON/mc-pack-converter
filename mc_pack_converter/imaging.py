@@ -30,16 +30,3 @@ def crop_paste(src: Path, dst: Path, regions: list[dict],
             canvas.paste(piece, (dx, dy))
         dst.parent.mkdir(parents=True, exist_ok=True)
         canvas.save(dst)
-
-def slice_sheet(sheet: Path, out_dir: Path, specs: list[dict]) -> list[Path]:
-    written: list[Path] = []
-    with Image.open(sheet) as im:
-        im = im.convert("RGBA")
-        for s in specs:
-            x, y, w, h = s["x"], s["y"], s["w"], s["h"]
-            crop = im.crop((x, y, x + w, y + h))
-            out = out_dir / f"{s['name']}.png"
-            out.parent.mkdir(parents=True, exist_ok=True)
-            crop.save(out)
-            written.append(out)
-    return written
