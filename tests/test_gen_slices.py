@@ -177,7 +177,7 @@ def test_shipped_slices_table_contains_1_14_records():
     table = json.loads(
         (Path(__file__).parent.parent / "mc_pack_converter" / "data"
          / "slices.json").read_text())
-    assert len(table) == 543
+    assert len(table) == 562
     by_out = {r["output"]: r for r in table}
     assert by_out["assets/minecraft/textures/particle/critical_hit.png"]["box"] == \
         [8, 32, 8, 8, 128, 128]
@@ -186,4 +186,11 @@ def test_shipped_slices_table_contains_1_14_records():
     assert by_out["assets/minecraft/textures/particle/explosion_0.png"]["box"] == \
         [0, 0, 32, 32, 128, 128]
     assert "assets/minecraft/textures/entity/fishing_hook.png" in by_out
-    assert not any("/textures/mob_effect/" in o for o in by_out)
+    assert sum(1 for o in by_out if "/textures/mob_effect/" in o) == 19
+    assert by_out["assets/minecraft/textures/mob_effect/regeneration.png"] == {
+        "input": "assets/minecraft/textures/gui/container/inventory.png",
+        "output": "assets/minecraft/textures/mob_effect/regeneration.png",
+        "box": [126, 198, 18, 18, 256, 256], "op": "crop"}
+    for absent in ("levitation", "glowing", "luck", "unluck", "health_boost",
+                   "slow_falling", "conduit_power", "dolphins_grace"):
+        assert f"assets/minecraft/textures/mob_effect/{absent}.png" not in by_out

@@ -351,6 +351,253 @@
 "op": "crop"
 },
 {
+"input": "assets/minecraft/textures/gui/container/inventory.png",
+"output": "assets/minecraft/textures/mob_effect/speed.png",
+"box": [
+0,
+198,
+18,
+18,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/gui/container/inventory.png",
+"output": "assets/minecraft/textures/mob_effect/slowness.png",
+"box": [
+18,
+198,
+18,
+18,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/gui/container/inventory.png",
+"output": "assets/minecraft/textures/mob_effect/haste.png",
+"box": [
+36,
+198,
+18,
+18,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/gui/container/inventory.png",
+"output": "assets/minecraft/textures/mob_effect/mining_fatigue.png",
+"box": [
+54,
+198,
+18,
+18,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/gui/container/inventory.png",
+"output": "assets/minecraft/textures/mob_effect/strength.png",
+"box": [
+72,
+198,
+18,
+18,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/gui/container/inventory.png",
+"output": "assets/minecraft/textures/mob_effect/jump_boost.png",
+"box": [
+36,
+216,
+18,
+18,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/gui/container/inventory.png",
+"output": "assets/minecraft/textures/mob_effect/nausea.png",
+"box": [
+54,
+216,
+18,
+18,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/gui/container/inventory.png",
+"output": "assets/minecraft/textures/mob_effect/regeneration.png",
+"box": [
+126,
+198,
+18,
+18,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/gui/container/inventory.png",
+"output": "assets/minecraft/textures/mob_effect/resistance.png",
+"box": [
+108,
+216,
+18,
+18,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/gui/container/inventory.png",
+"output": "assets/minecraft/textures/mob_effect/fire_resistance.png",
+"box": [
+126,
+216,
+18,
+18,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/gui/container/inventory.png",
+"output": "assets/minecraft/textures/mob_effect/water_breathing.png",
+"box": [
+0,
+234,
+18,
+18,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/gui/container/inventory.png",
+"output": "assets/minecraft/textures/mob_effect/invisibility.png",
+"box": [
+0,
+216,
+18,
+18,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/gui/container/inventory.png",
+"output": "assets/minecraft/textures/mob_effect/blindness.png",
+"box": [
+90,
+216,
+18,
+18,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/gui/container/inventory.png",
+"output": "assets/minecraft/textures/mob_effect/night_vision.png",
+"box": [
+72,
+216,
+18,
+18,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/gui/container/inventory.png",
+"output": "assets/minecraft/textures/mob_effect/hunger.png",
+"box": [
+18,
+216,
+18,
+18,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/gui/container/inventory.png",
+"output": "assets/minecraft/textures/mob_effect/weakness.png",
+"box": [
+90,
+198,
+18,
+18,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/gui/container/inventory.png",
+"output": "assets/minecraft/textures/mob_effect/poison.png",
+"box": [
+108,
+198,
+18,
+18,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/gui/container/inventory.png",
+"output": "assets/minecraft/textures/mob_effect/wither.png",
+"box": [
+18,
+234,
+18,
+18,
+256,
+256
+],
+"op": "crop"
+},
+{
+"input": "assets/minecraft/textures/gui/container/inventory.png",
+"output": "assets/minecraft/textures/mob_effect/absorption.png",
+"box": [
+36,
+234,
+18,
+18,
+256,
+256
+],
+"op": "crop"
+},
+{
 "input": "assets/minecraft/textures/particle/particles.png",
 "output": "assets/minecraft/textures/particle/generic_0.png",
 "box": [
