@@ -204,6 +204,48 @@ EOF
 
 ---
 
+## 4. The anvil and enchanting-table GUIs were dropped on a wrong measurement
+
+**Status:** FIXED 2026-07-31 — both removed from `data/drop_list.json`.
+**Guarded by:** `tests/test_drop.py::test_anvil_and_enchanting_table_are_not_dropped`
+
+`textures/gui/container/anvil.png` and `enchanting_table.png` were dropped to
+vanilla on the recorded theory that their **slot layout had drifted** between
+1.8.9 and modern, so a 1.8.9 background would misalign with modern's functional
+slots. Measured against the version-pinned vanilla mirror, that is false:
+
+| panel | 1.8.9 vs modern vanilla, over the 176×166 GUI |
+|---|---|
+| `anvil.png` | **0.1%** of pixels differ (only `y=1..28`, the text-field strip) |
+| `enchanting_table.png` | **0.2%** of pixels differ (one 12×12 box at `(37,49)`) |
+
+The slots did not move. What *did* change is that 1.20.2 sliced the dynamic
+pieces out into `gui/sprites/...`, leaving modern vanilla's copy of those
+regions **empty** — which is why a naive old-vs-new diff of the sliced regions
+reads 100% and looks like a redesign. The 1.20.2 slicer's read boxes land
+exactly on the art a 1.8.9 pack already ships, because that layout was stable
+from 1.8.9 through 1.19.
+
+Dropping them therefore discarded custom art for nothing. In the M8SON pack the
+two panels are **87%** and **37%** custom against vanilla 1.8.9. Undropping
+recovers, verified on a real conversion:
+
+- both GUI panels
+- `anvil/text_field`, `anvil/text_field_disabled`, `anvil/error`
+- `enchanting_table/enchantment_slot{,_highlighted,_disabled}`
+
+`enchanting_table/level_1..3{,_disabled}` stay vanilla: the pack's
+`enchanting_table.png` has no content below `y=223`, so the existing empty-region
+guard in `stages/slice.py` leaves them alone. That is the correct outcome, not a
+gap.
+
+**The lesson worth keeping:** diffing a *sliced* region against modern vanilla
+compares the pack's art to an empty rectangle. Compare against the pre-slice
+version, or against the sprite the slicer produces — never against the vacated
+source region.
+
+---
+
 ## Not defects
 
 - **`entity/sweep.png`** — absent from the M8SON pack (1.9+ texture). Porting the
