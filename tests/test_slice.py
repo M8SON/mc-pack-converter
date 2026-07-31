@@ -205,3 +205,58 @@ def test_pack_format_1_slices_particles_normally(mini_pack, monkeypatch):
     ctx = ConversionContext(root=root)
     slice_atlases(ctx)
     assert (root / "assets/minecraft/textures/particle/critical_hit.png").exists()
+
+
+def _grid_atlas(root, rel, size, cell_px, marked_cell, color=(200, 30, 40, 255)):
+    """A transparent atlas with one 18px-grid cell filled, at origin (0,198).
+
+    cell_px is the scaled cell size (18 at 1x, 36 at 2x).
+    """
+    p = root / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    im = Image.new("RGBA", size, (0, 0, 0, 0))
+    cx, cy = marked_cell
+    scale = size[0] // 256
+    x0 = cx * cell_px
+    y0 = 198 * scale + cy * cell_px
+    im.paste(Image.new("RGBA", (cell_px, cell_px), color), (x0, y0))
+    im.save(p)
+    return p
+
+
+JUMP_BOOST_REC = {
+    "input": "assets/minecraft/textures/gui/container/inventory.png",
+    "output": "assets/minecraft/textures/mob_effect/jump_boost.png",
+    "box": [36, 216, 18, 18, 256, 256], "op": "crop"}
+
+
+def test_effect_cell_is_cut_at_standard_res(mini_pack, monkeypatch):
+    root = mini_pack()
+    _grid_atlas(root, "assets/minecraft/textures/gui/container/inventory.png",
+                (256, 256), 18, (2, 1))
+    monkeypatch.setattr(slice_mod, "load_table", lambda n: [JUMP_BOOST_REC])
+    ctx = ConversionContext(root=root)
+    slice_atlases(ctx)
+    out = root / "assets/minecraft/textures/mob_effect/jump_boost.png"
+    assert out.exists()
+    im = Image.open(out).convert("RGBA")
+    assert im.size == (18, 18)
+    # the whole crop is the marked cell, nothing bled in from a neighbour
+    assert im.getchannel("A").getbbox() == (0, 0, 18, 18)
+    assert im.getpixel((0, 0)) == (200, 30, 40, 255)
+
+
+def test_effect_cell_is_cut_at_2x_res(mini_pack, monkeypatch):
+    # M8SON ships a 512x512 inventory.png; the 256-referenced box must scale.
+    root = mini_pack()
+    _grid_atlas(root, "assets/minecraft/textures/gui/container/inventory.png",
+                (512, 512), 36, (2, 1))
+    monkeypatch.setattr(slice_mod, "load_table", lambda n: [JUMP_BOOST_REC])
+    ctx = ConversionContext(root=root)
+    slice_atlases(ctx)
+    im = Image.open(
+        root / "assets/minecraft/textures/mob_effect/jump_boost.png"
+    ).convert("RGBA")
+    assert im.size == (36, 36)
+    assert im.getchannel("A").getbbox() == (0, 0, 36, 36)
+    assert im.getpixel((0, 0)) == (200, 30, 40, 255)
