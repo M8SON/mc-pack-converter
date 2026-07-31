@@ -34,13 +34,21 @@ version pair the 1.14 slicer sits between.
 | `painting/paintings_kristoffer_zetterstrand.png` | **byte-identical** | 512×512 (2×) | **55%** of pixels | port |
 | `entity/explosion.png` | **byte-identical** | 128×128 | **0%** (pure vanilla) | port for reusability; no visual gain on this pack |
 | `entity/sweep.png` | n/a | absent (1.9+ texture) | — | out of scope |
-| `gui/container/inventory.png` → `mob_effect/*` | **REARRANGED in 1.9** | 23 custom icons | — | out of scope, own spec |
+| `gui/container/inventory.png` → `mob_effect/*` | **REARRANGED in 1.9** [^superseded] | 23 custom icons | — | out of scope, own spec |
+
+[^superseded]: **SUPERSEDED 2026-07-31 — the grid is stable 1.8.9→1.13; the
+    occupancy figures below were measured at y=166 (the effect background box),
+    not the icon strip at y=198.** See `2026-07-31-mob-effect-icons-design.md`.
 
 Per-cell diff of the particles grid, 1.8.9 vs 1.13.2: 54 of 256 cells differ, and
 all but eight are cells that are *empty in 1.8.9* and filled in 1.13 (`glitter_*`,
 `nautilus`, `damage`, `bubble_pop_*`). The eight genuine art changes are `spark_4`,
 `spark_6`, and six SGA runes. **No cell was ever repurposed**, so the slicer's
 1.13-era coordinates are valid against a 1.8.9 atlas.
+
+**SUPERSEDED 2026-07-31 — the grid is stable 1.8.9→1.13; the occupancy figures
+below were measured at y=166 (the effect background box), not the icon strip
+at y=198. See `2026-07-31-mob-effect-icons-design.md`.**
 
 The mob-effect grid is the exception. Occupancy of the 18px effect grid inside
 `inventory.png` goes 7/8/8 in 1.8.9 → 11/11/8 in 1.9.4 (3331 differing pixels),
@@ -166,6 +174,9 @@ working copy is removed.
 
 - **`mob_effect` icons** — needs a hand-built, separately-verified 1.8.9 effect-grid
   map. Own spec. 23 custom icons stay on vanilla until then.
+  **SUPERSEDED 2026-07-31 — the grid is stable 1.8.9→1.13; the occupancy figures
+  above were measured at y=166 (the effect background box), not the icon strip
+  at y=198. See `2026-07-31-mob-effect-icons-design.md`.**
 - **`sweep.png`** — absent from this pack; needs the slicer's `SQUARE` post-op.
 - **Deleting the now-dead source atlases.** `particles.png`, `explosion.png` and
   the paintings atlas are unread by 26.x after slicing, but so are `widgets.png`

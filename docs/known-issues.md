@@ -97,40 +97,100 @@ EOF
 
 ---
 
-## 2. 23 custom mob-effect icons are silently dropped
+## 2. Custom mob-effect icons
 
-**Status:** open · needs its own spec
-**Blocked on:** a researched 1.8.9 effect-grid → name table
+**Status:** FIXED 2026-07-31 — `tools/gen_slices.py` emits the 1.14 slicer's
+`effect()` records for the 19 effects vanilla 1.8.9 draws.
+**Design:** `docs/superpowers/specs/2026-07-31-mob-effect-icons-design.md`
 
-Modern Minecraft reads potion-effect icons from `textures/mob_effect/<name>.png`.
-Nothing reads the 18px icon strip inside `textures/gui/container/inventory.png`
-anymore, so the pack's **23 custom effect icons are lost** and vanilla's are used.
+Modern Minecraft reads potion-effect icons from `textures/mob_effect/<name>.png`;
+nothing reads the 18px icon strip inside `textures/gui/container/inventory.png`
+anymore. The pack's custom icons were therefore lost to vanilla.
 
-Mojang's 1.14 slicer *does* extract that strip — but its coordinates cannot be
-reused here, because **1.9 rearranged the grid** to fit `levitation`, `glowing`,
-`luck` and `unluck`. Measured occupancy of the 18px grid across the vanilla mirror:
+**This entry previously claimed 1.9 rearranged the grid, and that recovering the
+icons needed a hand-researched 1.8.9 cell → name table. Both were wrong.** The
+occupancy figures behind that claim were measured at `y=166`, which is where the
+effect *background* box lives; the icon strip starts at `y=198`. Re-measured at
+the right origin against the version-pinned vanilla mirror, the layout is stable
+from 1.8.9 through 1.13 — 1.9 and 1.13 only *filled cells that are empty in
+1.8.9*, and no cell was ever repurposed. Mojang's 1.14 slicer coordinates apply
+to a 1.8.9 pack directly.
 
-| version | row 0 | row 1 | row 2 |
-|---|---|---|---|
-| 1.8.9 | 7 | 8 | 8 |
-| 1.9.4 / 1.11.2 / 1.12.2 | 11 | 11 | 8 |
-| 1.13.2 | 12 | 12 | 12 |
+The count was wrong too: the M8SON pack holds **19** custom icons, not 23. It
+mirrors vanilla 1.8.9 cell-for-cell.
 
-1.8.9 vs 1.9.4 differ by 3331 pixels within the strip. The slicer's coordinates
-describe the post-rearrangement grid, so applying them to a 1.8.9 pack would
-mis-map icons — e.g. it expects `regeneration` at cell (7,0), which is empty in
-1.8.9. agentdid127's `InventoryConverter` treats the change as a pure
-`y166 → y198` shift, which the numbers above show is insufficient.
+Eight names the slicer emits are deliberately **not** produced, because 1.8.9 has
+no art behind them (`EFFECTS_1_8_9` in `tools/gen_slices.py`):
 
-In the M8SON pack the strip holds **23 custom icons** (4 cells blank:
-`regeneration`, `slow_falling`, `conduit_power`, `dolphins_grace` — the latter
-three are post-1.8.9 effects).
+| not produced | 1.8.9 cell | what is actually there |
+|---|---|---|
+| `levitation`, `glowing`, `luck`, `unluck` | `(3,2)`–`(6,2)` | 1.9 additions; 20px of vanilla corner guide marks |
+| `health_boost` | `(7,2)` | a 1.8.9 effect, but undrawn; same 20px of guide marks |
+| `slow_falling`, `conduit_power`, `dolphins_grace` | `(8,0)`–`(10,0)` | 1.13 additions; 0px |
 
-**To resume:** build the 1.8.9 cell → effect-name table, verified against the
-Minecraft Wiki effect list and the vanilla mirror, then emit `mob_effect/*.png`
-records. Note the icon art itself was redrawn in 1.13, so pixel-matching a 1.8.9
-cell against a modern vanilla icon will not identify it — the mapping has to come
-from the effect ordering, not image similarity.
+They fall back to vanilla, which is correct — drawing them would be creating art.
+The exclusion is done at generation time rather than by a coverage threshold in
+`stages/slice.py`, because a threshold is a heuristic that could suppress a
+legitimately sparse sprite, while this is a measured fact about 1.8.9.
+
+One consequence is undocumented until now: the converter cannot tell "the pack
+redrew the effect strip" from "the pack shipped vanilla 1.8.9 `inventory.png`
+untouched", so a pack of the latter kind now gets 1.8.9-era icons overriding
+modern vanilla's 1.13 redraw of those same 19 cells — consistent with this
+project's existing stance on porting `entity/explosion.png` (0% custom in
+M8SON, ported anyway for reusability), but worth calling out here since the
+effect art is one of the few atlases that visibly changed between versions.
+
+---
+
+## 3. `effect_background_small.png` slices the effect-icon grid, not a background
+
+**Status:** open, discovered 2026-07-31
+**Affects:** every conversion that reaches `slicer_1.20.2.java`'s output
+(`26.1.2`, `26.2`) — pre-existing before this branch; this branch is what
+exposed it, by proving what actually lives at `y=198`.
+
+`tools/slicer_src/slicer_1.20.2.java` emits
+`assets/minecraft/textures/gui/sprites/container/inventory/effect_background_small.png`
+from `Box(0, 198, 32, 32, 256, 256)` — **the exact region this branch proves is
+the 1.8.9 effect-icon grid** (see §2 above; the grid starts at `(0,198)` and is
+stable 1.8.9→1.13). Verified on a real conversion of the M8SON proving-ground
+pack: the produced sprite is **64×64, 40% opaque**, and is visibly four potion
+icons (`speed`, `slowness`, `invisibility`, `hunger`) stitched together — not a
+background at all — overriding vanilla's inventory effect-list background.
+
+This is the same defect family as §1 (a slice record whose region no longer
+means what a modern sprite name expects) but with the opposite symptom: not
+empty, but wrong content. `stages/slice.py`'s `_is_empty` guard tests whether
+the alpha bbox is `None`; a 40%-opaque crop has a non-`None` bbox, so the guard
+cannot catch it.
+
+The likely fix shape is the same as the existing `particles.png` pack_format
+gate in `stages/slice.py`: drop the `effect_background_small` record, or gate
+it behind a `pack_format` the 1.8.9 grid doesn't reach. Fixing it is a separate
+change with its own scoping decision, not part of this wave.
+
+**Reproduce:**
+
+```bash
+.venv/bin/python -m mc_pack_converter.cli convert "../M8SON 1.8 PVP PACK" \
+  -o /tmp/out.zip --target 26.1.2
+.venv/bin/python - <<'EOF'
+import zipfile
+from io import BytesIO
+from PIL import Image
+with zipfile.ZipFile("/tmp/out.zip") as zf:
+    data = zf.read(
+        "assets/minecraft/textures/gui/sprites/container/inventory/"
+        "effect_background_small.png")
+    with Image.open(BytesIO(data)) as im:
+        im = im.convert("RGBA")
+        alpha = im.getchannel("A")
+        n = im.width * im.height
+        opaque_frac = sum(alpha.getdata()) / 255 / n
+        print("size:", im.size, "mean alpha:", round(opaque_frac * 100, 1), "%")
+EOF
+```
 
 ---
 
