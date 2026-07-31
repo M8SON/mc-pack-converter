@@ -1,0 +1,13 @@
+{
+  "_comment": "Sprites composed from pieces of a 1.8.9 atlas, for modern sprites a single slice record cannot cut correctly. Coordinates are proportional to 'ref' (any pack resolution works); 'size' and every piece box are in ref units. Runs after the slice stage and overwrites it. effect_background_small: 1.8.9 has only the 120x32 effect panel at (0,166); the 32x32 small variant is a later Mojang addition placed at (0,198), which in a 1.8.9 atlas is the effect ICON grid - so the 1.20.2 slicer record cuts four potion icons instead. Composed here from the large panel's left and right 16 columns so it keeps the pack's border art. See docs/known-issues.md #3.",
+
+  "assets/minecraft/textures/gui/sprites/container/inventory/effect_background_small.png": {
+    "source": "assets/minecraft/textures/gui/container/inventory.png",
+    "ref": [256, 256],
+    "size": [32, 32],
+    "pieces": [
+      {"from": [0, 166, 16, 32], "to": [0, 0]},
+      {"from": [104, 166, 16, 32], "to": [16, 0]}
+    ]
+  }
+}

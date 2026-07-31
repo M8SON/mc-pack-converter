@@ -145,10 +145,11 @@ effect art is one of the few atlases that visibly changed between versions.
 
 ## 3. `effect_background_small.png` slices the effect-icon grid, not a background
 
-**Status:** open, discovered 2026-07-31
-**Affects:** every conversion that reaches `slicer_1.20.2.java`'s output
-(`26.1.2`, `26.2`) — pre-existing before this branch; this branch is what
-exposed it, by proving what actually lives at `y=198`.
+**Status:** FIXED 2026-07-31 — `stages/derive_sprites.py` composes the sprite
+from the pack's own effect panel and overwrites the slicer's output.
+**Affected:** every build up to and including `[conv 26.1.2 0731-1445]` —
+pre-existing, exposed by the mob-effect-icons work proving what lives at
+`y=198`.
 
 `tools/slicer_src/slicer_1.20.2.java` emits
 `assets/minecraft/textures/gui/sprites/container/inventory/effect_background_small.png`
@@ -165,12 +166,21 @@ empty, but wrong content. `stages/slice.py`'s `_is_empty` guard tests whether
 the alpha bbox is `None`; a 40%-opaque crop has a non-`None` bbox, so the guard
 cannot catch it.
 
-The likely fix shape is the same as the existing `particles.png` pack_format
-gate in `stages/slice.py`: drop the `effect_background_small` record, or gate
-it behind a `pack_format` the 1.8.9 grid doesn't reach. Fixing it is a separate
-change with its own scoping decision, not part of this wave.
+**The fix.** A gate would have dropped the sprite to vanilla. Instead, the new
+`derive_sprites` stage *composes* it: 1.8.9 has one effect panel — the 120×32
+rounded box at `(0,166)`, which `effect_background_large` already cuts correctly
+— and the 32×32 small variant is a later Mojang addition with no 1.8.9 art. Its
+left and right 16 ref-columns joined give a closed 32×32 box carrying the pack's
+own border art, corner notches included. Every pixel is the pack's own, so this
+stays inside *fix and format, never create art*.
 
-**Reproduce:**
+The stage runs after `slice` and overwrites it, rather than gating the record.
+That keeps `stages/slice.py` a generic executor of Mojang's records, with the
+version-specific knowledge in `data/derived_sprites.json` alongside the rest of
+this project's lookup data. Adding an entry there is how the next sprite of this
+shape gets handled.
+
+**Reproduce (now reports a closed panel, not icons):**
 
 ```bash
 .venv/bin/python -m mc_pack_converter.cli convert "../M8SON 1.8 PVP PACK" \
