@@ -47,3 +47,20 @@ def test_ingest_reads_a_bom_prefixed_mcmeta(mini_pack):
     ctx = ConversionContext(root=root)
     ingest(ctx)                                   # must not raise
     assert any("pack_format=1" in f.message for f in ctx.findings)
+
+
+def test_zip_with_a_directory_entry_stored_as_a_file(tmp_path):
+    """Some packs' zips store 'a/b' with no trailing slash, then 'a/b/c.png'.
+
+    extractall writes the first as a zero-length FILE and then dies with
+    NotADirectoryError creating anything inside it. 2 of the 173 corpus packs
+    are built this way (bPantone, #Pvpmen — both at textures/models/armor).
+    """
+    z = tmp_path / "pack.zip"
+    with zipfile.ZipFile(z, "w") as zf:
+        zf.writestr("pack.mcmeta", '{"pack":{"pack_format":1,"description":"d"}}')
+        zf.writestr("assets/minecraft/textures/models/armor", b"")   # no slash
+        zf.writestr("assets/minecraft/textures/models/armor/iron_layer_1.png", b"x")
+    work = tmp_path / "work"
+    root = prepare_working_copy(z, work)                # must not raise
+    assert (root / "assets/minecraft/textures/models/armor/iron_layer_1.png").exists()

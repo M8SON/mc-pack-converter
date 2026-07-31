@@ -15,11 +15,11 @@ resolution. Ops:
   special - a slicer case using custom Java logic; skipped (recorded as a note)
 """
 from __future__ import annotations
-import json
 from pathlib import Path
 from PIL import Image
 from ..pipeline import ConversionContext, Severity
 from ..data import load_table
+from ..mcmeta import read_mcmeta
 
 PARTICLES_PNG = "assets/minecraft/textures/particle/particles.png"
 
@@ -52,13 +52,13 @@ def _pack_format(root: Path) -> int | None:
     """Read pack_format from pack.mcmeta; None if missing or unparseable.
 
     None means "not gated" — never a new failure path for this check. That
-    fail-open is why the encoding matters here: a BOM (common from Windows
-    editors) used to land in this except branch and silently ungate a 1.13+
-    pack, which is exactly the mis-cut docs/known-issues.md #0 guards against.
+    fail-open is why parsing leniency matters here: a BOM or a stray backslash
+    used to land in this except branch and silently ungate a 1.13+ pack, which
+    is exactly the mis-cut docs/known-issues.md #0 guards against. read_mcmeta
+    tolerates everything Minecraft itself tolerates.
     """
     try:
-        return json.loads((root / "pack.mcmeta").read_text(
-            encoding="utf-8-sig"))["pack"]["pack_format"]
+        return read_mcmeta(root / "pack.mcmeta")["pack"]["pack_format"]
     except Exception:
         return None
 

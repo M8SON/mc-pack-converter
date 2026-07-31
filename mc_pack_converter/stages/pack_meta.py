@@ -4,10 +4,11 @@ import json
 import time
 from ..pipeline import ConversionContext, Severity, FatalConversionError
 from ..data import load_table
+from ..mcmeta import read_mcmeta
 
 def pack_meta(ctx: ConversionContext) -> None:
     meta = ctx.root / "pack.mcmeta"
-    data = json.loads(meta.read_text(encoding="utf-8-sig"))  # tolerate a BOM
+    data = read_mcmeta(meta)
     new_fmt = load_table("pack_format").get(ctx.target)
     if not new_fmt:
         raise FatalConversionError(f"no pack_format for target {ctx.target}")
