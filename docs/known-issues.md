@@ -320,9 +320,15 @@ built — worth doing if a third case appears.
 
 - **`entity/sweep.png`** — absent from the M8SON pack (1.9+ texture). Porting the
   slicer's `sweep()` case also needs its `SQUARE` post-op. N/A until a pack ships it.
-- **Dead source atlases.** After slicing, `particles.png`, `entity/explosion.png`
-  and the paintings atlas are unread by 26.x, as are `widgets.png` and `icons.png`
-  already. Left in place deliberately (~100KB); removing them is separate cleanup.
+- **Dead source atlases** — *cleaned up 2026-07-31*, `stages/prune_atlases.py`.
+  After slicing, atlases like `widgets.png`, `icons.png`, `particles.png` and the
+  paintings sheet are unread by 26.x. Membership in `data/dead_atlases.json` is a
+  checked fact: each of the 33 paths 404s against the 1.21.4 vanilla mirror, so
+  modern vanilla does not ship it and nothing can load it from a pack. The stage
+  never deletes a path the slice stage wrote that run — three entries are also
+  slicer `copy()` outputs, where input and output are the same path, and that
+  guard is what keeps them. Removes 9 files / 614KB from the M8SON pack (the
+  earlier ~100KB estimate here was low by 6×).
 - **Creative-inventory GUI stays vanilla.** The pack's creative textures are
   unfinished dev placeholders (red `UN SEL` / blue `SEL` boxes, ~94% transparent
   panels). Vanilla is the correct outcome — a source-pack limitation, not a bug.
