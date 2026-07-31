@@ -206,8 +206,12 @@ EOF
 
 ## 4. The anvil and enchanting-table GUIs were dropped on a wrong measurement
 
-**Status:** FIXED 2026-07-31 — both removed from `data/drop_list.json`.
-**Guarded by:** `tests/test_drop.py::test_anvil_and_enchanting_table_are_not_dropped`
+**Status:** RESOLVED 2026-07-31, and the two split apart. **Anvil:** undropped —
+the recorded reason was false and its art is correct. **Enchanting table:**
+stays dropped, but for a different and real reason found by in-game testing
+(see *The enchanting table is a separate problem* below).
+**Guarded by:** `tests/test_drop.py::test_anvil_is_not_dropped` and
+`::test_enchanting_table_is_dropped`
 
 `textures/gui/container/anvil.png` and `enchanting_table.png` were dropped to
 vanilla on the recorded theory that their **slot layout had drifted** between
@@ -234,15 +238,81 @@ recovers, verified on a real conversion:
 - `anvil/text_field`, `anvil/text_field_disabled`, `anvil/error`
 - `enchanting_table/enchantment_slot{,_highlighted,_disabled}`
 
-`enchanting_table/level_1..3{,_disabled}` stay vanilla: the pack's
-`enchanting_table.png` has no content below `y=223`, so the existing empty-region
-guard in `stages/slice.py` leaves them alone. That is the correct outcome, not a
-gap.
+### The enchanting table is a separate problem
 
-**The lesson worth keeping:** diffing a *sliced* region against modern vanilla
-compares the pack's art to an empty rectangle. Compare against the pre-slice
-version, or against the sprite the slicer produces — never against the vacated
-source region.
+Undropping both shipped a visibly wrong enchanting screen, reported from
+in-game testing of build `[conv 26.1.2 0731-1539]`. The measurement above is
+still correct — the *vanilla* panel did not drift — but it says nothing about
+whether **the pack's own art** matches the 1.8.9 layout. It does not:
+
+| | item slots | bar level-number caps |
+|---|---|---|
+| vanilla 1.8.9 | **2** (second holds the lapis glyph) | present |
+| vanilla modern | **2** (both plain) | present |
+| M8SON pack | **1**, and offset from either | **absent** |
+
+Lapis was added to enchanting in 1.8, so a one-slot enchanting GUI is **1.7-era
+art**. The pack ships it under a 1.8.9 pack format, but it never matched the
+1.8.9 layout, and would have rendered wrong in 1.8.9 too. That makes it a
+source-pack limitation like the creative-inventory placeholders, not a
+conversion defect — so it goes back on the drop list, under its own rationale.
+
+The anvil is unaffected: the pack's anvil is a pixel-exact structural match to
+both eras (hammer, text bar, three slots, arrow and grid all in the same
+places), and it stays undropped. Its recovered sprites — `text_field`,
+`text_field_disabled`, `error` — are all exactly 2× vanilla's dimensions with
+semantically matching content.
+
+`enchanting_table/level_1..3{,_disabled}` never mattered here: the pack has no
+content below `y=223`, so the empty-region guard in `stages/slice.py` was
+already leaving them to vanilla.
+
+**Two lessons worth keeping:**
+
+1. Diffing a *sliced* region against modern vanilla compares the pack's art to
+   an empty rectangle — 1.20.2 vacated those regions. Compare against the
+   pre-slice version, or against the sprite the slicer produces.
+2. "The vanilla layout didn't change" does **not** imply "the pack's art fits
+   it." Check the pack against its *own* era before undropping something. A
+   symmetric edge-difference metric hides this: the pack scored 6.6% against
+   modern and 6.7% against 1.8.9, which looks like pure styling until you zoom
+   in and count slots.
+
+---
+
+## 5. The villager GUI is squashed and misplaced
+
+**Status:** FIXED 2026-07-31 — `textures/gui/container/villager.png` added to
+`data/drop_list.json`.
+**Affected:** every build up to and including `[conv 26.1.2 0731-1539]`.
+Pre-existing, not a regression; found by in-game testing.
+**Guarded by:** `tests/test_drop.py::test_villager_gui_is_dropped`
+
+`villager.png` is the one GUI whose **reference canvas** changed between 1.8.9
+and modern:
+
+| | content | canvas |
+|---|---|---|
+| 1.8.9 | 240×166 | 256×256 |
+| modern | 276×166 | **512×256** |
+
+The filename is identical in both eras, nothing renames it, and no slice record
+reads it — the records read `villager2.png`, which a 1.8.9 pack does not ship,
+so all ten skip. The pack's 1.8.9 file therefore passes straight through, and
+modern samples it at scale `(texW/512, texH/256)` = **(1.0, 2.0)** for a 512×512
+pack texture: vertically squashed, slots misplaced, GUI overflowing its own
+bounds.
+
+There is also no remap available even in principle. 1.14's trading redesign
+added a **trade-list panel on the left** with no 1.8.9 counterpart, and shifted
+the trade slots and inventory grid right to make room. Reconstructing the panel
+would be creating art.
+
+**The general check this suggests:** every other GUI a 1.8.9 pack ships keeps a
+256×256 reference, so `villager.png` is currently the only instance. A
+`validate`-stage check comparing a shipped GUI's canvas aspect against the
+reference the slice table expects would catch the next one automatically. Not
+built — worth doing if a third case appears.
 
 ---
 
