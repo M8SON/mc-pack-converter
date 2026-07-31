@@ -133,6 +133,65 @@ The exclusion is done at generation time rather than by a coverage threshold in
 `stages/slice.py`, because a threshold is a heuristic that could suppress a
 legitimately sparse sprite, while this is a measured fact about 1.8.9.
 
+One consequence is undocumented until now: the converter cannot tell "the pack
+redrew the effect strip" from "the pack shipped vanilla 1.8.9 `inventory.png`
+untouched", so a pack of the latter kind now gets 1.8.9-era icons overriding
+modern vanilla's 1.13 redraw of those same 19 cells — consistent with this
+project's existing stance on porting `entity/explosion.png` (0% custom in
+M8SON, ported anyway for reusability), but worth calling out here since the
+effect art is one of the few atlases that visibly changed between versions.
+
+---
+
+## 3. `effect_background_small.png` slices the effect-icon grid, not a background
+
+**Status:** open, discovered 2026-07-31
+**Affects:** every conversion that reaches `slicer_1.20.2.java`'s output
+(`26.1.2`, `26.2`) — pre-existing before this branch; this branch is what
+exposed it, by proving what actually lives at `y=198`.
+
+`tools/slicer_src/slicer_1.20.2.java` emits
+`assets/minecraft/textures/gui/sprites/container/inventory/effect_background_small.png`
+from `Box(0, 198, 32, 32, 256, 256)` — **the exact region this branch proves is
+the 1.8.9 effect-icon grid** (see §2 above; the grid starts at `(0,198)` and is
+stable 1.8.9→1.13). Verified on a real conversion of the M8SON proving-ground
+pack: the produced sprite is **64×64, 40% opaque**, and is visibly four potion
+icons (`speed`, `slowness`, `invisibility`, `hunger`) stitched together — not a
+background at all — overriding vanilla's inventory effect-list background.
+
+This is the same defect family as §1 (a slice record whose region no longer
+means what a modern sprite name expects) but with the opposite symptom: not
+empty, but wrong content. `stages/slice.py`'s `_is_empty` guard tests whether
+the alpha bbox is `None`; a 40%-opaque crop has a non-`None` bbox, so the guard
+cannot catch it.
+
+The likely fix shape is the same as the existing `particles.png` pack_format
+gate in `stages/slice.py`: drop the `effect_background_small` record, or gate
+it behind a `pack_format` the 1.8.9 grid doesn't reach. Fixing it is a separate
+change with its own scoping decision, not part of this wave.
+
+**Reproduce:**
+
+```bash
+.venv/bin/python -m mc_pack_converter.cli convert "../M8SON 1.8 PVP PACK" \
+  -o /tmp/out.zip --target 26.1.2
+.venv/bin/python - <<'EOF'
+import zipfile
+from io import BytesIO
+from PIL import Image
+with zipfile.ZipFile("/tmp/out.zip") as zf:
+    data = zf.read(
+        "assets/minecraft/textures/gui/sprites/container/inventory/"
+        "effect_background_small.png")
+    with Image.open(BytesIO(data)) as im:
+        im = im.convert("RGBA")
+        alpha = im.getchannel("A")
+        n = im.width * im.height
+        opaque_frac = sum(alpha.getdata()) / 255 / n
+        print("size:", im.size, "mean alpha:", round(opaque_frac * 100, 1), "%")
+EOF
+```
+
 ---
 
 ## Not defects

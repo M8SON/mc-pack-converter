@@ -113,7 +113,7 @@ EFFECTS_1_8_9 = {
     "blindness", "resistance", "fire_resistance",
     "water_breathing", "wither", "absorption",
 }
-SKIPPED_EFFECTS: list[str] = []
+SKIPPED_EFFECTS: set[str] = set()
 
 
 def as_int(expr: str) -> int:
@@ -180,7 +180,7 @@ def parse_helper_output(expr: str, input_path: str) -> dict | None:
                 "box": [32 * x, 32 * y, 32, 32, 128, 128], "op": "crop"}
     if fn == "effect":
         if name not in EFFECTS_1_8_9:
-            SKIPPED_EFFECTS.append(name)
+            SKIPPED_EFFECTS.add(name)
             return None
         x, y = nums
         return {"input": input_path,

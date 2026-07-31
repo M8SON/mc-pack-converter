@@ -61,7 +61,7 @@ pack — the pack redrew all 19 icons and inherited the rest verbatim:
 
 | cells | vanilla 1.8.9 | M8SON (2×) | meaning |
 |---|---|---|---|
-| the 19 named above | 80–234 px (25–72%) | 240–838 px (19–65%) | real art |
+| the 19 named above | 80–234 px (25–72%) | 240–838 px (18.5–65%) | real art |
 | `levitation`, `glowing`, `luck`, `unluck`, `health_boost` — `(3,2)`–`(7,2)` | **exactly 20 px** (6.2%) | **exactly 80 px** (6.2%) | vanilla corner guide marks |
 | `slow_falling`, `conduit_power`, `dolphins_grace` — `(8,0)`–`(10,0)` | **0 px** | **0 px** | 1.13 additions, off the 1.8.9 art |
 
