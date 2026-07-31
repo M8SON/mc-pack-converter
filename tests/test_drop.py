@@ -22,6 +22,20 @@ def test_drops_listed_textures(mini_pack, monkeypatch):
     assert any(f.stage == "drop" and "2" in f.message for f in ctx.findings)
 
 
+def test_anvil_and_enchanting_table_are_not_dropped():
+    """Guard the 2026-07-31 correction (docs/known-issues.md #4).
+
+    Both were dropped on the theory that their slot layout had drifted. It had
+    not: the 176x166 panel is 99.9% identical between 1.8.9 and modern, and the
+    slicer's read boxes land exactly on 1.8.9's art. Dropping them discarded the
+    pack's custom GUIs — 87% and 37% custom respectively — for nothing.
+    """
+    from mc_pack_converter.data import load_table
+    dropped = set(load_table("drop_list")["drop"])
+    assert "textures/gui/container/anvil.png" not in dropped
+    assert "textures/gui/container/enchanting_table.png" not in dropped
+
+
 def test_missing_files_are_noop(mini_pack, monkeypatch):
     root = mini_pack()
     monkeypatch.setattr(drop_mod, "load_table",
