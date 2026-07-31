@@ -22,18 +22,41 @@ def test_drops_listed_textures(mini_pack, monkeypatch):
     assert any(f.stage == "drop" and "2" in f.message for f in ctx.findings)
 
 
-def test_anvil_and_enchanting_table_are_not_dropped():
+def test_anvil_is_not_dropped():
     """Guard the 2026-07-31 correction (docs/known-issues.md #4).
 
-    Both were dropped on the theory that their slot layout had drifted. It had
-    not: the 176x166 panel is 99.9% identical between 1.8.9 and modern, and the
-    slicer's read boxes land exactly on 1.8.9's art. Dropping them discarded the
-    pack's custom GUIs — 87% and 37% custom respectively — for nothing.
+    It was dropped on the theory that its slot layout had drifted. It had not:
+    the 176x166 panel is 99.9% identical between 1.8.9 and modern, and the
+    pack's own anvil is a pixel-exact structural match to both. Dropping it
+    discarded an 87%-custom GUI for nothing.
     """
     from mc_pack_converter.data import load_table
-    dropped = set(load_table("drop_list")["drop"])
-    assert "textures/gui/container/anvil.png" not in dropped
-    assert "textures/gui/container/enchanting_table.png" not in dropped
+    assert "textures/gui/container/anvil.png" not in set(load_table("drop_list")["drop"])
+
+
+def test_enchanting_table_is_dropped():
+    """Guard docs/known-issues.md #4 — dropped, but NOT for the recorded reason.
+
+    The pack's own art predates 1.8: one item slot where 1.8.9 has two (lapis
+    was added to enchanting in 1.8), in a different position, and no dark
+    level-number caps on the bars. It never matched the 1.8.9 layout it ships
+    as, so it renders wrong on any modern version.
+    """
+    from mc_pack_converter.data import load_table
+    assert "textures/gui/container/enchanting_table.png" in set(
+        load_table("drop_list")["drop"])
+
+
+def test_villager_gui_is_dropped():
+    """Guard docs/known-issues.md #5.
+
+    The only GUI whose modern reference canvas differs from 1.8.9's: 240x166 on
+    256x256 becomes 276x166 on 512x256. Same filename in both eras and no slice
+    record reads it, so without this entry a 1.8.9 villager.png passes straight
+    through and modern samples it at scale (1.0, 2.0) — squashed and misplaced.
+    """
+    from mc_pack_converter.data import load_table
+    assert "textures/gui/container/villager.png" in set(load_table("drop_list")["drop"])
 
 
 def test_missing_files_are_noop(mini_pack, monkeypatch):
