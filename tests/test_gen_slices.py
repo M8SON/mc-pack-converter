@@ -78,17 +78,49 @@ def test_explosion_uses_32px_cells_on_128_reference(gen):
         "box": [32, 64, 32, 32, 128, 128], "op": "crop"}
 
 
-def test_effect_and_sweep_are_not_ported(gen):
-    # effect(): the 18px grid inside inventory.png was rearranged in 1.9, so
-    # the slicer's coordinates would mis-map a 1.8.9 pack. sweep(): needs the
-    # slicer's SQUARE post-op and the texture is 1.9+. Both out of scope.
-    assert gen.parse_helper_output(
-        'effect("speed", 0, 0)',
-        "assets/minecraft/textures/gui/container/inventory.png") is None
+def test_effect_emits_18px_cell_at_origin_198(gen):
+    # effect("regeneration", 7, 0) -> gridSprite(x, y, 1, 1, 0, 198, 18, 18)
+    # -> Box(18*7, 198 + 18*0, 18, 18, 256, 256). No reference rebase:
+    # inventory.png is 256x256 in 1.8.9 and in 1.13 alike.
+    rec = gen.parse_helper_output(
+        'effect("regeneration", 7, 0)',
+        "assets/minecraft/textures/gui/container/inventory.png")
+    assert rec == {
+        "input": "assets/minecraft/textures/gui/container/inventory.png",
+        "output": "assets/minecraft/textures/mob_effect/regeneration.png",
+        "box": [126, 198, 18, 18, 256, 256], "op": "crop"}
+
+
+def test_effect_second_row_offsets_by_18(gen):
+    rec = gen.parse_helper_output(
+        'effect("jump_boost", 2, 1)',
+        "assets/minecraft/textures/gui/container/inventory.png")
+    assert rec["box"] == [36, 216, 18, 18, 256, 256]
+    assert rec["output"] == "assets/minecraft/textures/mob_effect/jump_boost.png"
+
+
+def test_effects_without_1_8_9_art_are_dropped(gen):
+    # levitation/glowing/luck/unluck are 1.9 additions sitting in row-2 gaps
+    # that hold only vanilla's 20px corner guide marks in 1.8.9; health_boost
+    # is a 1.8.9 effect that is simply undrawn; slow_falling/conduit_power/
+    # dolphins_grace are 1.13 additions at (8,0)-(10,0) with 0px behind them.
+    # Emitting any of them would override vanilla with a near-invisible sprite.
+    inv = "assets/minecraft/textures/gui/container/inventory.png"
+    for name, x, y in [("levitation", 3, 2), ("glowing", 4, 2), ("luck", 5, 2),
+                       ("unluck", 6, 2), ("health_boost", 7, 2),
+                       ("slow_falling", 8, 0), ("conduit_power", 9, 0),
+                       ("dolphins_grace", 10, 0)]:
+        assert gen.parse_helper_output(f'effect("{name}", {x}, {y})', inv) is None
+        assert name in gen.SKIPPED_EFFECTS
+    assert len(gen.EFFECTS_1_8_9) == 19
+
+
+def test_sweep_is_still_not_ported(gen):
+    # Needs the slicer's SQUARE post-op, and the texture is 1.9+.
     assert gen.parse_helper_output(
         "sweep(3, 3, 0)", "assets/minecraft/textures/entity/sweep.png") is None
-    assert gen.SKIPPED_HELPERS["effect"] >= 1
     assert gen.SKIPPED_HELPERS["sweep"] >= 1
+    assert "effect" not in gen.SKIPPED_HELPERS
 
 
 def test_parse_box_resolves_b256_and_b128(gen):
@@ -125,11 +157,13 @@ def test_painting_input_is_not_rebased(gen):
 def test_full_1_14_source_record_counts(gen):
     recs = gen.parse_file(GEN.parent / "slicer_src" / "slicer_1.14.java")
     outs = [r["output"] for r in recs]
-    assert len(recs) == 134           # 27 painting + 90 particle + 16 explosion + 1 hook
+    assert len(recs) == 153           # 27 painting + 90 particle + 16 explosion + 1 hook + 19 mob_effect
     assert sum(1 for o in outs if "/textures/painting/" in o) == 27
     assert sum(1 for o in outs if "/textures/particle/" in o) == 106  # 90 + 16
     assert "assets/minecraft/textures/entity/fishing_hook.png" in outs
-    assert not any("/textures/mob_effect/" in o for o in outs)
+    assert sum(1 for o in outs if "/textures/mob_effect/" in o) == 19
+    assert "assets/minecraft/textures/mob_effect/speed.png" in outs
+    assert "assets/minecraft/textures/mob_effect/levitation.png" not in outs
     assert not any("sweep_" in o for o in outs)
     # every particles.png record sits on the 128 reference
     assert all(r["box"][4:] == [128, 128] for r in recs

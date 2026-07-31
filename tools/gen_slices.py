@@ -88,7 +88,32 @@ BOX = re.compile(r"new\s+Box\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s
 # generator evaluates them directly.
 BFN = re.compile(r"\bb(256|128)\(([^()]*)\)")
 PARTICLE_REF = 128
-SKIPPED_HELPERS = {"effect": 0, "sweep": 0}
+SKIPPED_HELPERS = {"sweep": 0}
+
+# Effects that vanilla 1.8.9 actually draws in the 18px grid at (0,198) inside
+# gui/container/inventory.png. Measured cell-by-cell against the version-pinned
+# vanilla mirror (InventivetalentDev/minecraft-assets): these 19 cells carry
+# 25-72% opaque pixels. The eight names the 1.14 slicer also emits do not:
+#   levitation, glowing, luck, unluck  1.9 additions in row-2 gaps that hold
+#                                      only vanilla's corner guide marks in
+#                                      1.8.9 - exactly 20px per cell
+#   health_boost                       a 1.8.9 effect, but undrawn at (7,2);
+#                                      the same 20px of guide marks
+#   slow_falling, conduit_power,       1.13 additions at (8,0)-(10,0), off the
+#   dolphins_grace                     1.8.9 art entirely - 0px
+# Emitting the excluded eight would ship near-invisible sprites that OVERRIDE
+# vanilla's icons - the invisible-attack-indicator defect again. The grid
+# ITSELF is stable 1.8.9 -> 1.13 (see the 2026-07-31 spec); only this
+# drawn/undrawn split is ours to know, so it lives here rather than in the
+# slicer source.
+EFFECTS_1_8_9 = {
+    "speed", "slowness", "haste", "mining_fatigue", "strength", "weakness",
+    "poison", "regeneration",
+    "invisibility", "hunger", "jump_boost", "nausea", "night_vision",
+    "blindness", "resistance", "fire_resistance",
+    "water_breathing", "wither", "absorption",
+}
+SKIPPED_EFFECTS: list[str] = []
 
 
 def as_int(expr: str) -> int:
@@ -127,9 +152,10 @@ def parse_helper_output(expr: str, input_path: str) -> dict | None:
     """Resolve a 1.14 helper call to a record, or None if not one / not ported.
 
     Not ported, deliberately:
-      effect() - the 18px effect grid inside inventory.png was rearranged in
-                 1.9, so these coordinates would mis-map a 1.8.9 pack.
       sweep()  - needs the slicer's SQUARE post-op; the texture is 1.9+.
+
+    effect() IS ported, but only for the effects vanilla 1.8.9 draws; the rest
+    are dropped into SKIPPED_EFFECTS (see EFFECTS_1_8_9).
     """
     expr = expr.strip()
     m = HELPER.match(expr)
@@ -152,6 +178,14 @@ def parse_helper_output(expr: str, input_path: str) -> dict | None:
         return {"input": input_path,
                 "output": f"assets/minecraft/textures/particle/{name}.png",
                 "box": [32 * x, 32 * y, 32, 32, 128, 128], "op": "crop"}
+    if fn == "effect":
+        if name not in EFFECTS_1_8_9:
+            SKIPPED_EFFECTS.append(name)
+            return None
+        x, y = nums
+        return {"input": input_path,
+                "output": f"assets/minecraft/textures/mob_effect/{name}.png",
+                "box": [18 * x, 198 + 18 * y, 18, 18, 256, 256], "op": "crop"}
     # particle(n,x,y) | particle(n,x,y,w,h) | particle(n,x,y,xOff,yOff,w,h)
     if len(nums) == 2:
         x, y = nums
@@ -284,6 +318,9 @@ def main() -> int:
     for fn, n in SKIPPED_HELPERS.items():
         if n:
             print(f"skipped {n} {fn}() outputs (not ported - see spec)")
+    if SKIPPED_EFFECTS:
+        print(f"skipped {len(SKIPPED_EFFECTS)} effect() outputs with no 1.8.9 "
+              f"art: {', '.join(sorted(SKIPPED_EFFECTS))}")
     # drop realms inputs (never in a resource pack); dedupe by (input,output)
     seen, cleaned = set(), []
     for r in all_recs:
