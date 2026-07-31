@@ -316,6 +316,63 @@ built — worth doing if a third case appears.
 
 ---
 
+## 6. Pack intake rejected 14 of 173 real packs
+
+**Status:** FIXED 2026-07-31 — **170 of 170** in-scope corpus packs now convert,
+zero crashes, zero stage crashes.
+**Found by:** running the whole 173-pack corpus through the converter. None of
+this was reachable from the single proving-ground pack.
+
+Every crash was in intake; nothing in the conversion logic itself ever crashed.
+
+### `pack.mcmeta` is parsed more strictly than Minecraft parses it (12 packs)
+
+Minecraft uses GSON, which is lenient. `json.loads` is not. Three malformations
+occur in the wild, all inside the decorative `description` string:
+
+| malformation | packs | example |
+|---|---|---|
+| UTF-8 BOM (Windows editors) | 5 | — |
+| backslash before a non-escape character | 5 | `"§f\Made by: §6§o\@cellsaver"`, `"§b\ [by Gosu]"` |
+| raw control character in a string | 2 | a literal CRLF; the `\x15` bytes of old colour codes |
+
+`mc_pack_converter/mcmeta.py` now reads the file with `utf-8-sig` and, only if
+strict parsing fails, re-parses through a sanitiser that rewrites what appears
+**inside string literals** — dropping a stray backslash, escaping a raw control
+character. A structurally broken file still raises; leniency covers known
+sloppiness, not arbitrary garbage.
+
+Three call sites read `pack.mcmeta` and they failed differently. The third is
+the one worth remembering:
+
+| site | symptom |
+|---|---|
+| `stages/ingest.py` | `FatalConversionError` — pack unconvertible |
+| `stages/pack_meta.py` | would crash next, once ingest was fixed |
+| `stages/slice.py` `_pack_format` | **silent.** It catches everything and returns `None`, meaning "not gated" — so a malformed file turned a 1.13+ pack into an ungated one and its `particles.png` would be mis-cut into wrong-rectangle sprites overriding vanilla: the exact failure §0 exists to prevent, reached by a route nobody was watching. |
+
+A fail-open guard is only as good as its ability to read its input. When adding
+one, check what makes the *read* fail, not just what makes the value wrong.
+
+### A directory stored as a file inside the zip (2 packs)
+
+`bPantone` and `#Pvpmen` store `assets/minecraft/textures/models/armor` with no
+trailing slash, alongside `.../armor/iron_layer_1.png`. `extractall` writes the
+first as a zero-length **file**, then dies with `NotADirectoryError` creating
+anything inside it. `_dirs_stored_as_files` now skips any entry that another
+entry treats as a directory.
+
+### The `validate` stage crashed on OptiFine `.properties` (8 packs)
+
+`read_text()` raised `UnicodeDecodeError` on ISO-8859-1 files and on macOS
+AppleDouble `._*` sidecars, which are binary resource forks that match
+`*.properties`. `run_pipeline` caught it, so **validation was silently skipped
+for those packs and they reported clean.** `read_properties_text` falls back to
+latin-1 (which decodes any byte sequence) and `iter_properties` skips `._*`.
+Both are now used by every reader in `optifine.py` and `validate.py`.
+
+---
+
 ## Not defects
 
 - **`entity/sweep.png`** — absent from the M8SON pack (1.9+ texture). Porting the

@@ -6,6 +6,29 @@ from ..data import load_table
 
 _NUMERIC_VALUE_RE = re.compile(r"^[\d\s]+$")
 
+def read_properties_text(path) -> str:
+    """Read a .properties file without exploding on its encoding.
+
+    OptiFine .properties files in the wild are UTF-8 or ISO-8859-1. latin-1
+    decodes any byte sequence, so this never raises — which matters because
+    every caller only needs the ASCII keys (method, matchBlocks, source) and a
+    decode error used to take down the whole enclosing stage.
+    """
+    try:
+        return path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return path.read_text(encoding="latin-1")
+
+
+def iter_properties(base):
+    """Every real .properties file under `base`.
+
+    Skips macOS AppleDouble sidecars ('._foo.properties'), which are binary
+    resource forks that happen to match the glob.
+    """
+    return (p for p in base.rglob("*.properties") if not p.name.startswith("._"))
+
+
 def parse_properties(text: str) -> dict[str, str]:
     out: dict[str, str] = {}
     for line in text.splitlines():
@@ -35,8 +58,8 @@ def _opaque_black_fraction(path: Path) -> float:
 
 
 def _check_sky(ctx: ConversionContext, sky_dir: Path) -> None:
-    for prop in sky_dir.rglob("*.properties"):
-        text = prop.read_text()
+    for prop in iter_properties(sky_dir):
+        text = read_properties_text(prop)
         props = parse_properties(text)
         src = props.get("source")
         if not src:
@@ -69,8 +92,8 @@ def _replace_match_line(text: str, key: str, value: str) -> str:
 
 def _fix_ctm(ctx: ConversionContext, ctm_dir: Path) -> None:
     table = load_table("ctm_blocks")
-    for prop in ctm_dir.rglob("*.properties"):
-        text = prop.read_text()
+    for prop in iter_properties(ctm_dir):
+        text = read_properties_text(prop)
         props = parse_properties(text)
         if "method" not in props:
             continue
