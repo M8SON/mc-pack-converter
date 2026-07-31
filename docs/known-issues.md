@@ -316,6 +316,26 @@ built — worth doing if a third case appears.
 
 ---
 
+## 6. A UTF-8 BOM in `pack.mcmeta` made a pack unconvertible
+
+**Status:** FIXED 2026-07-31 — all three readers use `encoding="utf-8-sig"`.
+**Found by:** converting the 173-pack test corpus; **5 packs** were affected.
+
+Windows editors routinely save `pack.mcmeta` with a UTF-8 BOM. `read_text()`
+leaves it in place and `json.loads` rejects it outright. Three call sites read
+that file, and they failed differently — the third is the one worth remembering:
+
+| site | symptom |
+|---|---|
+| `stages/ingest.py` | `FatalConversionError` — the pack could not be converted at all |
+| `stages/pack_meta.py` | would crash next, once ingest was fixed |
+| `stages/slice.py` `_pack_format` | **silent.** It catches everything and returns `None`, which means "not gated" — so a BOM turned a 1.13+ pack into an ungated one and its `particles.png` would be mis-cut into wrong-rectangle sprites overriding vanilla, the exact failure §0 exists to prevent. |
+
+A fail-open guard is only as good as its ability to read its input. When adding
+one, check what makes the read fail, not just what makes the value wrong.
+
+---
+
 ## Not defects
 
 - **`entity/sweep.png`** — absent from the M8SON pack (1.9+ texture). Porting the

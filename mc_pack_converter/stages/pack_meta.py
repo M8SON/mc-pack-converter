@@ -7,7 +7,7 @@ from ..data import load_table
 
 def pack_meta(ctx: ConversionContext) -> None:
     meta = ctx.root / "pack.mcmeta"
-    data = json.loads(meta.read_text())
+    data = json.loads(meta.read_text(encoding="utf-8-sig"))  # tolerate a BOM
     new_fmt = load_table("pack_format").get(ctx.target)
     if not new_fmt:
         raise FatalConversionError(f"no pack_format for target {ctx.target}")

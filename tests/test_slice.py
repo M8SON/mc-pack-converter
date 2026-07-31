@@ -261,3 +261,18 @@ def test_effect_cell_is_cut_at_2x_res(mini_pack, monkeypatch):
     assert im.size == (36, 36)
     assert im.getchannel("A").getbbox() == (0, 0, 36, 36)
     assert im.getpixel((0, 0)) == (200, 30, 40, 255)
+
+
+def test_pack_format_gate_survives_a_bom(mini_pack):
+    """A BOM must not silently disable the 1.13+ particles gate.
+
+    _pack_format swallows exceptions and returns None, which means "not gated".
+    With a BOM that turned a 1.13+ pack into an ungated one, and its
+    particles.png would be mis-cut into wrong-rectangle sprites overriding
+    vanilla — the exact failure docs/known-issues.md #0 exists to prevent.
+    """
+    root = mini_pack()
+    (root / "pack.mcmeta").write_text(
+        "﻿" + '{"pack":{"pack_format":4,"description":"bom"}}',
+        encoding="utf-8")
+    assert slice_mod._pack_format(root) == 4

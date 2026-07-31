@@ -35,7 +35,10 @@ def ingest(ctx: ConversionContext) -> None:
     if not meta.exists():
         raise FatalConversionError(f"no pack.mcmeta at {ctx.root}")
     try:
-        fmt = json.loads(meta.read_text())["pack"]["pack_format"]
+        # utf-8-sig: pack.mcmeta is routinely saved by Windows editors with a
+        # UTF-8 BOM, which json.loads rejects outright. Strips it if present,
+        # no-op otherwise.
+        fmt = json.loads(meta.read_text(encoding="utf-8-sig"))["pack"]["pack_format"]
     except Exception as exc:
         raise FatalConversionError(f"unreadable pack.mcmeta: {exc}")
     ctx.add("ingest", Severity.INFO, f"detected pack_format={fmt}")

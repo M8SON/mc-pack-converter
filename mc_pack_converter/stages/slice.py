@@ -51,10 +51,14 @@ def _is_empty(im: Image.Image) -> bool:
 def _pack_format(root: Path) -> int | None:
     """Read pack_format from pack.mcmeta; None if missing or unparseable.
 
-    None means "not gated" — never a new failure path for this check.
+    None means "not gated" — never a new failure path for this check. That
+    fail-open is why the encoding matters here: a BOM (common from Windows
+    editors) used to land in this except branch and silently ungate a 1.13+
+    pack, which is exactly the mis-cut docs/known-issues.md #0 guards against.
     """
     try:
-        return json.loads((root / "pack.mcmeta").read_text())["pack"]["pack_format"]
+        return json.loads((root / "pack.mcmeta").read_text(
+            encoding="utf-8-sig"))["pack"]["pack_format"]
     except Exception:
         return None
 

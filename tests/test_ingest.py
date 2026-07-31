@@ -30,3 +30,20 @@ def test_zip_slip_rejected(tmp_path):
     with pytest.raises(FatalConversionError):
         prepare_working_copy(zip_path, work)
     assert not (tmp_path/"evil.txt").exists()
+
+
+BOM = "﻿"
+
+
+def test_ingest_reads_a_bom_prefixed_mcmeta(mini_pack):
+    """Windows editors save pack.mcmeta with a UTF-8 BOM.
+
+    5 of the 173 packs in the test corpus do. read_text() leaves the BOM in
+    place and json.loads rejects it, which made the whole pack unconvertible.
+    """
+    root = mini_pack()
+    (root / "pack.mcmeta").write_text(
+        BOM + '{"pack":{"pack_format":1,"description":"bom"}}', encoding="utf-8")
+    ctx = ConversionContext(root=root)
+    ingest(ctx)                                   # must not raise
+    assert any("pack_format=1" in f.message for f in ctx.findings)

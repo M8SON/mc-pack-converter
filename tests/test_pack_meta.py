@@ -28,3 +28,16 @@ def test_pack_meta_unknown_target_raises_fatal_error(mini_pack, monkeypatch):
     ctx = ConversionContext(root=root, target="99.9")
     with pytest.raises(FatalConversionError):
         pack_meta(ctx)
+
+
+def test_pack_meta_reads_a_bom_prefixed_mcmeta(mini_pack):
+    """Same BOM as test_ingest — this stage re-reads pack.mcmeta itself."""
+    root = mini_pack()
+    (root / "pack.mcmeta").write_text(
+        "﻿" + '{"pack":{"pack_format":1,"description":"bom"}}',
+        encoding="utf-8")
+    ctx = ConversionContext(root=root, target="26.1.2")
+    pack_meta(ctx)                                # must not raise
+    data = json.loads((root / "pack.mcmeta").read_text())
+    assert data["pack"]["min_format"] == 84
+    assert "[conv 26.1.2 " in data["pack"]["description"]
