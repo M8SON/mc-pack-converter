@@ -9,6 +9,7 @@ from . import legacy_textures as _legacy_textures
 from . import drop as _drop
 from . import optifine as _optifine
 from . import slice as _slice
+from . import derive_sprites as _derive_sprites
 from . import sounds as _sounds
 from . import pack_meta as _pack_meta
 from . import validate as _validate
@@ -19,5 +20,6 @@ STAGES = [
     ("chest", _chest.chest_remap), ("gui_remap", _gui_remap.gui_remap),
     ("legacy", _legacy_textures.legacy_textures), ("drop", _drop.drop_textures),
     ("optifine", _optifine.optifine_translate), ("slice", _slice.slice_atlases),
+    ("derive_sprites", _derive_sprites.derive_sprites),
     ("sounds", _sounds.sounds), ("pack_meta", _pack_meta.pack_meta), ("validate", _validate.validate),
 ]
