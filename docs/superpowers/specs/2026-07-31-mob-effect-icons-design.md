@@ -1,7 +1,7 @@
 # Mob-Effect Icons: Recovering the 1.8.9 Effect Grid — Design
 
 **Date:** 2026-07-31
-**Status:** Designed, not yet implemented — `feature/mob-effect-icons`
+**Status:** Implemented on `feature/mob-effect-icons`
 **Proving-ground fixture:** `M8SON 1.8 PVP PACK` (a "Faithful 32x32 edit", `pack_format: 1`)
 **Builds on:** `2026-07-29-particles-slicer-design.md`
 **Supersedes:** the "1.9 rearranged the effect grid" claim in that spec and in

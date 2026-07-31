@@ -97,40 +97,41 @@ EOF
 
 ---
 
-## 2. 23 custom mob-effect icons are silently dropped
+## 2. Custom mob-effect icons
 
-**Status:** open · needs its own spec
-**Blocked on:** a researched 1.8.9 effect-grid → name table
+**Status:** FIXED 2026-07-31 — `tools/gen_slices.py` emits the 1.14 slicer's
+`effect()` records for the 19 effects vanilla 1.8.9 draws.
+**Design:** `docs/superpowers/specs/2026-07-31-mob-effect-icons-design.md`
 
-Modern Minecraft reads potion-effect icons from `textures/mob_effect/<name>.png`.
-Nothing reads the 18px icon strip inside `textures/gui/container/inventory.png`
-anymore, so the pack's **23 custom effect icons are lost** and vanilla's are used.
+Modern Minecraft reads potion-effect icons from `textures/mob_effect/<name>.png`;
+nothing reads the 18px icon strip inside `textures/gui/container/inventory.png`
+anymore. The pack's custom icons were therefore lost to vanilla.
 
-Mojang's 1.14 slicer *does* extract that strip — but its coordinates cannot be
-reused here, because **1.9 rearranged the grid** to fit `levitation`, `glowing`,
-`luck` and `unluck`. Measured occupancy of the 18px grid across the vanilla mirror:
+**This entry previously claimed 1.9 rearranged the grid, and that recovering the
+icons needed a hand-researched 1.8.9 cell → name table. Both were wrong.** The
+occupancy figures behind that claim were measured at `y=166`, which is where the
+effect *background* box lives; the icon strip starts at `y=198`. Re-measured at
+the right origin against the version-pinned vanilla mirror, the layout is stable
+from 1.8.9 through 1.13 — 1.9 and 1.13 only *filled cells that are empty in
+1.8.9*, and no cell was ever repurposed. Mojang's 1.14 slicer coordinates apply
+to a 1.8.9 pack directly.
 
-| version | row 0 | row 1 | row 2 |
-|---|---|---|---|
-| 1.8.9 | 7 | 8 | 8 |
-| 1.9.4 / 1.11.2 / 1.12.2 | 11 | 11 | 8 |
-| 1.13.2 | 12 | 12 | 12 |
+The count was wrong too: the M8SON pack holds **19** custom icons, not 23. It
+mirrors vanilla 1.8.9 cell-for-cell.
 
-1.8.9 vs 1.9.4 differ by 3331 pixels within the strip. The slicer's coordinates
-describe the post-rearrangement grid, so applying them to a 1.8.9 pack would
-mis-map icons — e.g. it expects `regeneration` at cell (7,0), which is empty in
-1.8.9. agentdid127's `InventoryConverter` treats the change as a pure
-`y166 → y198` shift, which the numbers above show is insufficient.
+Eight names the slicer emits are deliberately **not** produced, because 1.8.9 has
+no art behind them (`EFFECTS_1_8_9` in `tools/gen_slices.py`):
 
-In the M8SON pack the strip holds **23 custom icons** (4 cells blank:
-`regeneration`, `slow_falling`, `conduit_power`, `dolphins_grace` — the latter
-three are post-1.8.9 effects).
+| not produced | 1.8.9 cell | what is actually there |
+|---|---|---|
+| `levitation`, `glowing`, `luck`, `unluck` | `(3,2)`–`(6,2)` | 1.9 additions; 20px of vanilla corner guide marks |
+| `health_boost` | `(7,2)` | a 1.8.9 effect, but undrawn; same 20px of guide marks |
+| `slow_falling`, `conduit_power`, `dolphins_grace` | `(8,0)`–`(10,0)` | 1.13 additions; 0px |
 
-**To resume:** build the 1.8.9 cell → effect-name table, verified against the
-Minecraft Wiki effect list and the vanilla mirror, then emit `mob_effect/*.png`
-records. Note the icon art itself was redrawn in 1.13, so pixel-matching a 1.8.9
-cell against a modern vanilla icon will not identify it — the mapping has to come
-from the effect ordering, not image similarity.
+They fall back to vanilla, which is correct — drawing them would be creating art.
+The exclusion is done at generation time rather than by a coverage threshold in
+`stages/slice.py`, because a threshold is a heuristic that could suppress a
+legitimately sparse sprite, while this is a measured fact about 1.8.9.
 
 ---
 
