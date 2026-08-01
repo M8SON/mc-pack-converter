@@ -667,6 +667,54 @@ would truncate.
 
 ---
 
+## 13. The corpus run measured the converter's opinion of itself
+
+**Status:** ADDRESSED 2026-08-01 — `stages/validate.py` now asserts four
+invariants about the OUTPUT, so every conversion reports them, not just a
+corpus run.
+
+`tools/run_corpus.py` collects what the converter *says*. That is genuinely
+useful for crashes (it found 14 packs that would not open), for silent stage
+failures (validation skipping itself on 8 packs), and as a regression net on
+every change. It is useless for "is the output correct", because the converter
+cannot report a problem it does not know about. Every bug found by looking at
+the screen converted with **zero warnings**: the villager GUI, the lost fire
+animation, 578 dead model references, 2596 dead blockstate references.
+
+The four checks are phrased as the symptom a player sees:
+
+| check | message | the bug it would have caught |
+|---|---|---|
+| model names a `blocks/` or `items/` path | "will render as a null texture" | §12, 578 refs |
+| blockstate model name has no folder | "renders as a magenta cube" | §12, 2596 refs |
+| GUI canvas aspect ≠ the reference modern samples | "will render squashed and misaligned" | §5, the villager |
+| a texture modern animates has no `.mcmeta` | "will draw as one stretched still image" | §8, fire |
+
+Each is scoped to what is *provably* wrong rather than what looks suspicious.
+The model check flags only legacy folders, because a model may legitimately
+name a modern texture the pack does not ship — vanilla supplies it, and a test
+pins that this is not flagged.
+
+**The first animation check was junk and is worth remembering.** "Tall strip
+with no `.mcmeta`" fired **722 times across 143 of 170 packs**: vanilla itself
+ships `environment/rain.png` and `entity/endercrystal/endercrystal_beam.png`
+that way, and the compass strips this project deliberately keeps have their
+`.mcmeta` removed on purpose. A check firing on 84% of packs is worse than no
+check, because it trains you to ignore it.
+
+The fix was to stop guessing at a proxy: vanilla ships an `.mcmeta` for exactly
+the textures it animates, so `tools/gen_animated.py` takes that list from the
+mirror (112 paths). `block/fire_0` is on it; `environment/rain` and
+`item/compass` are not. The false positives vanish by construction rather than
+by hand-excluding paths — the same trap as the six failed enchanting detectors
+in §9.
+
+Corpus after: **0 findings on all four checks across 170 packs**, total warnings
+unchanged at 250. They are a regression net now, and the unit tests prove each
+one fires on its historical bug.
+
+---
+
 ## Not defects
 
 - **`entity/sweep.png`** — absent from the M8SON pack (1.9+ texture). Porting the
