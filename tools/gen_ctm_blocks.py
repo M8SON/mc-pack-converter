@@ -158,6 +158,17 @@ def build() -> dict[str, str]:
             put(form, block)
     for k, v in SINGLES.items():
         put(k, v)
+    # cloth_N: the pre-flattening wool data value, used as a PROPERTIES FILENAME
+    # by terrain.png-era packs (cloth_0.properties ... cloth_15.properties).
+    # Confirmed independently of any image comparison: in every pack that uses
+    # them, the grouping folder's abbreviation matches the colours this mapping
+    # predicts - wools-b-w holds cloth 0/7/8/15 (black..white), wools-r-g-b-v
+    # holds 10/11/13/14 (red, green, blue, violet), and so on.
+    CLOTH = ["white", "orange", "magenta", "light_blue", "yellow", "lime",
+             "pink", "gray", "light_gray", "cyan", "purple", "blue", "brown",
+             "green", "red", "black"]
+    for i, colour in enumerate(CLOTH):
+        put(f"cloth {i}", f"{colour}_wool")
     return t
 
 

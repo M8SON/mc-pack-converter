@@ -407,11 +407,27 @@ that is not a real block is a hard error: a wrong mapping is worse than a
 missing one, because it points connected textures at the wrong block silently,
 where a missing one at least warns.
 
-All 8 remaining names are on the table's `_unmapped` list with a reason —
-`default` (not a block), the `wools-*` multi-colour group folders, `wool`, and
-`leaves fancy`/`leaves fast` (two folders for the same blocks, which would
-fight over the same `matchBlocks`). A test asserts they keep warning rather
-than silently passing.
+**The `wools-*` folders were resolved on 2026-08-01** by a second lookup key.
+Those folders hold several colours at once (`wools-b-w` is black-through-white),
+so no folder name can identify one block — but the PROPERTIES FILENAME can:
+terrain.png-era packs name them `cloth_0.properties` … `cloth_15.properties`,
+where `cloth_N` is the pre-flattening wool data value. Old MCPatcher inferred
+the target from exactly that filename when a file carried no `matchBlocks`, so
+this restores behaviour the pack really had. The filename is tried **last**,
+after both folder lookups, so it can only add resolutions and never change one
+that already worked.
+
+The `cloth_N` mapping was confirmed without any image comparison: in every pack
+using them, the grouping folder's abbreviation matches the colours the mapping
+predicts — `wools-b-w` holds cloth 0/7/8/15 (white, gray, silver, black),
+`wools-r-g-b-v` holds 10/11/13/14 (purple, blue, green, red), and so on. A
+colour-matching check was tried first and gave 20/32; it was the check that was
+unreliable, not the mapping — CTM tiles are mostly border pixels.
+
+That leaves **9 warnings**, all on the table's `_unmapped` list with a reason:
+`default` (not a block), `wool` (all 16 colours at once), and `leaves fancy` /
+`leaves fast` (two folders for the same blocks, which would fight over the same
+`matchBlocks`). A test asserts they keep warning rather than silently passing.
 
 **Two lessons from getting this wrong first:**
 
