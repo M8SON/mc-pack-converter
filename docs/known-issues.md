@@ -561,6 +561,37 @@ If this is revisited, the signal to look for is which folder the pack's own
 
 ---
 
+## 11. The offhand slot had no 1.8.9 art
+
+**Status:** FIXED 2026-08-01 — composed by `stages/derive_sprites.py` from the
+pack's own hotbar. 134 of 170 corpus packs now get it.
+
+1.8.9 has no offhand, so the regions the 1.20.2 slicer reads for
+`hud/hotbar_offhand_{left,right}` — `(24,22)` and `(53,22)` in `widgets.png` —
+are empty, and the sprites fell back to vanilla: a vanilla-styled slot sitting
+beside a fully custom hotbar.
+
+Measured from vanilla 1.21.4, both sprites are a **22×22 box on a 29×24
+canvas**, at `x=0` (left) and `x=7` (right). A 1.8.9 hotbar is `182×22` =
+1px border + nine 20px slots + 1px border, so its **left 11 and right 11
+columns** are each a real outer border beside half a slot. Joined, they make a
+closed 22×22 box in the pack's own style — only the pack's pixels, no invented
+art.
+
+A single 22px cut from one end was tried first and rejected: it leaves the box
+asymmetric, with a proper outer border on one side and a thin inter-slot
+divider on the other.
+
+**This work exposed a latent bug in `derive_sprites` itself.** The stage had no
+empty-composition guard, so if every source piece were blank it would write a
+fully transparent sprite that **overrides** vanilla and renders invisible —
+§1's defect, in a stage written after that lesson was learned. It was
+unreachable while the only entry read `inventory.png`'s always-present panel,
+and became reachable the moment an entry read a region a pack might leave
+blank. Now guarded, with a test.
+
+---
+
 ## Not defects
 
 - **`entity/sweep.png`** — absent from the M8SON pack (1.9+ texture). Porting the

@@ -86,3 +86,73 @@ def test_shipped_table_derives_the_effect_background(mini_pack):
     assert im.size == (64, 64)
     assert any(f.stage == "derive_sprites" and f.severity is Severity.INFO
                for f in ctx.findings)
+
+
+WIDGETS = "assets/minecraft/textures/gui/widgets.png"
+OFF_L = "assets/minecraft/textures/gui/sprites/hud/hotbar_offhand_left.png"
+OFF_R = "assets/minecraft/textures/gui/sprites/hud/hotbar_offhand_right.png"
+
+
+def _hotbar(root, size=(256, 256), left=(200, 30, 40, 255), right=(30, 60, 200, 255)):
+    """widgets.png whose hotbar has distinctly coloured left and right ends."""
+    p = root / WIDGETS
+    p.parent.mkdir(parents=True, exist_ok=True)
+    im = Image.new("RGBA", size, (0, 0, 0, 0))
+    s = size[0] // 256
+    im.paste(Image.new("RGBA", (11 * s, 22 * s), left), (0, 0))
+    im.paste(Image.new("RGBA", (11 * s, 22 * s), right), (171 * s, 0))
+    im.save(p)
+    return p
+
+
+def test_offhand_is_composed_from_both_hotbar_ends(mini_pack):
+    """1.8.9 has no offhand art, so it is built from the pack's own hotbar.
+
+    Both outer borders must be real pack pixels — a single cut from one end
+    leaves the box asymmetric (outer border one side, inter-slot divider the
+    other).
+    """
+    root = mini_pack()
+    _hotbar(root)
+    ctx = ConversionContext(root=root)
+    derive_sprites(ctx)
+    im = Image.open(root / OFF_L).convert("RGBA")
+    assert im.size == (29, 24)
+    assert im.getpixel((0, 1)) == (200, 30, 40, 255)      # hotbar left end
+    assert im.getpixel((21, 1)) == (30, 60, 200, 255)     # hotbar right end
+    assert im.getpixel((28, 12))[3] == 0                  # padding stays clear
+    right = Image.open(root / OFF_R).convert("RGBA")
+    assert right.getpixel((7, 1)) == (200, 30, 40, 255)   # box offset by 7
+    assert right.getpixel((0, 12))[3] == 0
+
+
+def test_offhand_scales_with_pack_resolution(mini_pack):
+    root = mini_pack()
+    _hotbar(root, size=(512, 512))
+    derive_sprites(ConversionContext(root=root))
+    im = Image.open(root / OFF_L).convert("RGBA")
+    assert im.size == (58, 48)
+    assert im.getpixel((0, 2)) == (200, 30, 40, 255)
+
+
+def test_offhand_skipped_when_the_pack_has_no_widgets(mini_pack):
+    root = mini_pack()
+    derive_sprites(ConversionContext(root=root))   # must not raise
+    assert not (root / OFF_L).exists()
+
+
+def test_all_blank_sources_leave_the_sprite_to_vanilla(mini_pack):
+    """A composed sprite that is entirely transparent must not be written.
+
+    Writing it would OVERRIDE vanilla with an invisible sprite instead of
+    falling back — docs/known-issues.md #1, reachable here because a pack's
+    source region can be empty even when the file exists.
+    """
+    root = mini_pack()
+    p = root / WIDGETS
+    p.parent.mkdir(parents=True, exist_ok=True)
+    Image.new("RGBA", (256, 256), (0, 0, 0, 0)).save(p)   # blank widgets.png
+    ctx = ConversionContext(root=root)
+    derive_sprites(ctx)
+    assert not (root / OFF_L).exists()
+    assert any("left to vanilla" in f.message for f in ctx.findings)

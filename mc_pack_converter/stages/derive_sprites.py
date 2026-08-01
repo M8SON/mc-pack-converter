@@ -53,6 +53,14 @@ def derive_sprites(ctx: ConversionContext) -> None:
                     part = im.crop((round(x * sw), round(y * sh),
                                     round((x + w) * sw), round((y + h) * sh)))
                     canvas.paste(part, (round(dx * sw), round(dy * sh)))
+            if canvas.getchannel("A").getbbox() is None:
+                # Every source piece was blank. Writing this would OVERRIDE
+                # vanilla with an invisible sprite rather than fall back to it —
+                # the defect in docs/known-issues.md #1, reachable here because
+                # a pack's source region may be empty even when the file exists.
+                ctx.add("derive_sprites", Severity.INFO,
+                        "all source pieces empty; left to vanilla", out_rel)
+                continue
             dst.parent.mkdir(parents=True, exist_ok=True)
             canvas.save(dst)
             made += 1

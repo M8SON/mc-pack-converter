@@ -9,5 +9,27 @@
       {"from": [0, 166, 16, 32], "to": [0, 0]},
       {"from": [104, 166, 16, 32], "to": [16, 0]}
     ]
+  },
+
+  "_comment_offhand": "hotbar_offhand_left/right: 1.8.9 had no offhand, so the region the 1.20.2 slicer reads (24,22) and (53,22) in widgets.png is empty and the sprites fall back to vanilla - a vanilla-styled slot beside a custom hotbar. Both are a 22x22 box on a 29x24 canvas, at x=0 (left) and x=7 (right), measured from vanilla 1.21.4. The pack's own hotbar is 182x22 = 1px border + 9 20px slots + 1px border, so its left 11 and right 11 columns are a real outer border either side of half a slot; joined they make a closed 22x22 box in the pack's style. Only the pack's pixels - fix and format, never create art. A single 22px cut from one end was tried first and left the box asymmetric: outer border on one side, a thin inter-slot divider on the other.",
+
+  "assets/minecraft/textures/gui/sprites/hud/hotbar_offhand_left.png": {
+    "source": "assets/minecraft/textures/gui/widgets.png",
+    "ref": [256, 256],
+    "size": [29, 24],
+    "pieces": [
+      {"from": [0, 0, 11, 22], "to": [0, 1]},
+      {"from": [171, 0, 11, 22], "to": [11, 1]}
+    ]
+  },
+
+  "assets/minecraft/textures/gui/sprites/hud/hotbar_offhand_right.png": {
+    "source": "assets/minecraft/textures/gui/widgets.png",
+    "ref": [256, 256],
+    "size": [29, 24],
+    "pieces": [
+      {"from": [0, 0, 11, 22], "to": [7, 1]},
+      {"from": [171, 0, 11, 22], "to": [18, 1]}
+    ]
   }
 }
