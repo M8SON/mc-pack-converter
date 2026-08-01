@@ -1,9 +1,22 @@
 {
-  "_comment": "Proportional GUI texture remaps (ref-relative, any resolution). Each 'move' crops a region [x,y,w,h] (ref coords), clears the old spot to transparent, and pastes it at [dstX,dstY]. Used to realign GUI elements that Mojang repositioned. inventory: the 2x2 crafting grid + arrow + result moved (-10,+8) between 1.8.9 and modern (derived by matching vanilla old-vs-new); shift it to the modern position so it lines up with the functional slots. Clearing to transparent suits this pack's see-through inventory.",
+  "_comment": "Proportional GUI texture remaps (ref-relative, so any pack resolution works). A 'move' crops a region [x,y,w,h] in ref coords, heals the vacated spot with the local background colour, and pastes it at [dstX,dstY]. A 'copy' does the same without healing, duplicating a region — for a slot modern added where 1.8.9 has bare panel. Every offset here is derived by cross-correlating vanilla 1.8.9 against modern vanilla, not estimated by eye.",
+
   "textures/gui/container/inventory.png": {
+    "_why": "The 2x2 crafting grid + arrow + result moved (-10,+8) between 1.8.9 and modern; shift it so it lines up with the functional slots.",
     "ref": [256, 256],
     "moves": [
       {"from": [86, 22, 77, 40], "to": [96, 14]}
+    ]
+  },
+
+  "textures/gui/container/brewing_stand.png": {
+    "_why": "1.9 redesigned brewing. The three potion slots moved DOWN 5px — cross-correlated over the slot cluster, best match (0,+5), SAD 196608 -> 32226 — while the ingredient slot above them did not move, confirmed at (0,0) by the same measurement. 1.9 also added a blaze-powder fuel slot at (16,16) where 1.8.9 has bare panel, so the pack's own empty ingredient slot at (78,16) is copied there; that keeps the box in the pack's style instead of leaving a functional slot with nothing drawn behind it. Reported from in-game testing as the potion boxes being slightly off on every pack.",
+    "ref": [256, 256],
+    "moves": [
+      {"from": [55, 45, 64, 26], "to": [55, 50]}
+    ],
+    "copies": [
+      {"from": [78, 16, 18, 18], "to": [16, 16]}
     ]
   }
 }
