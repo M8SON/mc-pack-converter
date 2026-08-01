@@ -90,15 +90,38 @@ def _replace_match_line(text: str, key: str, value: str) -> str:
             break
     return "".join(lines)
 
+def _norm_folder(name: str) -> str:
+    """Normalise a CTM folder name for table lookup.
+
+    Pack authors spell the same folder as 'glass gray', 'glass_gray',
+    'glass/Grey Glass' or 'Glass/Light Grey Glass'. Lowercasing and collapsing
+    _ - / to single spaces makes those one key. data/ctm_blocks.json is
+    generated with the same normalisation.
+    """
+    for ch in "_-/":
+        name = name.replace(ch, " ")
+    return " ".join(name.lower().split())
+
+
+def _lookup_block(table: dict, folder: str, leaf: str) -> str | None:
+    """Last path component first, then the whole relative path.
+
+    The leaf is the more specific signal ('hardened_clay_black' under
+    'hardened_clay/stained/'), so it wins when both are present.
+    """
+    return (table.get(_norm_folder(leaf))
+            or table.get(_norm_folder(folder)))
+
+
 def _fix_ctm(ctx: ConversionContext, ctm_dir: Path) -> None:
-    table = load_table("ctm_blocks")
+    table = load_table("ctm_blocks")["blocks"]
     for prop in iter_properties(ctm_dir):
         text = read_properties_text(prop)
         props = parse_properties(text)
         if "method" not in props:
             continue
         folder = prop.parent.relative_to(ctm_dir).as_posix()
-        block = table.get(folder) or table.get(prop.parent.name)
+        block = _lookup_block(table, folder, prop.parent.name)
         match_key = "matchBlocks" if "matchBlocks" in props else (
             "matchTiles" if "matchTiles" in props else None)
 

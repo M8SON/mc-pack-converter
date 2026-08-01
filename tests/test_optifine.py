@@ -125,3 +125,90 @@ def test_sky_replace_with_opaque_nonblack_stays_replace(mini_pack):
     ctx = ConversionContext(root=root)
     optifine_translate(ctx)
     assert "blend=replace" in (sky / "sky3.properties").read_text()
+
+
+def _ctm_pack(base, folder, body=b"method=ctm\ntiles=0-47\n"):
+    """A minimal pack with one CTM folder, built under its own directory.
+
+    Takes a base dir rather than the mini_pack fixture: these tests build one
+    pack per case in a loop, and the fixture reuses a single path.
+    """
+    root = base
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "pack.mcmeta").write_text('{"pack":{"pack_format":1,"description":"t"}}')
+    d = root / "assets/minecraft/optifine/ctm" / folder
+    d.mkdir(parents=True)
+    (d / "x.properties").write_bytes(body)
+    return root, d / "x.properties"
+
+
+def test_ctm_folder_name_is_matched_after_normalising(tmp_path):
+    """Pack authors spell the same folder every which way.
+
+    The corpus produced 'glass gray', 'glass_gray', 'glass/Grey Glass' and
+    'Glass/Light Grey Glass' for what is one block. All must resolve.
+    """
+    for i, folder in enumerate(("glass gray", "glass_gray", "glass/Grey Glass",
+                                "Glass/Grey Glass")):
+        root, prop = _ctm_pack(tmp_path / f"p{i}", folder)
+        ctx = ConversionContext(root=root)
+        optifine_translate(ctx)
+        txt = prop.read_text()
+        assert "matchBlocks=minecraft:gray_stained_glass" in txt, folder
+        assert not any("no matchBlocks mapping" in f.message
+                       for f in ctx.findings), folder
+
+
+def test_ctm_families_resolve(tmp_path):
+    cases = {
+        "ore/ore_coal": "minecraft:coal_ore",
+        "ore diamond": "minecraft:diamond_ore",
+        "planks/planks_oak": "minecraft:oak_planks",
+        "wood spruce ends": "minecraft:spruce_log",
+        "wood_ends/wood_birch": "minecraft:birch_log",
+        "hardened_clay/stained/hardened_clay_black": "minecraft:black_terracotta",
+        "crafting table": "minecraft:crafting_table",
+        "flowers/flower_houstonia": "minecraft:azure_bluet",
+        "monster_spawner": "minecraft:spawner",
+        "fence_wooden/gate": "minecraft:oak_fence_gate",
+    }
+    for i, (folder, want) in enumerate(cases.items()):
+        root, prop = _ctm_pack(tmp_path / f"p{i}", folder)
+        optifine_translate(ConversionContext(root=root))
+        assert want in prop.read_text(), folder
+
+
+def test_deliberately_unmapped_folders_still_warn(tmp_path):
+    """Leaving a folder unmapped must stay visible, not silently pass."""
+    root, prop = _ctm_pack(tmp_path / "p", "default")
+    ctx = ConversionContext(root=root)
+    optifine_translate(ctx)
+    assert any("no matchBlocks mapping" in f.message for f in ctx.findings)
+    assert "matchBlocks" not in prop.read_text()
+
+
+def test_every_shipped_mapping_is_namespaced_and_plausible():
+    from mc_pack_converter.data import load_table
+    t = load_table("ctm_blocks")
+    assert t["blocks"], "table must not be empty"
+    for key, val in t["blocks"].items():
+        assert key == key.lower(), key
+        for block in val.split():
+            assert block.startswith("minecraft:"), (key, block)
+
+
+def test_pre_2026_07_31_keys_still_resolve(tmp_path):
+    """Regression guard: the rewrite to a normalised table dropped two keys.
+
+    glass_clear and glass_pane were mapped by the original 19-entry table and
+    stopped resolving when it was regenerated — 33 corpus hits on glass_clear
+    alone. Any future regeneration must keep them.
+    """
+    for i, (folder, want) in enumerate({
+            "glass_clear": "minecraft:glass",
+            "glass_pane": "minecraft:glass_pane",
+            "sandstone_smooth": "minecraft:cut_sandstone",
+    }.items()):
+        root, prop = _ctm_pack(tmp_path / f"p{i}", folder)
+        optifine_translate(ConversionContext(root=root))
+        assert want in prop.read_text(), folder
