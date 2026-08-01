@@ -136,10 +136,18 @@ def _fix_ctm(ctx: ConversionContext, ctm_dir: Path) -> None:
     arbitrarily, so writing both means the pack's glass renders with whichever
     art won the coin toss.
 
+    Conflicts are only counted ACROSS folders. Several .properties inside one
+    folder are complementary by design — different faces (melon.properties plus
+    melon_top.properties) or different methods (bookshelf with horizontal and
+    random) — and OptiFine applies them together. Treating those as rivals drops
+    legitimate definitions; it accounted for 45 of 176 corpus conflicts.
+
     Rule: an EXPLICIT claim (the file names its own matchBlocks/matchTiles)
     beats an INFERRED one (we supplied it from the folder name). Where only
     inferred claims collide, the first by sorted path wins and the rest are
-    reported — deterministic, and visible in the findings either way.
+    reported — deterministic, and visible in the findings either way. That
+    tiebreak is arbitrary among equals; nothing measurable in the corpus
+    distinguishes the survivors, so it is at least stable and recorded.
     """
     table = load_table("ctm_blocks")["blocks"]
     entries = []
@@ -155,14 +163,14 @@ def _fix_ctm(ctx: ConversionContext, ctm_dir: Path) -> None:
         entries.append((prop, text, props, folder, block, match_key))
 
     # what each file will end up claiming, and whether it said so itself
-    explicit: set[str] = set()
-    for _, _, props, _, block, match_key in entries:
+    explicit: dict[str, str] = {}          # block -> folder that named it
+    for _, _, props, folder, block, match_key in entries:
         if match_key is None:
             continue
         value = props[match_key]
         claimed = block if _NUMERIC_VALUE_RE.match(value) else value
-        if claimed:
-            explicit.update(claimed.split())
+        for b in (claimed or "").split():
+            explicit.setdefault(b, folder)
 
     taken_by_inferred: dict[str, str] = {}
 
@@ -172,14 +180,16 @@ def _fix_ctm(ctx: ConversionContext, ctm_dir: Path) -> None:
                 ctx.add("optifine", Severity.WARNING,
                         f"no matchBlocks mapping for ctm folder '{folder}'", str(prop))
                 continue
-            clash = [b for b in block.split() if b in explicit]
+            clash = [b for b in block.split()
+                     if explicit.get(b) not in (None, folder)]
             if clash:
                 ctx.add("optifine", Severity.INFO,
                         f"ctm folder '{folder}' left alone; {' '.join(clash)} "
                         "already claimed by a folder that names it explicitly",
                         str(prop))
                 continue
-            dup = [b for b in block.split() if b in taken_by_inferred]
+            dup = [b for b in block.split()
+                   if taken_by_inferred.get(b) not in (None, folder)]
             if dup:
                 ctx.add("optifine", Severity.WARNING,
                         f"ctm folder '{folder}' left alone; {' '.join(dup)} already "

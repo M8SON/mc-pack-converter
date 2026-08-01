@@ -523,6 +523,44 @@ spread between neighbouring packs.
 
 ---
 
+## 10. CTM claim conflicts, and what the tiebreak can and cannot decide
+
+**Status:** scoped correctly 2026-08-01 · the cross-folder tiebreak remains
+arbitrary **by admission**, not by oversight.
+
+Expanding the CTM table made previously-unmapped folders start claiming blocks
+another folder already owned. `_fix_ctm` resolves that in two passes: an
+EXPLICIT claim (the file names its own `matchBlocks`/`matchTiles`) beats an
+INFERRED one, and where only inferred claims collide the first by sorted path
+wins. Both outcomes are reported.
+
+**Conflicts are counted only ACROSS folders.** Several `.properties` inside one
+folder are complementary by design — different faces (`melon.properties` plus
+`melon_top.properties`), different methods (`bookshelf` with `horizontal` and
+`random`) — and OptiFine applies them together. The first version of this
+resolver treated them as rivals and dropped all but one, which broke CTM for
+those blocks: **45 of 176 corpus conflicts** were that shape.
+
+**The remaining 131 are genuine, and nothing measurable separates them.** Tile
+counts and methods were pulled for the real conflict pairs looking for a
+completeness signal:
+
+| kept | dropped |
+|---|---|
+| `vine` — 4 tiles, vertical | `vines` — 4 tiles, vertical |
+| `wood birch ends` — 48, ctm | `wood birch ends` — 48, ctm |
+| `grass top` — 6, random | `grass_top` — 16, repeat |
+
+Mostly identical, and where they differ neither is obviously the author's
+intent. "More tiles wins" would be a different arbitrary rule wearing a
+principle's clothes. First-by-sorted-path is therefore kept: deterministic,
+stable across runs, and named in the findings so the loser is never silent.
+
+If this is revisited, the signal to look for is which folder the pack's own
+`.properties` files cross-reference — not which looks more complete.
+
+---
+
 ## Not defects
 
 - **`entity/sweep.png`** — absent from the M8SON pack (1.9+ texture). Porting the
