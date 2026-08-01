@@ -49,7 +49,13 @@ def legacy_textures(ctx: ConversionContext) -> None:
         for i in range(h // w):
             img.crop((0, i * w, w, (i + 1) * w)).save(p.with_name(f"{name}_{i:02d}.png"))
             frames += 1
-        p.unlink()
+        # Keep the strip itself. Modern vanilla ships no item/compass.png or
+        # item/clock.png — only the numbered frames — so it is dead weight to
+        # vanilla, but a pack that ships its own compass/clock MODEL references
+        # 'items/compass', and deleting the file left that reference dangling
+        # as a missing-texture placeholder. Its .mcmeta must go, though: it
+        # describes an animation the split frames now express, and a stale
+        # .mcmeta on a still image is itself a defect.
         meta = p.with_name(p.name + ".mcmeta")
         if meta.exists():
             meta.unlink()

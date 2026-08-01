@@ -26,6 +26,58 @@ _VALID_ESCAPES = '"\\/bfnrtu'
 _CONTROL_MAP = {"\n": "\\n", "\r": "\\r", "\t": "\\t"}
 
 
+def strip_comments(text: str) -> str:
+    """Remove // and /* */ comments that sit OUTSIDE string literals.
+
+    Minecraft's parser tolerates them and pack authors use them — one corpus
+    model annotates its cube elements with `// The inner block`. String
+    awareness is essential rather than pedantic: the same file carries
+    `http://www.planetminecraft.com/...` inside a string, which a naive
+    stripper would truncate.
+    """
+    out: list[str] = []
+    i, n = 0, len(text)
+    in_string = False
+    while i < n:
+        ch = text[i]
+        if in_string:
+            out.append(ch)
+            if ch == "\\" and i + 1 < n:
+                out.append(text[i + 1]); i += 2; continue
+            if ch == '"':
+                in_string = False
+            i += 1
+            continue
+        if ch == '"':
+            in_string = True; out.append(ch); i += 1; continue
+        if ch == "/" and i + 1 < n:
+            if text[i + 1] == "/":
+                while i < n and text[i] != "\n":
+                    i += 1
+                continue
+            if text[i + 1] == "*":
+                end = text.find("*/", i + 2)
+                i = n if end == -1 else end + 2
+                continue
+        out.append(ch); i += 1
+    return "".join(out)
+
+
+def loads_lenient(text: str) -> dict:
+    """Parse JSON the way Minecraft does: comments and sloppy strings allowed.
+
+    Strict first, so a well-formed file costs nothing.
+    """
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    try:
+        return json.loads(strip_comments(text))
+    except json.JSONDecodeError:
+        return json.loads(sanitize(strip_comments(text)))
+
+
 def sanitize(text: str) -> str:
     """Repair GSON-tolerated malformations inside string literals."""
     out: list[str] = []
@@ -65,8 +117,4 @@ def read_mcmeta(path: Path) -> dict:
     Raises json.JSONDecodeError if the file is structurally broken — leniency
     covers known in-the-wild sloppiness, not arbitrary garbage.
     """
-    text = path.read_text(encoding="utf-8-sig")   # utf-8-sig strips a BOM
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        return json.loads(sanitize(text))
+    return loads_lenient(path.read_text(encoding="utf-8-sig"))  # utf-8-sig drops a BOM
