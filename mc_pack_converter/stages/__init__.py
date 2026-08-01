@@ -2,6 +2,7 @@ from . import ingest as _ingest
 from . import clean as _clean
 from . import restructure as _restructure
 from . import flatten_rename as _flatten_rename
+from . import model_refs as _model_refs
 from . import atlas_remap as _atlas_remap
 from . import chest as _chest
 from . import gui_remap as _gui_remap
@@ -17,7 +18,8 @@ from . import validate as _validate
 
 STAGES = [
     ("ingest", _ingest.ingest), ("clean", _clean.clean), ("restructure", _restructure.restructure),
-    ("flatten_rename", _flatten_rename.flatten_rename), ("atlas_remap", _atlas_remap.atlas_remap),
+    ("flatten_rename", _flatten_rename.flatten_rename),
+    ("model_refs", _model_refs.model_refs), ("atlas_remap", _atlas_remap.atlas_remap),
     ("chest", _chest.chest_remap), ("gui_remap", _gui_remap.gui_remap),
     ("legacy", _legacy_textures.legacy_textures), ("drop", _drop.drop_textures),
     ("optifine", _optifine.optifine_translate), ("slice", _slice.slice_atlases),

@@ -78,3 +78,36 @@ def test_genuinely_broken_file_still_raises(tmp_path):
     p = _write(tmp_path, '{"pack": {"pack_format": ')
     with pytest.raises(json.JSONDecodeError):
         read_mcmeta(p)
+
+
+# --- lenient JSON shared with model files -----------------------------------
+
+def test_strip_comments_removes_line_comments(tmp_path):
+    from mc_pack_converter.mcmeta import loads_lenient
+    d = loads_lenient('{"a": 1, // trailing note\n "b": 2}')
+    assert d == {"a": 1, "b": 2}
+
+
+def test_strip_comments_removes_block_comments(tmp_path):
+    from mc_pack_converter.mcmeta import loads_lenient
+    assert loads_lenient('{"a": /* mid */ 1}') == {"a": 1}
+
+
+def test_a_url_inside_a_string_survives(tmp_path):
+    """'//' inside a string is not a comment.
+
+    A real corpus model carries http://www.planetminecraft.com/... in its
+    __comment field, next to genuine // comments elsewhere in the file.
+    """
+    from mc_pack_converter.mcmeta import loads_lenient
+    d = loads_lenient('{"c": "see http://example.com/x", "a": 1 // note\n}')
+    assert d["c"] == "see http://example.com/x"
+    assert d["a"] == 1
+
+
+def test_lenient_json_still_rejects_real_breakage(tmp_path):
+    import json
+    import pytest as _pytest
+    from mc_pack_converter.mcmeta import loads_lenient
+    with _pytest.raises(json.JSONDecodeError):
+        loads_lenient('{"a": ')

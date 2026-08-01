@@ -24,7 +24,10 @@ def test_compass_strip_split_into_frames(mini_pack):
     assert (it / "compass_00.png").exists()
     assert (it / "compass_31.png").exists()
     assert Image.open(it / "compass_00.png").size == (16, 16)
-    assert not (it / "compass.png").exists()              # strip removed
+    # The strip is KEPT as of 2026-08-01: modern vanilla ships no
+    # item/compass.png, but a pack with its own compass model references
+    # 'items/compass', and removing it left that dangling as a missing texture.
+    assert (it / "compass.png").exists()
     assert not (it / "compass.png.mcmeta").exists()       # mcmeta removed
 
 
@@ -46,3 +49,22 @@ def test_non_strip_item_untouched(mini_pack):
     legacy_textures(ConversionContext(root=root))
     assert (it / "compass.png").exists()          # left alone
     assert not (it / "compass_00.png").exists()
+
+
+def test_compass_strip_is_kept_for_custom_models(mini_pack):
+    """A pack shipping its own compass model references 'items/compass'.
+
+    Deleting the strip after splitting left that reference dangling as a
+    missing-texture placeholder. Modern vanilla ships no item/compass.png, so
+    keeping it costs nothing and cannot shadow anything.
+    """
+    root = mini_pack()
+    p = root / "assets/minecraft/textures/item/compass.png"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    Image.new("RGBA", (16, 64), (10, 20, 30, 255)).save(p)
+    p.with_name("compass.png.mcmeta").write_text('{"animation":{}}')
+    legacy_textures(ConversionContext(root=root))
+    assert p.exists(), "the strip must survive for custom models"
+    assert (p.parent / "compass_00.png").exists()
+    assert (p.parent / "compass_03.png").exists()
+    assert not p.with_name("compass.png.mcmeta").exists(), "stale animation meta must go"

@@ -592,6 +592,54 @@ blank. Now guarded, with a test.
 
 ---
 
+## 12. Custom models pointed at texture paths the converter had moved
+
+**Status:** FIXED 2026-08-01 — new `stages/model_refs.py`, run right after
+`flatten_rename`.
+**Found by:** in-game testing of `7[9bluefault7]`, reported as "severely messed
+up, lots of purple and black null textures".
+**Severity:** total for an affected pack, and it reported **zero warnings**.
+
+A 1.8.9 pack's models reference textures as `blocks/anvil_base` and
+`items/apple`. Two stages move those files — `restructure` renames
+`textures/blocks` → `textures/block` and `textures/items` → `textures/item`,
+then `flatten_rename` applies 376 renames on top — and nothing updated the
+references inside the models. Every block and item with a custom model drew the
+missing-texture placeholder.
+
+`7[9bluefault7]` ships **1595 models**, and **all 578 texture paths they
+referenced were missing** from the output. After the fix: **0**.
+
+Only 4 of 170 in-scope packs ship models with legacy paths — most ship none,
+which is why neither the proving-ground pack nor the first eight tested showed
+it — but for those 4 the pack is unusable. 3697 model files are rewritten
+across them.
+
+Only the values in a model's `textures` map are rewritten. `parent` names
+another MODEL, and the model folder layout did not change between 1.8.9 and
+modern, so rewriting it would break working references.
+
+### Two smaller bugs surfaced by fixing it
+
+**The compass/clock strip was deleted after splitting.** `legacy_textures`
+splits `compass.png` into `compass_00..31` and removed the original, leaving a
+pack's own compass model referencing `items/compass` dangling. Modern vanilla
+ships no `item/compass.png` at all — only numbered frames — so keeping it
+cannot shadow anything and costs ~2KB. Its `.mcmeta` is still removed: the
+split frames express that animation now, and a stale animation `.mcmeta` on a
+still image is itself a defect.
+
+**Model JSON was parsed more strictly than Minecraft parses it.** One corpus
+model annotates its elements with `// The inner block`. Minecraft tolerates
+comments; `json.loads` does not, so that model was skipped and *its* references
+left broken — the §6 `pack.mcmeta` leniency problem, in a stage written after
+that lesson. `mcmeta.loads_lenient` now serves both, stripping `//` and `/* */`
+**outside string literals only**: the same file carries
+`http://www.planetminecraft.com/...` inside a string, which a naive stripper
+would truncate.
+
+---
+
 ## Not defects
 
 - **`entity/sweep.png`** — absent from the M8SON pack (1.9+ texture). Porting the
