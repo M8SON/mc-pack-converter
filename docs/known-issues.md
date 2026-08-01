@@ -465,6 +465,48 @@ not just how they appear.
 
 ---
 
+## 9. Five drop entries are pack-specific, and stay that way deliberately
+
+**Status:** decided 2026-08-01 · not a defect · **do not "fix" this by adding
+auto-detection without reading the history below.**
+
+`data/drop_list.json` drops `enchanting_table.png` and the four
+`creative_inventory` tabs because in the proving-ground pack they are
+unusable — 1.7-era enchanting art (one item slot where 1.8.9 has two), and
+unfinished dev placeholders (~6–8% opaque). Those are judgements about *that
+pack*, not facts about 1.8.9. A different pack with good art loses five
+textures for no reason.
+
+**Six attempts were made to decide this automatically. All failed**, measured
+against a 173-pack corpus with hand-labelled ground truth:
+
+| attempt | measure | why it failed |
+|---|---|---|
+| 1 | slot border-vs-interior contrast | boundary at 11.2 vs 11.3 — coincidence, not signal |
+| 2 | edge-density ratio slot2/slot1 | a two-slot pack scored 1.00, same as one-slot |
+| 3 | slot-2 edge density | margin of 0.01 across 20 packs |
+| 4 | absolute ink in slot 2 | same overlap |
+| 5 | fraction differing from panel colour | textured panels score 1.00 regardless |
+| 6 | correlation against vanilla 1.8.9's edge template | best yet — 19/20 held-out, 0.66 vs 0.21 on fit — but drops packs that draw one *merged* box across both slots, which is legitimate art; held-out margin collapsed to 0.01 |
+
+The root cause is consistent: pack authors restyle these GUIs completely, so
+"differs from vanilla" carries no information about being structurally wrong.
+The signal a human uses is shape recognition; attempts 1–5 discarded shape
+entirely, and attempt 6 recognised only one of several valid container shapes.
+
+**The decision.** Always dropping is deterministic, correct for the proving-
+ground pack, and costs another pack five textures out of thousands while still
+converting successfully. That is cheaper than a detector whose failure mode is
+silently discarding good art. The list stays hand-maintained and editable —
+removing an entry keeps the texture.
+
+If this is revisited, the next principled step is a multi-template match (slot
+box, merged box, no container) validated against ~60 hand labels **before**
+being wired in. Do not ship a threshold whose margin is smaller than the
+spread between neighbouring packs.
+
+---
+
 ## Not defects
 
 - **`entity/sweep.png`** — absent from the M8SON pack (1.9+ texture). Porting the
