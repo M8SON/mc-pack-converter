@@ -59,6 +59,15 @@ def gui_remap(ctx: ConversionContext) -> None:
             piece = img.crop(box)
             img.paste(_sample_bg(img, box), box)   # heal old spot with local background
             img.paste(piece, (round(tx * sw), round(ty * sh)))
+        # A copy duplicates a region instead of relocating it: modern added a
+        # slot where 1.8.9 has bare panel, and the pack's own slot art is the
+        # only honest thing to put there. The source is left intact.
+        for cp in spec.get("copies", []):
+            fx, fy, fw, fh = cp["from"]
+            tx, ty = cp["to"]
+            piece = img.crop((round(fx * sw), round(fy * sh),
+                              round((fx + fw) * sw), round((fy + fh) * sh)))
+            img.paste(piece, (round(tx * sw), round(ty * sh)))
         img.save(p)
         count += 1
     ctx.add("gui_remap", Severity.INFO, f"remapped {count} gui textures (custom art preserved)")

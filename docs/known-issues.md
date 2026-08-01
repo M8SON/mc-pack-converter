@@ -715,6 +715,37 @@ one fires on its historical bug.
 
 ---
 
+## 14. The brewing stand's potion slots sat 5px high on every pack
+
+**Status:** FIXED 2026-08-01 — `data/gui_remap.json`.
+**Found by:** in-game testing — "the brewing potion boxes are slightly off on
+every pack". It produced no warning, and affected every converted pack.
+
+1.9 redesigned brewing. Two changes, both measured against the vanilla mirror
+rather than estimated:
+
+- **The three potion slots moved down 5px.** Cross-correlating the slot cluster
+  between vanilla 1.8.9 and modern gives a best match at `(0,+5)`, with SAD
+  falling from 196,608 to 32,226. The ingredient slot above them did **not**
+  move — the same measurement puts it at `(0,0)`.
+- **A blaze-powder fuel slot was added at `(16,16)`**, where 1.8.9 has bare
+  panel. Modern draws a functional slot there with nothing behind it.
+
+The shift is a `move`. The fuel slot needed a new `copies` op: unlike a move it
+duplicates a region instead of relocating it, taking the pack's own empty
+ingredient slot at `(78,16)`. That keeps the box in the pack's style rather
+than inventing one, and leaves the source intact.
+
+The fuel gauge between them stays vanilla — its 1.8.9 source region is empty,
+so §1's guard already leaves it alone.
+
+**Why it went unnoticed for so long:** it is a 5px offset on a screen most PVP
+players rarely open, it produces no warning, and the converter has no way to
+know a slot has moved. Only someone opening a brewing stand and looking would
+ever catch it — which is the same lesson as §12 and §13.
+
+---
+
 ## Not defects
 
 - **`entity/sweep.png`** — absent from the M8SON pack (1.9+ texture). Porting the
