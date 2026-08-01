@@ -427,6 +427,44 @@ than silently passing.
 
 ---
 
+## 8. Packs shipping both filenames lost their animated textures
+
+**Status:** FIXED 2026-07-31 — `flatten_rename` now prefers the source-era name.
+**Found by:** in-game testing of a random corpus pack (`4OTF EUM3`): its fire
+rendered as one stretched still image.
+
+Some packs ship a texture under **both** its 1.8.9 and its modern name. The
+stage renamed old → new, saw the target already present, and skipped — keeping
+the modern-named file. That is backwards for a `pack_format: 1` pack: 1.8.9
+renders the **1.8.9** name, so that is the file the author saw and maintained,
+and the modern-named one is inert there — a leftover from a newer edit.
+
+It also silently broke animation, which is what made it visible:
+
+| `4OTF EUM3` ships | size | animation `.mcmeta` |
+|---|---|---|
+| `blocks/fire_layer_0.png` (1.8.9) | 32×1024, 32 frames | **yes** |
+| `blocks/fire_0.png` (modern) | 128×2048 | **no** |
+
+The `.mcmeta` sits beside the *old* name, so keeping the modern file left it
+with no animation data and Minecraft drew the whole strip as a single texture.
+`_move` now replaces the target and clears any stale `.mcmeta` on it first, so
+metadata cannot outlive its texture.
+
+Scale: the corpus warned on this **44 times across 22 packs for fire alone**,
+plus `dispenser_front_horizontal`, `furnace_front_off`, `piston_top_normal`,
+`rail_normal`, `repeater_off`, `torch_on` and others in ~9 packs each.
+
+**The mistake worth remembering.** This exact warning class was audited earlier
+the same day and written off as benign, on the grounds that both files were "the
+pack's own art in the same style, near-identical." That compared how the two
+files *looked*. It never asked which one the source version actually renders, and
+never looked at the `.mcmeta` at all — so an animation bug hid behind a
+similarity check. When two candidates disagree, compare what depends on them,
+not just how they appear.
+
+---
+
 ## Not defects
 
 - **`entity/sweep.png`** — absent from the M8SON pack (1.9+ texture). Porting the
