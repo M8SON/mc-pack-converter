@@ -103,14 +103,27 @@ def _norm_folder(name: str) -> str:
     return " ".join(name.lower().split())
 
 
-def _lookup_block(table: dict, folder: str, leaf: str) -> str | None:
-    """Last path component first, then the whole relative path.
+def _lookup_block(table: dict, folder: str, leaf: str,
+                  prop_name: str | None = None) -> str | None:
+    """Folder name first, then the properties filename.
 
-    The leaf is the more specific signal ('hardened_clay_black' under
-    'hardened_clay/stained/'), so it wins when both are present.
+    Folder order: the last path component before the whole relative path, since
+    the leaf is the more specific signal ('hardened_clay_black' under
+    'hardened_clay/stained/').
+
+    The properties FILENAME is the last resort, and it is a real signal rather
+    than a guess: old MCPatcher inferred the target from that filename when a
+    file carried no matchBlocks, so terrain.png-era packs name them after the
+    texture. 'cloth_15.properties' means black wool, and one folder often holds
+    several colours ('wools-b-w' is black-through-white), which is exactly the
+    case a folder-name lookup cannot resolve.
+
+    Tried last so it can only ADD resolutions, never change one the folder name
+    already made.
     """
     return (table.get(_norm_folder(leaf))
-            or table.get(_norm_folder(folder)))
+            or table.get(_norm_folder(folder))
+            or (table.get(_norm_folder(prop_name)) if prop_name else None))
 
 
 def _fix_ctm(ctx: ConversionContext, ctm_dir: Path) -> None:
@@ -136,7 +149,7 @@ def _fix_ctm(ctx: ConversionContext, ctm_dir: Path) -> None:
         if "method" not in props:
             continue
         folder = prop.parent.relative_to(ctm_dir).as_posix()
-        block = _lookup_block(table, folder, prop.parent.name)
+        block = _lookup_block(table, folder, prop.parent.name, prop.stem)
         match_key = ("matchBlocks" if "matchBlocks" in props else
                      "matchTiles" if "matchTiles" in props else None)
         entries.append((prop, text, props, folder, block, match_key))

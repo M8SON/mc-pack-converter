@@ -269,3 +269,40 @@ def test_non_conflicting_folders_are_all_written(tmp_path):
     optifine_translate(ConversionContext(root=root))
     for name, p in props.items():
         assert "matchBlocks" in p.read_text(), name
+
+
+def test_properties_filename_resolves_when_the_folder_cannot(tmp_path):
+    """terrain.png-era packs put several wool colours in one folder.
+
+    'wools-b-w' holds black through white, so the folder name identifies no
+    single block — but the properties FILENAME does. Old MCPatcher inferred the
+    target from exactly that filename when a file carried no matchBlocks, so
+    this restores behaviour the pack really had rather than inventing one.
+    """
+    base = tmp_path / "p"
+    base.mkdir(parents=True)
+    (base / "pack.mcmeta").write_text('{"pack":{"pack_format":1,"description":"t"}}')
+    d = base / "assets/minecraft/optifine/ctm/wools-b-w"
+    d.mkdir(parents=True)
+    for name, want in (("cloth_0", "minecraft:white_wool"),
+                       ("cloth_15", "minecraft:black_wool")):
+        (d / f"{name}.properties").write_bytes(b"method=ctm\ntiles=0-11\n")
+    ctx = ConversionContext(root=base)
+    optifine_translate(ctx)
+    assert "matchBlocks=minecraft:white_wool" in (d / "cloth_0.properties").read_text()
+    assert "matchBlocks=minecraft:black_wool" in (d / "cloth_15.properties").read_text()
+
+
+def test_folder_name_still_wins_over_the_filename(tmp_path):
+    """The filename is a last resort — it must not override a folder match.
+
+    Otherwise adding it could change resolutions that already worked.
+    """
+    base = tmp_path / "p"
+    base.mkdir(parents=True)
+    (base / "pack.mcmeta").write_text('{"pack":{"pack_format":1,"description":"t"}}')
+    d = base / "assets/minecraft/optifine/ctm/bookshelf"
+    d.mkdir(parents=True)
+    (d / "cloth_0.properties").write_bytes(b"method=ctm\ntiles=0-11\n")
+    optifine_translate(ConversionContext(root=base))
+    assert "matchBlocks=minecraft:bookshelf" in (d / "cloth_0.properties").read_text()
