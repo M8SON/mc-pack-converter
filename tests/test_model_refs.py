@@ -110,3 +110,69 @@ def test_reports_how_many_it_rewrote(mini_pack):
     _model(root, "models/block/b.json", {"all": "block/stone"})   # already fine
     ctx = _run(root, table={})
     assert any("rewrote 1" in f.message for f in ctx.findings)
+
+
+# --- blockstates -------------------------------------------------------------
+
+def _blockstate(root, rel, data):
+    p = root / "assets/minecraft/blockstates" / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(data))
+    return p
+
+
+def test_bare_blockstate_model_ref_gets_the_block_prefix(mini_pack):
+    """1.8.9 resolved blockstate model names relative to models/block/.
+
+    Modern needs the full path, so a bare 'oak_stairs' makes it look for
+    models/oak_stairs.json, find nothing, and draw the missing model — a
+    magenta cube. 2596 refs in one corpus pack were in this state.
+    """
+    root = mini_pack()
+    p = _blockstate(root, "oak_stairs.json", {"variants": {
+        "facing=east": {"model": "oak_stairs"},
+        "facing=west": {"model": "oak_stairs", "y": 180, "uvlock": True},
+    }})
+    _run(root, table={})
+    v = json.loads(p.read_text())["variants"]
+    assert v["facing=east"]["model"] == "block/oak_stairs"
+    assert v["facing=west"]["model"] == "block/oak_stairs"
+    assert v["facing=west"]["y"] == 180, "other keys must survive"
+
+
+def test_blockstate_variant_lists_are_handled(mini_pack):
+    root = mini_pack()
+    p = _blockstate(root, "x.json", {"variants": {
+        "normal": [{"model": "stone_a"}, {"model": "stone_b", "weight": 2}]}})
+    _run(root, table={})
+    got = [e["model"] for e in json.loads(p.read_text())["variants"]["normal"]]
+    assert got == ["block/stone_a", "block/stone_b"]
+
+
+def test_blockstate_multipart_is_handled(mini_pack):
+    root = mini_pack()
+    p = _blockstate(root, "fence.json", {"multipart": [
+        {"apply": {"model": "fence_post"}},
+        {"when": {"north": "true"}, "apply": [{"model": "fence_side"}]}]})
+    _run(root, table={})
+    d = json.loads(p.read_text())
+    assert d["multipart"][0]["apply"]["model"] == "block/fence_post"
+    assert d["multipart"][1]["apply"][0]["model"] == "block/fence_side"
+
+
+def test_already_qualified_blockstate_ref_is_untouched(mini_pack):
+    root = mini_pack()
+    p = _blockstate(root, "x.json", {"variants": {
+        "a": {"model": "block/stone"},
+        "b": {"model": "minecraft:block/dirt"}}})
+    _run(root, table={})
+    v = json.loads(p.read_text())["variants"]
+    assert v["a"]["model"] == "block/stone"
+    assert v["b"]["model"] == "minecraft:block/dirt"
+
+
+def test_namespaced_bare_blockstate_ref(mini_pack):
+    root = mini_pack()
+    p = _blockstate(root, "x.json", {"variants": {"a": {"model": "minecraft:stone"}}})
+    _run(root, table={})
+    assert json.loads(p.read_text())["variants"]["a"]["model"] == "minecraft:block/stone"
