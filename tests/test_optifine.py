@@ -306,3 +306,43 @@ def test_folder_name_still_wins_over_the_filename(tmp_path):
     (d / "cloth_0.properties").write_bytes(b"method=ctm\ntiles=0-11\n")
     optifine_translate(ConversionContext(root=base))
     assert "matchBlocks=minecraft:bookshelf" in (d / "cloth_0.properties").read_text()
+
+
+def test_several_properties_in_one_folder_all_get_matchblocks(tmp_path):
+    """Files in the SAME folder are complementary, not competing.
+
+    OptiFine supports several .properties per block — different faces
+    (melon.properties + melon_top.properties) or different methods (bookshelf
+    with horizontal and random). 45 of 176 corpus conflicts were this shape,
+    and the claim-conflict resolver was dropping all but one of them.
+    """
+    base = tmp_path / "p"
+    base.mkdir(parents=True)
+    (base / "pack.mcmeta").write_text('{"pack":{"pack_format":1,"description":"t"}}')
+    d = base / "assets/minecraft/optifine/ctm/melon"
+    d.mkdir(parents=True)
+    (d / "melon.properties").write_bytes(b"method=ctm\ntiles=0-47\n")
+    (d / "melon_top.properties").write_bytes(b"method=random\ntiles=0-3\n")
+    ctx = ConversionContext(root=base)
+    optifine_translate(ctx)
+    for f in ("melon.properties", "melon_top.properties"):
+        assert "matchBlocks=minecraft:melon" in (d / f).read_text(), f
+    assert not any("already claimed by" in f.message for f in ctx.findings)
+
+
+def test_cross_folder_conflict_is_still_resolved(tmp_path):
+    """Two different folders claiming one block is the real conflict."""
+    base = tmp_path / "p"
+    base.mkdir(parents=True)
+    (base / "pack.mcmeta").write_text('{"pack":{"pack_format":1,"description":"t"}}')
+    a = base / "assets/minecraft/optifine/ctm/glass_gray"
+    b = base / "assets/minecraft/optifine/ctm/glass_stained/glass_gray"
+    a.mkdir(parents=True); b.mkdir(parents=True)
+    (a / "x.properties").write_bytes(b"method=ctm\ntiles=0-46\n")
+    (b / "x.properties").write_bytes(b"method=ctm\ntiles=0-47\n")
+    ctx = ConversionContext(root=base)
+    optifine_translate(ctx)
+    wrote = [p for p in (a / "x.properties", b / "x.properties")
+             if "matchBlocks" in p.read_text()]
+    assert len(wrote) == 1, "exactly one folder may claim the block"
+    assert any("already claimed by" in f.message for f in ctx.findings)
