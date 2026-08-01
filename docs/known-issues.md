@@ -619,6 +619,33 @@ Only the values in a model's `textures` map are rewritten. `parent` names
 another MODEL, and the model folder layout did not change between 1.8.9 and
 modern, so rewriting it would break working references.
 
+### Blockstates were the other half, and the visible one
+
+Fixing the models was not enough, and the second report — a screenshot of
+magenta-and-**white** blocks — is what showed why. A missing *texture* gives the
+magenta/black checkerboard; a missing *model* gives an untextured cube. The
+colours said models were still not resolving.
+
+1.8.9 resolved a blockstate's `model` relative to `models/block/`, so
+`"model": "oak_stairs"` meant `models/block/oak_stairs.json`. Modern requires
+the full path. A bare name therefore sends modern looking in `models/`, where
+nothing lives. `7[9bluefault7]` had **2596 such references**; qualifying them
+with `block/` resolves every one, because a pack's blockstates reference the
+pack's own models.
+
+**Only 1 of 170 in-scope packs ships blockstates** — this one — and only 6 ship
+models at all. That is why 164 texture-only packs convert perfectly: they let
+Minecraft keep its own structure and merely swap the images. A 3D pack replaces
+the structure, and the structure is what carried stale paths.
+
+**A verification lesson.** After the model fix this was reported as "0 of 578
+references missing", which was true and insufficient: it checked that each
+reference *resolved to a file that exists*, not that anything *pointed at the
+models*. Re-checked properly afterwards, the model references were also
+semantically correct — 3 of 2246 differ, all `water_still`, which is
+deliberately greyscaled. The claim was right; the evidence offered for it was
+weaker than the claim.
+
 ### Two smaller bugs surfaced by fixing it
 
 **The compass/clock strip was deleted after splitting.** `legacy_textures`
