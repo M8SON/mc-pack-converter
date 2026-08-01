@@ -114,23 +114,67 @@ def _lookup_block(table: dict, folder: str, leaf: str) -> str | None:
 
 
 def _fix_ctm(ctx: ConversionContext, ctm_dir: Path) -> None:
+    """Give every CTM folder a matchBlocks= line, without double-claiming a block.
+
+    Two passes, because a folder cannot be judged alone. Packs commonly ship
+    more than one folder aiming at the same block — a dormant `glass_gray`
+    alongside the real `glass_stained/glass_gray`, or `glass` alongside
+    `glass_clear`. Old MCPatcher tolerated that; modern OptiFine picks one
+    arbitrarily, so writing both means the pack's glass renders with whichever
+    art won the coin toss.
+
+    Rule: an EXPLICIT claim (the file names its own matchBlocks/matchTiles)
+    beats an INFERRED one (we supplied it from the folder name). Where only
+    inferred claims collide, the first by sorted path wins and the rest are
+    reported — deterministic, and visible in the findings either way.
+    """
     table = load_table("ctm_blocks")["blocks"]
-    for prop in iter_properties(ctm_dir):
+    entries = []
+    for prop in sorted(iter_properties(ctm_dir)):
         text = read_properties_text(prop)
         props = parse_properties(text)
         if "method" not in props:
             continue
         folder = prop.parent.relative_to(ctm_dir).as_posix()
         block = _lookup_block(table, folder, prop.parent.name)
-        match_key = "matchBlocks" if "matchBlocks" in props else (
-            "matchTiles" if "matchTiles" in props else None)
+        match_key = ("matchBlocks" if "matchBlocks" in props else
+                     "matchTiles" if "matchTiles" in props else None)
+        entries.append((prop, text, props, folder, block, match_key))
 
+    # what each file will end up claiming, and whether it said so itself
+    explicit: set[str] = set()
+    for _, _, props, _, block, match_key in entries:
+        if match_key is None:
+            continue
+        value = props[match_key]
+        claimed = block if _NUMERIC_VALUE_RE.match(value) else value
+        if claimed:
+            explicit.update(claimed.split())
+
+    taken_by_inferred: dict[str, str] = {}
+
+    for prop, text, props, folder, block, match_key in entries:
         if match_key is None:
             if not block:
                 ctx.add("optifine", Severity.WARNING,
                         f"no matchBlocks mapping for ctm folder '{folder}'", str(prop))
                 continue
+            clash = [b for b in block.split() if b in explicit]
+            if clash:
+                ctx.add("optifine", Severity.INFO,
+                        f"ctm folder '{folder}' left alone; {' '.join(clash)} "
+                        "already claimed by a folder that names it explicitly",
+                        str(prop))
+                continue
+            dup = [b for b in block.split() if b in taken_by_inferred]
+            if dup:
+                ctx.add("optifine", Severity.WARNING,
+                        f"ctm folder '{folder}' left alone; {' '.join(dup)} already "
+                        f"claimed by '{taken_by_inferred[dup[0]]}'", str(prop))
+                continue
             prop.write_text(text.rstrip() + f"\nmatchBlocks={block}\n")
+            for b in block.split():
+                taken_by_inferred[b] = folder
             ctx.add("optifine", Severity.INFO, f"ctm matchBlocks={block}", str(prop))
             continue
 
@@ -144,10 +188,10 @@ def _fix_ctm(ctx: ConversionContext, ctm_dir: Path) -> None:
                     "has no modern mapping; left unchanged", str(prop))
             continue
 
-        new_text = _replace_match_line(text, match_key, block)
-        prop.write_text(new_text)
+        prop.write_text(_replace_match_line(text, match_key, block))
         ctx.add("optifine", Severity.INFO,
                 f"ctm {match_key} translated from legacy numeric ids to {block}", str(prop))
+
 
 def optifine_translate(ctx: ConversionContext) -> None:
     of = ctx.root / "assets" / "minecraft" / "optifine"
