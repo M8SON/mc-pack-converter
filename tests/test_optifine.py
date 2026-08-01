@@ -212,3 +212,60 @@ def test_pre_2026_07_31_keys_still_resolve(tmp_path):
         root, prop = _ctm_pack(tmp_path / f"p{i}", folder)
         optifine_translate(ConversionContext(root=root))
         assert want in prop.read_text(), folder
+
+
+def _ctm_multi(base, folders):
+    """A pack with several CTM folders; folders maps name -> properties body."""
+    base.mkdir(parents=True, exist_ok=True)
+    (base / "pack.mcmeta").write_text('{"pack":{"pack_format":1,"description":"t"}}')
+    out = {}
+    for name, body in folders.items():
+        d = base / "assets/minecraft/optifine/ctm" / name
+        d.mkdir(parents=True)
+        (d / "x.properties").write_bytes(body)
+        out[name] = d / "x.properties"
+    return base, out
+
+
+def test_explicit_claim_beats_an_inferred_one(tmp_path):
+    """A dormant folder must not steal a block from the one that names it.
+
+    M8SON ships glass_gray (no matchBlocks — inert in 1.8.9) alongside
+    glass_stained/glass_gray (legacy numeric matchBlocks). Mapping both made
+    two folders claim gray_stained_glass, which OptiFine resolves arbitrarily.
+    """
+    root, props = _ctm_multi(tmp_path / "p", {
+        "glass_gray": b"method=ctm\ntiles=0-46\n",                    # inferred
+        "glass_stained/glass_gray": b"method=ctm\nmatchBlocks=95\ntiles=0-47\n",
+    })
+    ctx = ConversionContext(root=root)
+    optifine_translate(ctx)
+    assert "matchBlocks" not in props["glass_gray"].read_text()
+    assert ("matchBlocks=minecraft:gray_stained_glass"
+            in props["glass_stained/glass_gray"].read_text())
+    assert any("already claimed by a folder that names it explicitly" in f.message
+               for f in ctx.findings)
+
+
+def test_two_inferred_claims_resolve_deterministically(tmp_path):
+    root, props = _ctm_multi(tmp_path / "p", {
+        "glass": b"method=ctm\ntiles=0-47\n",
+        "glass_clear": b"method=ctm\ntiles=0-47\n",
+    })
+    ctx = ConversionContext(root=root)
+    optifine_translate(ctx)
+    written = [n for n, p in props.items() if "matchBlocks" in p.read_text()]
+    assert len(written) == 1, f"exactly one folder may claim glass, got {written}"
+    assert written == ["glass"]            # first by sorted path
+    assert any("already claimed by" in f.message for f in ctx.findings)
+
+
+def test_non_conflicting_folders_are_all_written(tmp_path):
+    root, props = _ctm_multi(tmp_path / "p", {
+        "glass_gray": b"method=ctm\ntiles=0-46\n",
+        "glass_red": b"method=ctm\ntiles=0-46\n",
+        "bookshelf": b"method=ctm\ntiles=0-47\n",
+    })
+    optifine_translate(ConversionContext(root=root))
+    for name, p in props.items():
+        assert "matchBlocks" in p.read_text(), name
