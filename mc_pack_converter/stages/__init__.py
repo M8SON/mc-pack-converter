@@ -1,5 +1,6 @@
 from . import ingest as _ingest
 from . import clean as _clean
+from . import repair_mcmeta as _repair_mcmeta
 from . import lowercase_paths as _lowercase_paths
 from . import restructure as _restructure
 from . import flatten_rename as _flatten_rename
@@ -19,6 +20,7 @@ from . import validate as _validate
 
 STAGES = [
     ("ingest", _ingest.ingest), ("clean", _clean.clean),
+    ("repair_mcmeta", _repair_mcmeta.repair_mcmeta),
     ("lowercase_paths", _lowercase_paths.lowercase_paths),
     ("restructure", _restructure.restructure),
     ("flatten_rename", _flatten_rename.flatten_rename),
