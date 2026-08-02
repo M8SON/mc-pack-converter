@@ -66,3 +66,18 @@ def test_missing_files_are_noop(mini_pack, monkeypatch):
     ctx = ConversionContext(root=root)
     drop_textures(ctx)  # must not raise
     assert any(f.stage == "drop" and f.severity is Severity.INFO for f in ctx.findings)
+
+
+def test_lily_pad_texture_is_not_dropped(mini_pack):
+    """135 of the 173 corpus packs ship a custom lily pad.
+
+    The invisible lily pad was caused by the `lilypad=` tint override in
+    color.properties, not by the texture; dropping the texture as well would
+    throw away real art in most packs for no benefit.
+    """
+    root = mini_pack()
+    p = root / "assets/minecraft/textures/block/lily_pad.png"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_bytes(b"custom art")
+    drop_textures(ConversionContext(root=root))
+    assert p.exists()
