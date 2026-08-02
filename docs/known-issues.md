@@ -746,6 +746,35 @@ ever catch it — which is the same lesson as §12 and §13.
 
 ---
 
+## 15. Uppercase resource paths are silently refused by Minecraft
+
+**Status:** FIXED 2026-08-01 — new `stages/lowercase_paths.py`.
+**Found by:** chasing a magenta hotbar; noticed the pack ships both
+`block/tripwire.png` and `block/tripWire.png`.
+
+A Minecraft ResourceLocation must match `[a-z0-9_.-/]`. A file whose path
+contains a capital letter is refused by the loader outright — no warning to the
+player, nothing wrong with the file, the art simply never appears.
+
+1.8.9 packs are full of them. `unicode_page_0A.png` was the vanilla spelling
+then; pack authors leave `tripWire.png` and `cobblestone_mossyOLD.png` behind.
+**130 of the 170 in-scope corpus packs ship at least one**, and the worst ships
+172 in its converted output including **49 block textures that never load**.
+
+The stage lowercases every path under the trees Minecraft loads and runs before
+`restructure`, so later stages see paths their tables can match. Where both
+spellings ship, the already-lowercase file wins — it is the one Minecraft loads
+today — and the unreachable variant is dropped with a warning. Folders are
+merged rather than skipped, or everything beneath a capitalised folder stays
+unreachable.
+
+**`optifine/` and `mcpatcher/` are deliberately excluded.** OptiFine loads those
+itself rather than through Minecraft's resource manager, and its `.properties`
+files reference tiles by name — lowercasing there would break the CTM
+references this converter works hard to get right.
+
+---
+
 ## Not defects
 
 - **`entity/sweep.png`** — absent from the M8SON pack (1.9+ texture). Porting the

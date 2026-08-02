@@ -1,5 +1,6 @@
 from . import ingest as _ingest
 from . import clean as _clean
+from . import lowercase_paths as _lowercase_paths
 from . import restructure as _restructure
 from . import flatten_rename as _flatten_rename
 from . import model_refs as _model_refs
@@ -17,7 +18,9 @@ from . import pack_meta as _pack_meta
 from . import validate as _validate
 
 STAGES = [
-    ("ingest", _ingest.ingest), ("clean", _clean.clean), ("restructure", _restructure.restructure),
+    ("ingest", _ingest.ingest), ("clean", _clean.clean),
+    ("lowercase_paths", _lowercase_paths.lowercase_paths),
+    ("restructure", _restructure.restructure),
     ("flatten_rename", _flatten_rename.flatten_rename),
     ("model_refs", _model_refs.model_refs), ("atlas_remap", _atlas_remap.atlas_remap),
     ("chest", _chest.chest_remap), ("gui_remap", _gui_remap.gui_remap),
