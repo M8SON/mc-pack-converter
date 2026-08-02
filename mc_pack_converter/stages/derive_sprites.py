@@ -53,6 +53,15 @@ def derive_sprites(ctx: ConversionContext) -> None:
                     part = im.crop((round(x * sw), round(y * sh),
                                     round((x + w) * sw), round((y + h) * sh)))
                     canvas.paste(part, (round(dx * sw), round(dy * sh)))
+            cap = spec.get("max_scale")
+            if cap is not None and canvas.width > ow * cap:
+                # Emitted at the pack's own scale, a 4x pack's offhand came out
+                # 116x96 against vanilla's 29x24 — and merely shipping it made
+                # hud/hotbar render as the magenta missing texture in 26.1.2.
+                # Bisected in-game 2026-08-02 (T11 magenta / T12 the same build
+                # with these two downscaled: clean), so it is the size, not the
+                # art. Minecraft logs nothing for this.
+                canvas = canvas.resize((ow * cap, oh * cap), Image.NEAREST)
             if canvas.getchannel("A").getbbox() is None:
                 # Every source piece was blank. Writing this would OVERRIDE
                 # vanilla with an invisible sprite rather than fall back to it —
