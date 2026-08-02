@@ -17,7 +17,7 @@
     "source": "assets/minecraft/textures/gui/widgets.png",
     "ref": [256, 256],
     "size": [29, 24],
-    "max_scale": 1,
+    "max_scale": 2,
     "pieces": [
       {"from": [0, 0, 11, 22], "to": [0, 1]},
       {"from": [171, 0, 11, 22], "to": [11, 1]}
@@ -28,7 +28,7 @@
     "source": "assets/minecraft/textures/gui/widgets.png",
     "ref": [256, 256],
     "size": [29, 24],
-    "max_scale": 1,
+    "max_scale": 2,
     "pieces": [
       {"from": [0, 0, 11, 22], "to": [7, 1]},
       {"from": [171, 0, 11, 22], "to": [18, 1]}

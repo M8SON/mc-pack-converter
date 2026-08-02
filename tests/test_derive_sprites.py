@@ -131,16 +131,15 @@ def test_offhand_does_not_scale_with_pack_resolution(mini_pack):
 
     A 2x pack composed a 58x48 offhand, a 4x pack 116x96. The 4x one made
     hud/hotbar render magenta in 26.1.2 (bisected in-game 2026-08-02). The cap
-    is vanilla size because that is the value actually proven on the failing
-    pack; 2x is only known good on M8SON and was never tested on a 4x pack.
-    Pixel content still comes from the pack's own art, just downsampled.
+    is 2x, confirmed in-game on the 4x pack that was failing: 116x96 magenta,
+    58x48 clean. A 2x pack is already at the cap, so it is unaffected.
     """
     root = mini_pack()
     _hotbar(root, size=(512, 512))
     derive_sprites(ConversionContext(root=root))
     im = Image.open(root / OFF_L).convert("RGBA")
-    assert im.size == (29, 24)
-    assert im.getpixel((0, 1)) == (200, 30, 40, 255)
+    assert im.size == (58, 48)
+    assert im.getpixel((0, 2)) == (200, 30, 40, 255)
 
 
 def test_offhand_skipped_when_the_pack_has_no_widgets(mini_pack):
@@ -172,8 +171,9 @@ def test_offhand_is_capped_at_its_declared_size(mini_pack):
     Emitted at the pack's own scale, hotbar_offhand_left/right came out 116x96
     against vanilla's 29x24 — and their mere presence made hud/hotbar render as
     the magenta missing texture in 26.1.2. Bisected in-game 2026-08-02: the
-    identical build with those two sprites downscaled to 29x24 renders fine, so
-    it is the size, not the art. `max_scale` in the table is the cap.
+    identical build with those two sprites downscaled renders fine, so it is
+    the size, not the art. `max_scale` in the table is the cap: 2x, the
+    largest value confirmed clean in-game on that same 4x pack.
     """
     root = mini_pack()
     p = root / WIDGETS
@@ -183,8 +183,8 @@ def test_offhand_is_capped_at_its_declared_size(mini_pack):
     im.paste(Image.new("RGBA", (11 * 4, 22 * 4), (60, 60, 60, 255)), (171 * 4, 0))
     im.save(p)
     derive_sprites(ConversionContext(root=root))
-    assert Image.open(root / OFF_L).size == (29, 24)
-    assert Image.open(root / OFF_R).size == (29, 24)
+    assert Image.open(root / OFF_L).size == (58, 48)
+    assert Image.open(root / OFF_R).size == (58, 48)
 
 
 def test_derived_sprite_without_a_cap_keeps_pack_scale(mini_pack):
