@@ -64,14 +64,18 @@ def test_sibling_mcmeta_follows(mini_pack):
     assert (mc / "textures/blocks/fire.png.mcmeta").exists()
 
 
-def test_optifine_tree_is_left_alone(mini_pack):
-    """OptiFine loads these itself and its .properties reference them by name."""
+def test_optifine_keeps_its_case_but_loses_invalid_characters(mini_pack):
+    """OptiFine loads these itself and its .properties reference tiles by name,
+    so case is preserved. Spaces are NOT preserved: the game log shows OptiFine
+    rejecting 'optifine/ctm/glass gray/glass.properties' by path, so a space is
+    fatal there too.
+    """
     root = mini_pack()
     _put(root, "optifine/ctm/Glass/Grey Glass/0.png", b"ctm")
     _put(root, "mcpatcher/ctm/Glass/1.png", b"ctm")
     lowercase_paths(ConversionContext(root=root))
     mc = root / "assets/minecraft"
-    assert (mc / "optifine/ctm/Glass/Grey Glass/0.png").exists()
+    assert (mc / "optifine/ctm/Glass/Grey_Glass/0.png").exists()
     assert (mc / "mcpatcher/ctm/Glass/1.png").exists()
 
 
@@ -82,3 +86,41 @@ def test_already_lowercase_pack_is_untouched(mini_pack):
     lowercase_paths(ctx)
     assert (root / "assets/minecraft/textures/blocks/stone.png").read_bytes() == b"art"
     assert any("0 paths" in f.message for f in ctx.findings)
+
+
+def test_spaces_in_a_texture_name_are_replaced(mini_pack):
+    """Minecraft's log: "Invalid path in datapack: .../iron ore.png, ignoring".
+
+    Spaces are as invalid as capitals — the file is refused and the art never
+    appears.
+    """
+    root = mini_pack()
+    _put(root, "textures/blocks/iron ore.png", b"art")
+    lowercase_paths(ConversionContext(root=root))
+    assert (root / "assets/minecraft/textures/blocks/iron_ore.png").read_bytes() == b"art"
+
+
+def test_space_variant_dropped_when_the_valid_name_exists(mini_pack):
+    root = mini_pack()
+    _put(root, "textures/blocks/iron_ore.png", b"LOADED")
+    _put(root, "textures/blocks/iron ore.png", b"never-loadable")
+    lowercase_paths(ConversionContext(root=root))
+    mc = root / "assets/minecraft"
+    assert (mc / "textures/blocks/iron_ore.png").read_bytes() == b"LOADED"
+    assert not (mc / "textures/blocks/iron ore.png").exists()
+
+
+def test_optifine_folder_spaces_are_fixed_but_case_is_kept(mini_pack):
+    """OptiFine rejects 'optifine/ctm/glass gray/glass.properties' by path.
+
+    Renaming to glass_gray makes it loadable, and the CTM table normalises
+    underscores to spaces so the mapping still resolves. Case is preserved
+    there because .properties reference tiles by name.
+    """
+    root = mini_pack()
+    _put(root, "optifine/ctm/glass gray/glass.properties", b"method=ctm")
+    _put(root, "optifine/ctm/Glass/1.png", b"tile")
+    lowercase_paths(ConversionContext(root=root))
+    mc = root / "assets/minecraft"
+    assert (mc / "optifine/ctm/glass_gray/glass.properties").exists()
+    assert (mc / "optifine/ctm/Glass/1.png").exists(), "case must survive in optifine"
