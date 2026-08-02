@@ -49,13 +49,19 @@ def legacy_textures(ctx: ConversionContext) -> None:
         for i in range(h // w):
             img.crop((0, i * w, w, (i + 1) * w)).save(p.with_name(f"{name}_{i:02d}.png"))
             frames += 1
-        # Keep the strip itself. Modern vanilla ships no item/compass.png or
-        # item/clock.png — only the numbered frames — so it is dead weight to
-        # vanilla, but a pack that ships its own compass/clock MODEL references
-        # 'items/compass', and deleting the file left that reference dangling
-        # as a missing-texture placeholder. Its .mcmeta must go, though: it
-        # describes an animation the split frames now express, and a stale
-        # .mcmeta on a still image is itself a defect.
+        # Keep the path, but as FRAME 0 rather than the whole strip. A pack
+        # that ships its own compass/clock MODEL references 'items/compass',
+        # so deleting the file leaves that dangling as a missing texture —
+        # but leaving the strip stitches a 32x2048-ish sprite into the items
+        # atlas and drags it out of shape, which OptiFine then cannot lay a
+        # sprite grid over. Measured 2026-08-02: a 32x2048 clock strip gave a
+        # 256x4096 items atlas and 15376 '[OptiFine] Invalid grid V' errors,
+        # a 64x6656 compass strip gave 1024x8192 and 86020. A 16x1024 strip
+        # stays inside a 1024x1024 atlas and reports none — which is why this
+        # only showed up on higher-resolution packs.
+        img.crop((0, 0, w, w)).save(p)
+        # The .mcmeta must go too: it describes an animation the split frames
+        # now express, and a stale .mcmeta on a still image is itself a defect.
         meta = p.with_name(p.name + ".mcmeta")
         if meta.exists():
             meta.unlink()

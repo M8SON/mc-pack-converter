@@ -68,3 +68,24 @@ def test_compass_strip_is_kept_for_custom_models(mini_pack):
     assert (p.parent / "compass_00.png").exists()
     assert (p.parent / "compass_03.png").exists()
     assert not p.with_name("compass.png.mcmeta").exists(), "stale animation meta must go"
+
+
+def test_kept_strip_is_reduced_to_one_frame(mini_pack):
+    """The kept file must be a single frame, not the whole strip.
+
+    Left as a strip it stitches into the items atlas as one enormous sprite and
+    drags the atlas out of shape. Measured on real packs: a 32x2048 clock strip
+    gave a 256x4096 items atlas and 15376 OptiFine 'Invalid grid V' errors, a
+    64x6656 compass strip gave 1024x8192 and 86020. Frame 0 keeps the reference
+    resolvable at a normal sprite size.
+    """
+    root = mini_pack()
+    it = root / "assets/minecraft/textures/item"
+    it.mkdir(parents=True, exist_ok=True)
+    strip = Image.new("RGBA", (16, 1024), (0, 0, 0, 255))
+    strip.paste((7, 8, 9, 255), (0, 0, 16, 16))          # frame 0 is identifiable
+    strip.save(it / "clock.png")
+    legacy_textures(ConversionContext(root=root))
+    kept = Image.open(it / "clock.png").convert("RGBA")
+    assert kept.size == (16, 16), "the kept file must be one frame, not the strip"
+    assert kept.getpixel((8, 8)) == (7, 8, 9, 255), "it must be frame 0"
