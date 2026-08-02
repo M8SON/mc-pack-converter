@@ -16,7 +16,9 @@ Two recoverable defects, both common in hand-edited 1.8.9 packs and both purely
 syntactic — no judgement about the pack's art:
 
 - a trailing comma before ] or }, which gson rejects outright
+- single-quoted values, which are Python/JS habits and not JSON
 - a fractional `frametime`, where the animation codec requires an integer
+- `interpolate` given as a string, where the codec requires a boolean
 
 Dropping takes the .png with the .mcmeta on purpose. These files are animation
 strips: a 512x9728 ender_pearl with no valid frame metadata is not a still
@@ -31,19 +33,31 @@ import re
 from ..pipeline import ConversionContext, Severity
 
 _TRAILING_COMMA = re.compile(r",(\s*[}\]])")
+_SINGLE_QUOTED = re.compile(r"'([^'\"]*)'")
 
 
 def _repair(text: str):
     """Return parsed data if the text can be made valid, else None."""
+    fixed = _TRAILING_COMMA.sub(r"\1", text)
+    fixed = _SINGLE_QUOTED.sub(r'"\1"', fixed)
     try:
-        data = json.loads(_TRAILING_COMMA.sub(r"\1", text))
+        data = json.loads(fixed)
     except Exception:
         return None
     if not isinstance(data, dict):
         return None
     anim = data.get("animation")
-    if isinstance(anim, dict) and isinstance(anim.get("frametime"), float):
-        anim["frametime"] = max(1, round(anim["frametime"]))
+    if isinstance(anim, dict):
+        # Quoting a value also changes its TYPE, and the animation codec is
+        # strict: Conquest's `"interpolate": 'true'` becomes the string "true",
+        # which is still not the boolean the codec wants.
+        if isinstance(anim.get("frametime"), (float, str)):
+            try:
+                anim["frametime"] = max(1, round(float(anim["frametime"])))
+            except (TypeError, ValueError):
+                del anim["frametime"]
+        if isinstance(anim.get("interpolate"), str):
+            anim["interpolate"] = anim["interpolate"].strip().lower() == "true"
     return data
 
 

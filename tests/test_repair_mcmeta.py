@@ -60,3 +60,22 @@ def test_valid_mcmeta_is_left_byte_identical(mini_pack):
     d = _strip(root, meta=good)
     repair_mcmeta(ConversionContext(root=root))
     assert (d / "ender_pearl.png.mcmeta").read_text() == good
+
+
+def test_single_quoted_value_is_repaired_to_a_boolean(mini_pack):
+    """Conquest's real glowstone.png.mcmeta.
+
+    `'true'` is not JSON, so the file was unparseable and the whole animated
+    glowstone texture was being dropped. Quoting it correctly is not enough
+    either: the animation codec wants a boolean, not the string "true".
+    """
+    root = mini_pack()
+    d = _strip(root, name="glowstone",
+               meta='{\n  "animation": {\n    "frametime": 2,\n'
+                    "    \"interpolate\": 'true'\n  }\n}\n")
+    ctx = ConversionContext(root=root)
+    repair_mcmeta(ctx)
+    assert (d / "glowstone.png").exists(), "the texture must survive"
+    anim = json.loads((d / "glowstone.png.mcmeta").read_text())["animation"]
+    assert anim["interpolate"] is True
+    assert anim["frametime"] == 2
