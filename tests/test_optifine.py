@@ -346,3 +346,27 @@ def test_cross_folder_conflict_is_still_resolved(tmp_path):
              if "matchBlocks" in p.read_text()]
     assert len(wrote) == 1, "exactly one folder may claim the block"
     assert any("already claimed by" in f.message for f in ctx.findings)
+
+
+def test_lilypad_tint_override_is_dropped(mini_pack):
+    """The pack's lilypad colour hides the block; vanilla's tint renders it."""
+    root = mini_pack()
+    of = root / "assets/minecraft/optifine"
+    of.mkdir(parents=True, exist_ok=True)
+    (of / "color.properties").write_text(
+        "# Lily pad color\nlilypad=577119\nwater.default=3F76E4\n")
+    ctx = ConversionContext(root=root)
+    optifine_translate(ctx)
+    out = (of / "color.properties").read_text()
+    assert "lilypad" not in out
+    assert "water.default=3F76E4" in out, "other custom colours must survive"
+
+
+def test_color_properties_without_lilypad_is_untouched(mini_pack):
+    root = mini_pack()
+    of = root / "assets/minecraft/optifine"
+    of.mkdir(parents=True, exist_ok=True)
+    original = "water.default=3F76E4\n"
+    (of / "color.properties").write_text(original)
+    optifine_translate(ConversionContext(root=root))
+    assert (of / "color.properties").read_text() == original
