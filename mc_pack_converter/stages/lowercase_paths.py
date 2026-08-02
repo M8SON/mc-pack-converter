@@ -19,12 +19,29 @@ Runs before `restructure`, so every later stage sees paths it can match: the
 flattening table and the slice records are all lowercase.
 """
 from __future__ import annotations
+import re
 from ..pipeline import ConversionContext, Severity
+
+# A ResourceLocation path may only contain these. Anything else is refused.
+_INVALID = re.compile(r"[^a-z0-9_.\-]")
 
 # Trees Minecraft itself loads. Everything else under assets/ is left alone.
 _MANAGED = ("textures", "models", "blockstates", "sounds", "lang", "font",
             "particles", "shaders", "texts")
 _SKIP = ("optifine", "mcpatcher")
+
+
+def _sanitize(name: str, lower: bool) -> str:
+    """Make one path segment loadable.
+
+    Case is only folded inside the trees Minecraft loads. Invalid characters
+    are replaced everywhere, OptiFine's trees included: the game log rejects
+    `optifine/ctm/glass gray/glass.properties` outright, so a space is fatal
+    there too even though OptiFine does its own loading.
+    """
+    if lower:
+        return _INVALID.sub("_", name.lower())
+    return re.sub(r"[^A-Za-z0-9_.\-]", "_", name)
 
 
 def _managed(rel_parts: tuple[str, ...]) -> bool:
@@ -47,11 +64,16 @@ def lowercase_paths(ctx: ConversionContext) -> None:
             rel = path.relative_to(assets).parts
         except ValueError:
             continue
-        if len(rel) < 2 or not _managed(rel[1:]):
+        if len(rel) < 2 or not rel[1:]:
             continue
-        if path.name == path.name.lower():
+        managed = _managed(rel[1:])
+        optifine = rel[1] in _SKIP
+        if not managed and not optifine:
             continue
-        target = path.with_name(path.name.lower())
+        new_name = _sanitize(path.name, lower=managed)
+        if new_name == path.name:
+            continue
+        target = path.with_name(new_name)
         if target.exists():
             if path.is_dir():
                 # Both spellings of a folder ship. Merge into the lowercase one

@@ -752,9 +752,18 @@ ever catch it — which is the same lesson as §12 and §13.
 **Found by:** chasing a magenta hotbar; noticed the pack ships both
 `block/tripwire.png` and `block/tripWire.png`.
 
-A Minecraft ResourceLocation must match `[a-z0-9_.-/]`. A file whose path
-contains a capital letter is refused by the loader outright — no warning to the
-player, nothing wrong with the file, the art simply never appears.
+A Minecraft ResourceLocation must match `[a-z0-9_.-/]`. A path containing
+anything else — a capital letter OR a space — is refused by the loader
+outright. Nothing is wrong with the file; the art simply never appears.
+
+Confirmed from the game's own log, which names them:
+
+```
+Invalid path in datapack: minecraft:textures/block/iron ore.png, ignoring
+[OptiFine] Invalid path location: optifine/ctm/glass gray/glass.properties
+```
+
+Reading that log first would have saved hours of inferring from file contents.
 
 1.8.9 packs are full of them. `unicode_page_0A.png` was the vanilla spelling
 then; pack authors leave `tripWire.png` and `cobblestone_mossyOLD.png` behind.
@@ -768,10 +777,12 @@ today — and the unreachable variant is dropped with a warning. Folders are
 merged rather than skipped, or everything beneath a capitalised folder stays
 unreachable.
 
-**`optifine/` and `mcpatcher/` are deliberately excluded.** OptiFine loads those
-itself rather than through Minecraft's resource manager, and its `.properties`
-files reference tiles by name — lowercasing there would break the CTM
-references this converter works hard to get right.
+**`optifine/` and `mcpatcher/` keep their case** — OptiFine loads them itself
+and its `.properties` reference tiles by name, so folding case there would break
+the CTM references this converter works hard to get right. They do **not** keep
+invalid characters: the log line above shows OptiFine rejecting `glass gray` by
+path, so a space is fatal there too. Renaming it to `glass_gray` also keeps the
+CTM mapping working, because the lookup normalises underscores to spaces.
 
 ---
 
