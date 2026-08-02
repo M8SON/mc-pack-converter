@@ -226,3 +226,30 @@ def optifine_translate(ctx: ConversionContext) -> None:
     ctm = of / "ctm"
     if ctm.is_dir():
         _fix_ctm(ctx, ctm)
+    _drop_lilypad_tint(ctx, of / "color.properties")
+
+
+def _drop_lilypad_tint(ctx: ConversionContext, props: Path) -> None:
+    """Remove the `lilypad` colour override so the block renders as vanilla.
+
+    Minecraft tints both faces of its lily pad model (tintindex 0). A 1.8.9
+    pack's `lilypad=` in color.properties replaces that tint, and on M8SON the
+    result is a lily pad you cannot see once placed — confirmed against vanilla,
+    which renders it fine. The pack ships no model, no blockstate, and a
+    lily_pad.png byte-equivalent to vanilla's, so the override is the only thing
+    left that can change how it draws.
+
+    Only this one key is touched; every other custom colour the pack sets is a
+    deliberate choice and stays.
+    """
+    if not props.is_file():
+        return
+    text = read_properties_text(props)
+    kept = [ln for ln in text.splitlines()
+            if not ln.strip().lower().replace(" ", "").startswith("lilypad=")]
+    if len(kept) == len(text.splitlines()):
+        return
+    props.write_text("\n".join(kept) + "\n", encoding="utf-8")
+    ctx.add("optifine", Severity.INFO,
+            "dropped the lilypad colour override; the block renders as vanilla",
+            "optifine/color.properties")
