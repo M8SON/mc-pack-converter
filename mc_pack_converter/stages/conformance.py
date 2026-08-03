@@ -24,19 +24,42 @@ from ..data import load_table
 
 
 def _slot_presence(im: Image.Image, spec: dict) -> float:
-    """Lowest border-vs-interior luminance contrast across the expected slots."""
+    """Score each expected slot by its FOUR borders, not by one ring average.
+
+    A ring average cannot tell a slot box from a box that merely clips one. A
+    1.7-era pack has a single slot sitting BETWEEN 1.8.9's two positions, so
+    both sample boxes catch a piece of its border and both score well — that is
+    how SOUPSKIDZ4LIFE passed and rendered with Minecraft's two slots drawn over
+    its one (Mason, in-game, 2026-08-02). The same root cause killed an earlier
+    predicate on 07-31 and I failed to apply the note.
+
+    Two conditions per slot, and the score is the margin by which the weaker is
+    met so the findings can quote a number:
+
+    - LEFT and TOP must be distinctly darker than the interior. Minecraft slots
+      are inset, so those two edges carry the shadow in every styling. Not all
+      four: BOTTOM and RIGHT are the bevel's lit side and can be lighter.
+    - NO edge may be far LIGHTER than the interior. A bevel lifts an edge by
+      single digits; a box clipping into a neighbouring slot's bright interior
+      lifts it by 70+.
+    """
     rw, _ = spec["ref"]
     s = im.width / rw
-    scores = []
+    margins = []
     for rx, ry in spec["slots"]:
         box = im.crop((round(rx * s), round(ry * s),
                        round((rx + 18) * s), round((ry + 18) * s))).convert("L")
         px = box.resize((18, 18), Image.BILINEAR).load()
-        ring = [px[x, y] for x in range(18) for y in range(18)
-                if x < 2 or y < 2 or x > 15 or y > 15]
-        inner = [px[x, y] for x in range(4, 14) for y in range(4, 14)]
-        scores.append(abs(statistics.mean(ring) - statistics.mean(inner)))
-    return min(scores)
+        inner = statistics.mean([px[x, y] for x in range(5, 13) for y in range(5, 13)])
+        side = lambda pts: statistics.mean([px[x, y] for x, y in pts]) - inner
+        left = side([(x, y) for x in (0, 1) for y in range(2, 16)])
+        right = side([(x, y) for x in (16, 17) for y in range(2, 16)])
+        top = side([(x, y) for y in (0, 1) for x in range(2, 16)])
+        bottom = side([(x, y) for y in (16, 17) for x in range(2, 16)])
+        if max(left, right, top, bottom) > spec["max_lift"]:
+            return 0.0                     # clipping a neighbouring slot
+        margins.append(min(-left, -top))   # how dark the shadowed edges are
+    return min(margins)
 
 
 def _opaque_coverage(im: Image.Image, spec: dict) -> float:

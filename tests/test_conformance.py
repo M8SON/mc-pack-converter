@@ -55,7 +55,7 @@ def test_the_measured_number_is_reported(mini_pack):
     ctx = ConversionContext(root=root)
     conformance(ctx)
     msg = next(f.message for f in ctx.findings if "dropped to vanilla" in f.message)
-    assert "< 3.5" in msg
+    assert "< 8.0" in msg
 
 
 def test_predicate_is_resolution_independent(mini_pack):
@@ -95,3 +95,23 @@ def test_unreadable_texture_is_kept_not_guessed_at(mini_pack):
     conformance(ctx)
     assert p.exists()
     assert any(f.severity is Severity.WARNING for f in ctx.findings)
+
+
+def test_single_slot_between_the_two_positions_is_dropped(mini_pack):
+    """SOUPSKIDZ4LIFE: the false positive Mason caught in-game.
+
+    A 1.7-era pack has ONE slot sitting between 1.8.9's two, so a ring-average
+    score sees both sample boxes clip its border and passes them (7.0 and 5.8).
+    In-game Minecraft then drew its two slots over the pack's single one. The
+    clipped boxes read far BRIGHTER than their interior, which is what catches it.
+    """
+    root = mini_pack()
+    p = root / ENCH
+    p.parent.mkdir(parents=True, exist_ok=True)
+    im = Image.new("RGBA", (256, 256), (25, 25, 25, 255))
+    d = ImageDraw.Draw(im)
+    d.rectangle([24, 46, 41, 63], fill=(20, 20, 20, 255))      # one slot, centred
+    d.rectangle([26, 48, 39, 61], fill=(150, 150, 150, 255))   # its bright interior
+    im.save(p)
+    conformance(ConversionContext(root=root))
+    assert not p.exists(), "a single centred slot must not pass as two"
