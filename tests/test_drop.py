@@ -34,17 +34,22 @@ def test_anvil_is_not_dropped():
     assert "textures/gui/container/anvil.png" not in set(load_table("drop_list")["drop"])
 
 
-def test_enchanting_table_is_dropped():
-    """Guard docs/known-issues.md #4 — dropped, but NOT for the recorded reason.
+def test_enchanting_table_is_measured_not_assumed():
+    """Guard docs/known-issues.md #4 — still dropped for M8SON, but now measured.
 
     The pack's own art predates 1.8: one item slot where 1.8.9 has two (lapis
     was added to enchanting in 1.8), in a different position, and no dark
-    level-number caps on the bars. It never matched the 1.8.9 layout it ships
-    as, so it renders wrong on any modern version.
+    level-number caps on the bars. That is a fact about THIS pack, not about
+    1.8.9, and as an unconditional drop_list entry it threw the texture away in
+    every other pack too — 82 of the 173 in the corpus had good art. It moved to
+    conformance.json on 2026-08-02, where the slot-presence predicate scores
+    M8SON at 0.9 and drops it on its own merits.
     """
     from mc_pack_converter.data import load_table
-    assert "textures/gui/container/enchanting_table.png" in set(
-        load_table("drop_list")["drop"])
+    assert "textures/gui/container/enchanting_table.png" not in set(
+        load_table("drop_list")["drop"]), "must not be an unconditional version fact"
+    paths = {p["path"] for p in load_table("conformance")["predicates"]}
+    assert "textures/gui/container/enchanting_table.png" in paths
 
 
 def test_villager_gui_is_dropped():

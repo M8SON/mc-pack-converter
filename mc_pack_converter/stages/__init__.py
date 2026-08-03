@@ -10,6 +10,7 @@ from . import chest as _chest
 from . import gui_remap as _gui_remap
 from . import legacy_textures as _legacy_textures
 from . import drop as _drop
+from . import conformance as _conformance
 from . import optifine as _optifine
 from . import slice as _slice
 from . import derive_sprites as _derive_sprites
@@ -27,6 +28,7 @@ STAGES = [
     ("model_refs", _model_refs.model_refs), ("atlas_remap", _atlas_remap.atlas_remap),
     ("chest", _chest.chest_remap), ("gui_remap", _gui_remap.gui_remap),
     ("legacy", _legacy_textures.legacy_textures), ("drop", _drop.drop_textures),
+    ("conformance", _conformance.conformance),
     ("optifine", _optifine.optifine_translate), ("slice", _slice.slice_atlases),
     ("derive_sprites", _derive_sprites.derive_sprites),
     ("prune_atlases", _prune_atlases.prune_atlases),

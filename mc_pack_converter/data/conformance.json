@@ -1,0 +1,42 @@
+{
+  "_comment": "Textures dropped only when a MEASUREMENT says the pack's own art cannot work, as opposed to drop_list.json which holds unconditional version facts. Five entries used to sit in drop_list because M8SON's versions were bad; that threw the same textures away in every other pack too. Each predicate is evaluated per pack and the measured number goes in the findings, so every decision is explainable rather than asserted. Thresholds calibrated on the 173-pack corpus, 2026-08-02.",
+
+  "_slot_presence": "For an 18x18 slot box at the coordinates 1.8.9 puts it, score = |mean luminance of the 2px border ring - mean luminance of the 10x10 interior|. Self-referential, so a dark pack and a light pack are judged alike; it asks 'is there a slot box HERE', which also fails art whose slots are offset from 1.8.9's layout. Corpus histogram of the 142 packs shipping an enchanting_table is bimodal with an EMPTY bucket at 3-4: 60 packs score under 3, 82 score over 4. Threshold 3.5 sits in that gap. Do not raise it to 5 - the 4.0-6.0 band was rendered and those packs plainly have both slot boxes, so a threshold of 5 splits good art in half. Controls: M8SON enchanting 0.9 -> drop (confirmed broken in-game), M8SON anvil 12.1 -> keep (confirmed good in-game).",
+
+  "_opaque_coverage": "Percent of pixels with alpha > 128. Catches unfinished placeholder art that is mostly see-through outlines. Corpus distribution across 141 packs is sharply bimodal - p25 = 2.4%, p50 = 36.8%, nothing in between - so any threshold in the gap works and 25 is the middle of it. Control: M8SON's four tabs are 5.1-6.5% -> drop (they are dev placeholders, red 'UN SEL' / blue 'SEL' boxes).",
+
+  "predicates": [
+    {
+      "path": "textures/gui/container/enchanting_table.png",
+      "test": "slot_presence",
+      "ref": [256, 256],
+      "slots": [[14, 46], [34, 46]],
+      "min_score": 3.5,
+      "why": "1.8.9 enchanting has two slots (lapis was added in 1.8); art with one, or with slots offset from that layout, renders misaligned on modern Minecraft"
+    },
+    {
+      "path": "textures/gui/container/creative_inventory/tabs.png",
+      "test": "opaque_coverage",
+      "min_percent": 25,
+      "why": "unfinished placeholder tabs are mostly transparent outlines"
+    },
+    {
+      "path": "textures/gui/container/creative_inventory/tab_items.png",
+      "test": "opaque_coverage",
+      "min_percent": 25,
+      "why": "unfinished placeholder panel is mostly transparent outlines"
+    },
+    {
+      "path": "textures/gui/container/creative_inventory/tab_item_search.png",
+      "test": "opaque_coverage",
+      "min_percent": 25,
+      "why": "unfinished placeholder panel is mostly transparent outlines"
+    },
+    {
+      "path": "textures/gui/container/creative_inventory/tab_inventory.png",
+      "test": "opaque_coverage",
+      "min_percent": 25,
+      "why": "unfinished placeholder panel is mostly transparent outlines"
+    }
+  ]
+}
