@@ -71,7 +71,12 @@ def conformance(ctx: ConversionContext) -> None:
             continue
         p.unlink()
         dropped += 1
-        ctx.add("conformance", Severity.INFO,
+        # WARNING, not INFO: deleting a texture the pack shipped is the most
+        # consequential thing this stage does, and tools/run_corpus.py records
+        # only non-INFO findings — at INFO these decisions were invisible to
+        # the corpus harness, which produced a wrong per-texture tally when I
+        # first checked. It is still a record, never a question for the user.
+        ctx.add("conformance", Severity.WARNING,
                 f"dropped to vanilla: {label} {score:.1f} < {limit} — {spec['why']}",
                 spec["path"])
     ctx.add("conformance", Severity.INFO,
