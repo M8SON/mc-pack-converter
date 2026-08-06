@@ -1,5 +1,5 @@
 from __future__ import annotations
-import argparse, shutil, tempfile
+import argparse, shutil, sys, tempfile
 from pathlib import Path
 from .pipeline import ConversionContext, Severity, run_pipeline
 from .stages import STAGES
@@ -97,6 +97,10 @@ def main(argv=None) -> int:
     ap = build_parser()
     args = ap.parse_args(argv)
     out = args.out or default_out_path(args.source, args.target)
+
+    if not args.source.exists():
+        print(f"no such pack: {args.source}", file=sys.stderr)
+        return 1
 
     def on_stage(name, i, total):
         print(f"[{i}/{total}] {name}")

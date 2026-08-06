@@ -208,3 +208,31 @@ def test_report_only_summary_does_not_claim_zip_written(mini_pack, tmp_path, cap
     assert not (tmp_path / "pack-26.2.zip").exists()
     assert (tmp_path / "pack-26.2-report.md").exists()
     assert (tmp_path / "pack-26.2-null-textures.md").exists()
+
+
+def test_reports_written_beside_the_zip(mini_pack, tmp_path, monkeypatch):
+    root = mini_pack()
+    monkeypatch.chdir(tmp_path)
+    assert main(["convert", str(root)]) == 0
+    assert (tmp_path / "pack-26.2-report.md").read_text().startswith("# Conversion Report")
+    assert (tmp_path / "pack-26.2-null-textures.md").read_text().startswith(
+        "# Null-Texture Safety Report")
+
+
+def test_report_only_writes_reports_but_no_zip(mini_pack, tmp_path, monkeypatch):
+    root = mini_pack()
+    monkeypatch.chdir(tmp_path)
+    assert main(["convert", str(root), "--report-only"]) == 0
+    assert (tmp_path / "pack-26.2-report.md").exists()
+    assert not (tmp_path / "pack-26.2.zip").exists()
+
+
+def test_missing_source_is_one_line_not_a_traceback(tmp_path, capsys, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    code = main(["convert", str(tmp_path / "nope.zip")])
+    assert code != 0
+    captured = capsys.readouterr()
+    message = captured.out + captured.err
+    assert "nope.zip" in message
+    assert "Traceback" not in message
+    assert len(message.strip().splitlines()) == 1
