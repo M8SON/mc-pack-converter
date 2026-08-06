@@ -159,3 +159,41 @@ def test_targets_come_from_the_data_table():
     from mc_pack_converter.cli import TARGETS
     from mc_pack_converter.data import load_table
     assert set(TARGETS) == set(load_table("pack_format"))
+
+
+def test_on_stage_called_once_per_stage(mini_pack, tmp_path):
+    from mc_pack_converter.stages import STAGES
+    seen = []
+    root = mini_pack()
+    convert(root, tmp_path / "o.zip", target="26.2", report_only=False,
+            on_stage=lambda name, i, total: seen.append((name, i, total)))
+    assert [s[0] for s in seen] == [name for name, _ in STAGES]
+    assert seen[0][1] == 1
+    assert seen[-1][1] == len(STAGES)
+    assert all(s[2] == len(STAGES) for s in seen)
+
+
+def test_convert_still_works_without_a_callback(mini_pack, tmp_path):
+    root = mini_pack()
+    out = tmp_path / "o.zip"
+    convert(root, out, target="26.2", report_only=False)
+    assert out.exists()
+
+
+def test_default_run_prints_summary_not_reports(mini_pack, tmp_path, capsys, monkeypatch):
+    root = mini_pack()
+    monkeypatch.chdir(tmp_path)
+    assert main(["convert", str(root)]) == 0
+    out = capsys.readouterr().out
+    assert "pack-26.2.zip" in out
+    assert "# Conversion Report" not in out
+    assert "# Null-Texture Safety Report" not in out
+
+
+def test_verbose_prints_the_full_reports(mini_pack, tmp_path, capsys, monkeypatch):
+    root = mini_pack()
+    monkeypatch.chdir(tmp_path)
+    assert main(["convert", str(root), "-v"]) == 0
+    out = capsys.readouterr().out
+    assert "# Conversion Report" in out
+    assert "# Null-Texture Safety Report" in out

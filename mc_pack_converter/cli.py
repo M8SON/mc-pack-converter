@@ -9,8 +9,16 @@ from .report import render_conversion_report, render_null_texture_report
 from .contact_sheet import ATLAS_1_14, build_contact_sheet
 from .data import load_table
 
+def _announce(stages, on_stage):
+    """Wrap each stage so the caller is told before it runs."""
+    total = len(stages)
+    return [
+        (name, lambda ctx, fn=fn, name=name, i=i: (on_stage(name, i, total), fn(ctx))[1])
+        for i, (name, fn) in enumerate(stages, start=1)
+    ]
+
 def convert(source: Path, out_path: Path, target: str,
-            report_only: bool) -> ConversionContext:
+            report_only: bool, on_stage=None) -> ConversionContext:
     workroot = Path(tempfile.mkdtemp(prefix="mcpc_"))
     try:
         root = prepare_working_copy(source, workroot)
@@ -18,6 +26,8 @@ def convert(source: Path, out_path: Path, target: str,
         stages = STAGES if not report_only else [
             s for s in STAGES if s[0] in ("ingest", "clean", "restructure",
             "flatten_rename", "atlas_remap", "optifine", "validate")]
+        if on_stage is not None:
+            stages = _announce(stages, on_stage)
         run_pipeline(ctx, stages)
         reports = {
             "conversion-report.md": render_conversion_report(ctx.findings),
@@ -64,15 +74,51 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Minecraft version to convert to (default: %(default)s)")
     c.add_argument("--report-only", action="store_true",
                    help="analyse the pack and write reports without producing a converted pack")
+    c.add_argument("-v", "--verbose", action="store_true",
+                   help="also print the full reports to the terminal")
     return ap
+
+def summary_lines(ctx: ConversionContext, out_path: Path,
+                  reports: dict[str, Path]) -> list[str]:
+    counts = {s: 0 for s in Severity}
+    for f in ctx.findings:
+        counts[f.severity] += 1
+    lines = [
+        "",
+        f"{counts[Severity.ERROR]} errors, {counts[Severity.WARNING]} warnings, "
+        f"{counts[Severity.INFO]} notes",
+        f"wrote {out_path}",
+    ]
+    lines += [f"{label}: {path}" for label, path in reports.items()]
+    return lines
 
 def main(argv=None) -> int:
     ap = build_parser()
     args = ap.parse_args(argv)
     out = args.out or default_out_path(args.source, args.target)
-    ctx = convert(args.source, out, args.target, args.report_only)
-    print(render_conversion_report(ctx.findings))
-    print(render_null_texture_report(ctx.findings))
+
+    def on_stage(name, i, total):
+        print(f"[{i}/{total}] {name}")
+
+    ctx = convert(args.source, out, args.target, args.report_only,
+                  on_stage=on_stage)
+
+    texts = {
+        "report": render_conversion_report(ctx.findings),
+        "null-textures": render_null_texture_report(ctx.findings),
+    }
+    written = {}
+    for label, text in texts.items():
+        p = out.with_name(f"{out.stem}-{label}.md")
+        p.write_text(text)
+        written[label] = p
+
+    if args.verbose:
+        for text in texts.values():
+            print(text)
+    for line in summary_lines(ctx, out, written):
+        print(line)
+
     if any(f.severity is Severity.ERROR for f in ctx.findings):
         return 1
     return 0
