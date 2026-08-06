@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import zipfile
 
 import pytest
@@ -91,3 +92,209 @@ def test_contact_sheet_failure_does_not_abort_conversion(tmp_path, mini_pack, mo
     assert out.exists()
     assert any(f.severity is Severity.WARNING and "contact sheet" in f.message
                for f in ctx.findings)
+
+
+def test_default_out_path_from_zip_source():
+    from mc_pack_converter.cli import default_out_path
+    assert default_out_path(Path("/packs/MyPack.zip"), "26.2") == Path("MyPack-26.2.zip")
+
+
+def test_default_out_path_from_directory_source():
+    from mc_pack_converter.cli import default_out_path
+    assert default_out_path(Path("/packs/My Pack"), "26.1.2") == Path("My Pack-26.1.2.zip")
+
+
+def test_default_out_path_ignores_source_directory(tmp_path):
+    # The output belongs in the cwd, not next to the source.
+    from mc_pack_converter.cli import default_out_path
+    assert default_out_path(Path("/somewhere/else/P.zip"), "26.2").parent == Path(".")
+
+
+def test_main_uses_derived_name_when_no_dash_o(mini_pack, monkeypatch, tmp_path):
+    root = mini_pack()
+    monkeypatch.chdir(tmp_path)
+    assert main(["convert", str(root)]) == 0
+    assert (tmp_path / "pack-26.2.zip").exists()
+
+
+def test_main_explicit_out_wins(mini_pack, tmp_path):
+    root = mini_pack()
+    out = tmp_path / "chosen.zip"
+    assert main(["convert", str(root), "-o", str(out)]) == 0
+    assert out.exists()
+
+
+def test_every_convert_argument_is_documented(capsys):
+    # Read the help the user actually sees rather than argparse internals.
+    from mc_pack_converter.cli import build_parser
+    with pytest.raises(SystemExit):
+        build_parser().parse_args(["convert", "--help"])
+    out = capsys.readouterr().out
+    for flag in ("source", "--out", "--target", "--report-only"):
+        assert flag in out
+    # every flag line carries prose, not just the flag name
+    assert "current directory" in out          # --out
+    assert "without producing" in out          # --report-only
+
+
+def test_help_lists_the_valid_targets(capsys):
+    """Read the --target choices, not the whole help text.
+
+    "1.8.9" does appear in the help — in the `source` positional's prose ("the
+    1.8.9 pack to convert"). Searching the whole text therefore passed even
+    though --target renders `{26.1,26.1.2,26.2}`, and would still pass if
+    --target listed no choices at all. 1.8.9 was excluded from the targets on
+    purpose (9a82697) because it produces a broken pack, so the test must also
+    say it is not offered as one.
+    """
+    from mc_pack_converter.cli import build_parser
+    with pytest.raises(SystemExit):
+        build_parser().parse_args(["convert", "--help"])
+    out = capsys.readouterr().out
+    rendered = re.search(r"--target \{([^}]*)\}", out)
+    assert rendered, "--target does not render its choices in the help"
+    targets = rendered.group(1).split(",")
+    assert targets == ["26.1", "26.1.2", "26.2"]
+    assert "1.8.9" not in targets
+
+
+def test_invalid_target_exits_without_converting(mini_pack, tmp_path):
+    root = mini_pack()
+    out = tmp_path / "never.zip"
+    with pytest.raises(SystemExit) as exc:
+        main(["convert", str(root), "-o", str(out), "--target", "1.21"])
+    assert exc.value.code != 0
+    assert not out.exists()
+
+
+def test_targets_come_from_the_data_table():
+    # TARGETS must track pack_format.json, minus the input format: "1.8.9" in
+    # that table describes the format a pack is READ as, not a valid output.
+    from mc_pack_converter.cli import TARGETS, INPUT_FORMAT
+    from mc_pack_converter.data import load_table
+    assert set(TARGETS) == set(load_table("pack_format")) - {INPUT_FORMAT}
+
+
+def test_target_1_8_9_is_rejected(mini_pack, tmp_path):
+    # --target 1.8.9 would run every modernising stage and then write a
+    # min/max_format of 1 - a modern-layout pack declaring itself 1.8.9.
+    root = mini_pack()
+    out = tmp_path / "converted.zip"
+    with pytest.raises(SystemExit) as exc:
+        main(["convert", str(root), "-o", str(out), "--target", "1.8.9"])
+    assert exc.value.code != 0
+    assert not out.exists()
+
+
+def test_on_stage_called_once_per_stage(mini_pack, tmp_path):
+    from mc_pack_converter.stages import STAGES
+    seen = []
+    root = mini_pack()
+    convert(root, tmp_path / "o.zip", target="26.2", report_only=False,
+            on_stage=lambda name, i, total: seen.append((name, i, total)))
+    assert [s[0] for s in seen] == [name for name, _ in STAGES]
+    assert seen[0][1] == 1
+    assert seen[-1][1] == len(STAGES)
+    assert all(s[2] == len(STAGES) for s in seen)
+
+
+def test_convert_still_works_without_a_callback(mini_pack, tmp_path):
+    root = mini_pack()
+    out = tmp_path / "o.zip"
+    convert(root, out, target="26.2", report_only=False)
+    assert out.exists()
+
+
+def test_default_run_prints_summary_not_reports(mini_pack, tmp_path, capsys, monkeypatch):
+    root = mini_pack()
+    monkeypatch.chdir(tmp_path)
+    assert main(["convert", str(root)]) == 0
+    out = capsys.readouterr().out
+    assert "pack-26.2.zip" in out
+    assert "# Conversion Report" not in out
+    assert "# Null-Texture Safety Report" not in out
+
+
+def test_verbose_prints_the_full_reports(mini_pack, tmp_path, capsys, monkeypatch):
+    root = mini_pack()
+    monkeypatch.chdir(tmp_path)
+    assert main(["convert", str(root), "-v"]) == 0
+    out = capsys.readouterr().out
+    assert "# Conversion Report" in out
+    assert "# Null-Texture Safety Report" in out
+
+
+def test_report_only_summary_does_not_claim_zip_written(mini_pack, tmp_path, capsys, monkeypatch):
+    root = mini_pack()
+    monkeypatch.chdir(tmp_path)
+    assert main(["convert", str(root), "--report-only"]) == 0
+    out = capsys.readouterr().out
+    assert "wrote" not in out
+    assert not (tmp_path / "pack-26.2.zip").exists()
+    assert (tmp_path / "pack-26.2-report.md").exists()
+    assert (tmp_path / "pack-26.2-null-textures.md").exists()
+
+
+def test_report_only_does_not_claim_a_stale_zip_was_written(
+        mini_pack, tmp_path, capsys, monkeypatch):
+    """A leftover zip from a previous run is not this run's output.
+
+    The summary used to test `out_path.exists()` — a fact about the filesystem
+    rather than about this run — so --report-only in a directory holding an
+    earlier pack-26.2.zip printed "wrote pack-26.2.zip" over an untouched file.
+    """
+    root = mini_pack()
+    monkeypatch.chdir(tmp_path)
+    stale = tmp_path / "pack-26.2.zip"
+    stale.write_bytes(b"STALE FROM A PREVIOUS RUN")
+    assert main(["convert", str(root), "--report-only"]) == 0
+    out = capsys.readouterr().out
+    assert "wrote" not in out
+    assert stale.read_bytes() == b"STALE FROM A PREVIOUS RUN"
+
+
+def test_reports_written_beside_the_zip(mini_pack, tmp_path, monkeypatch):
+    root = mini_pack()
+    monkeypatch.chdir(tmp_path)
+    assert main(["convert", str(root)]) == 0
+    assert (tmp_path / "pack-26.2-report.md").read_text().startswith("# Conversion Report")
+    assert (tmp_path / "pack-26.2-null-textures.md").read_text().startswith(
+        "# Null-Texture Safety Report")
+
+
+def test_report_only_writes_reports_but_no_zip(mini_pack, tmp_path, monkeypatch):
+    root = mini_pack()
+    monkeypatch.chdir(tmp_path)
+    assert main(["convert", str(root), "--report-only"]) == 0
+    assert (tmp_path / "pack-26.2-report.md").exists()
+    assert not (tmp_path / "pack-26.2.zip").exists()
+
+
+def test_missing_source_is_one_line_not_a_traceback(tmp_path, capsys, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    code = main(["convert", str(tmp_path / "nope.zip")])
+    assert code != 0
+    captured = capsys.readouterr()
+    message = captured.out + captured.err
+    assert "nope.zip" in message
+    assert "Traceback" not in message
+    assert len(message.strip().splitlines()) == 1
+
+
+def test_unreadable_zip_is_one_line_not_a_traceback(tmp_path, capsys, monkeypatch):
+    """A renamed .rar or a truncated download is a plausible first run.
+
+    It reached zipfile.ZipFile inside the pipeline and dumped a BadZipFile
+    traceback at an audience of non-developers.
+    """
+    monkeypatch.chdir(tmp_path)
+    broken = tmp_path / "broken.zip"
+    broken.write_bytes(b"Rar!\x1a\x07\x00 not a zip at all")
+    code = main(["convert", str(broken)])
+    assert code != 0
+    captured = capsys.readouterr()
+    message = captured.out + captured.err
+    assert "broken.zip" in message
+    assert "Traceback" not in message
+    assert len(message.strip().splitlines()) == 1
+    assert not (tmp_path / "broken-26.2.zip").exists()
