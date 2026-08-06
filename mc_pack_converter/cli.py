@@ -56,7 +56,10 @@ def default_out_path(source: Path, target: str) -> Path:
     stem = source.stem if source.suffix.lower() == ".zip" else source.name
     return Path(f"{stem}-{target}.zip")
 
-TARGETS = sorted(load_table("pack_format"))
+# pack_format.json's "1.8.9" entry describes the format a pack is READ as,
+# not a valid conversion output; excluded so --target 1.8.9 is rejected.
+INPUT_FORMAT = "1.8.9"
+TARGETS = sorted(k for k in load_table("pack_format") if k != INPUT_FORMAT)
 
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(

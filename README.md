@@ -62,8 +62,7 @@ Four files land in the working directory:
 `source` can be a `.zip` or an unpacked folder. Useful flags:
 
 ```
-usage: mc-pack-converter convert [-h] [-o OUT]
-                                 [--target {1.8.9,26.1,26.1.2,26.2}]
+usage: mc-pack-converter convert [-h] [-o OUT] [--target {26.1,26.1.2,26.2}]
                                  [--report-only] [-v]
                                  source
 
@@ -75,7 +74,7 @@ options:
   -h, --help            show this help message and exit
   -o OUT, --out OUT     output zip (default: <pack>-<target>.zip in the
                         current directory)
-  --target {1.8.9,26.1,26.1.2,26.2}
+  --target {26.1,26.1.2,26.2}
                         Minecraft version to convert to (default: 26.2)
   --report-only         analyse the pack and write reports without producing a
                         converted pack
@@ -133,7 +132,10 @@ The converter runs 20 stages in a fixed order:
 14. **optifine** — translates OptiFine/MCPatcher extensions — connected
     textures, custom skies, colour properties — so they keep working,
     including inferring `matchBlocks` for connected-texture folders that
-    relied on old MCPatcher's name-based matching.
+    relied on old MCPatcher's name-based matching, and drops the one known-bad
+    colour override (a lily pad tint that renders invisible) so that block
+    falls back to vanilla while every other custom colour passes through
+    untouched.
 15. **slice** — runs Mojang's own official slicer definitions to cut legacy
     combined atlases (widgets, icons, particles, GUI containers) into the
     modern one-sprite-per-file layout.
@@ -164,10 +166,11 @@ Two accepted, permanent limitations, also recorded in
 [`docs/known-issues.md`](docs/known-issues.md):
 
 - **Custom mob-effect icons** (§2): icons for the 19 potion effects that
-  existed in 1.8.9 are recovered from the pack's own art. Icons for the 8
-  effects added in 1.9 or later (`levitation`, `glowing`, `luck`, `unluck`,
-  `health_boost`, `slow_falling`, `conduit_power`, `dolphins_grace`) have no
-  1.8.9 art to recover from and fall back to vanilla.
+  existed in 1.8.9 are recovered from the pack's own art. 8 icons have no
+  1.8.9 art to recover from and fall back to vanilla: `levitation`, `glowing`,
+  `luck`, and `unluck` are 1.9 additions; `slow_falling`, `conduit_power`, and
+  `dolphins_grace` are 1.13 additions; and `health_boost`, though a 1.8.9
+  effect, was never drawn in the icon strip.
 - **The villager trading GUI** (§5): always dropped to vanilla. 1.14 redesigned
   its canvas with a trade-list panel that has no 1.8.9 counterpart, so keeping
   the pack's texture would render squashed and with misplaced slots.
@@ -183,4 +186,6 @@ The conversion pipeline was validated against two authoritative references:
   vendored under `tools/slicer_src/` and used to regenerate the GUI-sprite
   crop table.
 - [agentdid127/ResourcePackConverter](https://github.com/agentdid127/ResourcePackConverter),
-  an open-source converter whose chest-remap logic this project ports.
+  an open-source converter whose chest-remap logic (`ChestConverter1_15`) this
+  project ports, along with its water-grayscale (`WaterConverter1_13`) and
+  compass/clock frame-splitting (`CompassConverter1_9`) logic.

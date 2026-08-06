@@ -155,10 +155,22 @@ def test_invalid_target_exits_without_converting(mini_pack, tmp_path):
 
 
 def test_targets_come_from_the_data_table():
-    # The list must not drift from pack_format.json.
-    from mc_pack_converter.cli import TARGETS
+    # TARGETS must track pack_format.json, minus the input format: "1.8.9" in
+    # that table describes the format a pack is READ as, not a valid output.
+    from mc_pack_converter.cli import TARGETS, INPUT_FORMAT
     from mc_pack_converter.data import load_table
-    assert set(TARGETS) == set(load_table("pack_format"))
+    assert set(TARGETS) == set(load_table("pack_format")) - {INPUT_FORMAT}
+
+
+def test_target_1_8_9_is_rejected(mini_pack, tmp_path):
+    # --target 1.8.9 would run every modernising stage and then write a
+    # min/max_format of 1 - a modern-layout pack declaring itself 1.8.9.
+    root = mini_pack()
+    out = tmp_path / "converted.zip"
+    with pytest.raises(SystemExit) as exc:
+        main(["convert", str(root), "-o", str(out), "--target", "1.8.9"])
+    assert exc.value.code != 0
+    assert not out.exists()
 
 
 def test_on_stage_called_once_per_stage(mini_pack, tmp_path):
