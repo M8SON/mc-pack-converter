@@ -41,7 +41,7 @@ not a bug fix.
 
 **Status:** FIXED 2026-07-29 — `stages/slice.py` skips crops with no visible
 pixels. Kept here for the record; the reproduce block below now reports 0.
-**Fix lives in:** `docs/superpowers/specs/2026-07-29-particles-slicer-design.md`
+**Fix lives in:** `stages/slice.py`; see the 2026-07-29 particles-slicer commits
 **Affects:** `M8SON-converted-26.1.2-FRESH.zip` (2026-07-28 21:50) and every earlier build
 
 `stages/slice.py` cropped a region from a 1.8.9 atlas and wrote it unconditionally.
@@ -101,7 +101,7 @@ EOF
 
 **Status:** FIXED 2026-07-31 — `tools/gen_slices.py` emits the 1.14 slicer's
 `effect()` records for the 19 effects vanilla 1.8.9 draws.
-**Design:** `docs/superpowers/specs/2026-07-31-mob-effect-icons-design.md`
+**Design:** `tools/gen_slices.py`; see the 2026-07-31 mob-effect-icons commits
 
 Modern Minecraft reads potion-effect icons from `textures/mob_effect/<name>.png`;
 nothing reads the 18px icon strip inside `textures/gui/container/inventory.png`

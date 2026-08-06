@@ -5,3 +5,4 @@ __pycache__/
 .superpowers/
 converted.zip
 *.egg-info/
+docs/superpowers/
