@@ -213,6 +213,18 @@ stays dropped, but for a different and real reason found by in-game testing
 **Guarded by:** `tests/test_drop.py::test_anvil_is_not_dropped` and
 `::test_enchanting_table_is_dropped`
 
+> **⚠ PARTLY SUPERSEDED 2026-08-02 — see §16.** The closing decision below,
+> that the enchanting table "goes back on the drop list", is no longer what the
+> code does. It is **not** in `data/drop_list.json`; it moved to
+> `data/conformance.json` and is now measured per pack by the `conformance`
+> stage. The proving-ground pack still loses it — on its own measurement (3.1,
+> against a threshold of 8.0) rather than by name — so the outcome for *this*
+> pack is unchanged and the reasoning below is still why. The guarding test was
+> renamed to `::test_enchanting_table_is_measured_not_assumed`. Everything else
+> in this entry — the anvil correction, the measurements, the two lessons —
+> stands. Left unedited on purpose: it is the record of how the decision was
+> reached.
+
 `textures/gui/container/anvil.png` and `enchanting_table.png` were dropped to
 vanilla on the recorded theory that their **slot layout had drifted** between
 1.8.9 and modern, so a 1.8.9 background would misalign with modern's functional
@@ -485,6 +497,26 @@ not just how they appear.
 
 **Status:** decided 2026-08-01 · not a defect · **do not "fix" this by adding
 auto-detection without reading the history below.**
+
+> **⚠ SUPERSEDED 2026-08-02 — see §16.** The decision recorded here was
+> reversed the next day: the five textures are **no longer in**
+> `data/drop_list.json` and are no longer dropped unconditionally. They moved to
+> `data/conformance.json`, where the `conformance` stage measures each one per
+> pack. "Always dropping is deterministic" is no longer the shipped behaviour —
+> §16 documents what is, with the corpus numbers.
+>
+> What broke the deadlock was not a seventh threshold over the same
+> measurements. Attempts 1–6 below all scored a slot region *in aggregate*
+> (contrast, edge density, ink, correlation), which is exactly the discard-shape
+> mistake this entry diagnoses. The predicate that shipped scores each expected
+> slot by its **four borders separately**, and rejects a sample box that clips a
+> neighbouring slot — the failure mode that killed attempt 6's held-out margin
+> and, in a first shipped version, produced one in-game false positive before
+> being tightened. The closing warning below therefore still holds and was paid
+> for twice.
+>
+> This entry stays unedited as the record of six failed attempts. Do not
+> re-derive them.
 
 `data/drop_list.json` drops `enchanting_table.png` and the four
 `creative_inventory` tabs because in the proving-ground pack they are
@@ -783,6 +815,136 @@ the CTM references this converter works hard to get right. They do **not** keep
 invalid characters: the log line above shows OptiFine rejecting `glass gray` by
 path, so a space is fatal there too. Renaming it to `glass_gray` also keeps the
 CTM mapping working, because the lookup normalises underscores to spaces.
+
+---
+
+## 16. Five textures are measured per pack, and 91% of packs lose the enchanting table
+
+**Status:** deliberate behaviour, set 2026-08-02 · not a defect · **the most
+user-visible decision the converter makes**
+**Supersedes:** §4's closing decision ("goes back on the drop list") and all of §9
+**Lives in:** `stages/conformance.py`, calibrated by `data/conformance.json`
+**Guarded by:** `tests/test_conformance.py` (9 tests) and
+`tests/test_drop.py::test_enchanting_table_is_measured_not_assumed`
+
+`data/drop_list.json` holds unconditional **version facts** — the 1.11 horse
+re-UV, the 1.14 villager-GUI redesign — true of every 1.8.9 pack. Five entries
+sat there that were not facts at all but judgements about the proving-ground
+pack: its enchanting table is 1.7-era art, and its creative tabs are unfinished
+dev placeholders. Feeding any other pack through threw the same five textures
+away regardless. The first measurement of the cost put **82 of the 173 corpus
+packs** in the losing-good-art column for the enchanting table alone — a figure
+revised sharply downward later the same day, see *What this costs* below, but
+not to zero. §9 is the record of deciding to live with that cost; this section
+is the record of stopping.
+
+The `conformance` stage asks the question per pack instead. Each of the five
+paths has a predicate; the predicate produces a number; the number decides.
+A texture that fails is **deleted**, exactly like a drop-list entry, so modern
+vanilla renders in its place. A texture that passes is kept untouched. There is
+no third outcome and nothing is ever referred back to the user — the measured
+number goes into the findings at WARNING (not INFO: deleting art the pack
+shipped is the most consequential thing the stage does, and the corpus harness
+only records non-INFO findings), so every drop is explainable rather than
+asserted.
+
+### The five textures in scope
+
+| texture | predicate | threshold |
+|---|---|---|
+| `gui/container/enchanting_table.png` | `slot_presence` | `min_score` 8.0, `max_lift` 30.0 |
+| `gui/container/creative_inventory/tabs.png` | `opaque_coverage` | `min_percent` 25 |
+| `gui/container/creative_inventory/tab_items.png` | `opaque_coverage` | 25 |
+| `gui/container/creative_inventory/tab_item_search.png` | `opaque_coverage` | 25 |
+| `gui/container/creative_inventory/tab_inventory.png` | `opaque_coverage` | 25 |
+
+Nothing else is measured. Every other texture in the pack is converted or left
+alone by the other 19 stages; this stage only ever touches these five paths, and
+it skips any the pack does not ship.
+
+### `slot_presence` — does the pack draw slots where 1.8.9 puts them?
+
+1.8.9's enchanting GUI has **two** item slots (lapis was added to enchanting in
+1.8), at ref coordinates `(14,46)` and `(34,46)` on a 256×256 reference. Art
+with one slot, or with slots offset from that layout, renders misaligned under
+modern Minecraft, which draws its own two functional slots on top.
+
+Each expected 18×18 box is scored **by its four borders against its interior**,
+scaled by the pack's own resolution so a 4× pack is judged like a 1× one:
+
+- **LEFT and TOP must be distinctly darker than the interior.** Minecraft slots
+  are inset, so those two edges carry the shadow in every styling. Not all four:
+  BOTTOM and RIGHT are the bevel's lit side and can legitimately be lighter.
+- **No edge may be more than `max_lift` (30) brighter than the interior.** A
+  bevel lifts an edge by single digits; a sample box clipping into a
+  *neighbouring* slot's bright interior lifts it by 70+. Such a box scores 0
+  outright.
+
+The score is `min(-left, -top)` across both slots — the margin by which the
+weaker condition is met, so the finding can quote a number.
+
+**Controls, from `data/conformance.json`, all confirmed in-game:**
+
+| pack | score | outcome |
+|---|---|---|
+| M8SON (one slot, 1.7-era) | **3.1** | drop — confirmed broken in-game |
+| Kiro FPS V2 cRed | **24.5** | keep — confirmed correct in-game |
+
+`min_score = 8` sits in open space between them.
+
+**The four-border rule replaced a ring average, and that correction is the
+whole reason this section exists.** The first shipped predicate scored one
+border *ring* against the interior at `min_score = 3.5`. `SOUPSKIDZ4LIFE`
+passed it at 7.0 and 5.8 and rendered in-game with Minecraft's two slots drawn
+over the pack's single one (Mason, 2026-08-02). A ring average cannot tell a
+slot box from a box that merely **clips** one: that pack's single slot sits
+*between* 1.8.9's two positions, so both sample boxes catch a piece of its
+border and both score well. Its clipped edges read **+75 and +71** brighter
+than their interiors, which is what `max_lift` now catches. The same root cause
+had already killed an edge-density predicate on 07-31; the note existed and was
+not applied.
+
+### `opaque_coverage` — is the tab art finished?
+
+Percent of pixels with alpha > 128. It catches unfinished placeholder art that
+is mostly see-through outlines. The corpus distribution across the **141** packs
+shipping these textures is sharply bimodal — **p25 = 2.4%, p50 = 36.8%, and
+nothing in between** — so any threshold inside that gap behaves identically;
+25 is the middle of it. Control: M8SON's four tabs measure **5.1–6.5%** and
+drop. They are dev placeholders — red `UN SEL` / blue `SEL` boxes.
+
+### What this costs, honestly
+
+**Of the 142 corpus packs shipping an `enchanting_table.png`, 13 keep it.**
+The other 129 — **91%** — get vanilla's enchanting screen. Under the ring
+average that number was 82 keeps; the four-border rule dropped it to 13.
+
+That is deliberate and was chosen with the number in hand. Most of the 82 were
+single-slot packs that would have rendered broken exactly as `SOUPSKIDZ4LIFE`
+did. **Dropping good art costs a vanilla GUI; keeping bad art ships a visibly
+broken one**, and both failures so far have been false *positives* — art kept
+that should not have been. The predicate is conservative by design.
+
+Across the whole corpus the move off `drop_list.json` was still a large net
+recovery: measured on 2026-08-02 it kept **393** textures that had previously
+been thrown away unconditionally and still dropped **298**. That split was
+taken before the four-border tightening, which moved 69 enchanting tables from
+the keep column to the drop column; the creative-tab half is unchanged.
+
+An image the stage **cannot read** is **kept**, with a WARNING naming the
+exception. A measurement that did not happen is not evidence for deleting
+somebody's art.
+
+### If this is revisited
+
+- The thresholds live in `data/conformance.json`, not in the code. Retuning is
+  a data edit; adding a *new* kind of measurement means a new entry in `_TESTS`.
+- Do not move any of these five back into `drop_list.json`. That file's contract
+  is "true of every 1.8.9 pack", and none of these five is.
+- Any change to `min_score` must be justified against the corpus histogram, not
+  against one pack. §9's table of six failed attempts is the record of what
+  measuring one pack's opinion looks like, and the 07-31 and 08-02 false
+  positives are what a threshold with no margin costs: an in-game report.
 
 ---
 

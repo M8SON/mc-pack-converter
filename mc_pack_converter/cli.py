@@ -1,5 +1,5 @@
 from __future__ import annotations
-import argparse, shutil, sys, tempfile
+import argparse, shutil, sys, tempfile, zipfile
 from pathlib import Path
 from .pipeline import ConversionContext, Severity, run_pipeline
 from .stages import STAGES
@@ -82,7 +82,7 @@ def build_parser() -> argparse.ArgumentParser:
     return ap
 
 def summary_lines(ctx: ConversionContext, out_path: Path,
-                  reports: dict[str, Path]) -> list[str]:
+                  reports: dict[str, Path], wrote_zip: bool) -> list[str]:
     counts = {s: 0 for s in Severity}
     for f in ctx.findings:
         counts[f.severity] += 1
@@ -91,7 +91,10 @@ def summary_lines(ctx: ConversionContext, out_path: Path,
         f"{counts[Severity.ERROR]} errors, {counts[Severity.WARNING]} warnings, "
         f"{counts[Severity.INFO]} notes",
     ]
-    if out_path.exists():
+    # Whether THIS run produced the zip, not whether a file of that name is on
+    # disk: a leftover zip from a previous run made --report-only claim it had
+    # written one.
+    if wrote_zip:
         lines.append(f"wrote {out_path}")
     lines += [f"{label}: {path}" for label, path in reports.items()]
     return lines
@@ -103,6 +106,15 @@ def main(argv=None) -> int:
 
     if not args.source.exists():
         print(f"no such pack: {args.source}", file=sys.stderr)
+        return 1
+
+    # A source that is a file must be a zip. A renamed .rar or a truncated
+    # download otherwise reaches zipfile.ZipFile and dumps a BadZipFile
+    # traceback at a non-developer. Checked here, beside the exists() guard,
+    # rather than by wrapping convert(): every OTHER failure must still surface
+    # with its traceback.
+    if args.source.is_file() and not zipfile.is_zipfile(args.source):
+        print(f"not a readable zip: {args.source}", file=sys.stderr)
         return 1
 
     def on_stage(name, i, total):
@@ -124,7 +136,7 @@ def main(argv=None) -> int:
     if args.verbose:
         for text in texts.values():
             print(text)
-    for line in summary_lines(ctx, out, written):
+    for line in summary_lines(ctx, out, written, wrote_zip=not args.report_only):
         print(line)
 
     if any(f.severity is Severity.ERROR for f in ctx.findings):

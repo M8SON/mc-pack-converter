@@ -164,9 +164,18 @@ project is derived from the 1.8.9 layout, and applying it to a newer pack can
 mis-map textures rather than merely convert them worse. See
 [`docs/known-issues.md`](docs/known-issues.md), §0.
 
-Two accepted, permanent limitations, also recorded in
+Three accepted limitations, also recorded in
 [`docs/known-issues.md`](docs/known-issues.md):
 
+- **The enchanting-table GUI** (§16): kept only when the pack's own art draws
+  two item slots where 1.8.9 puts them, measured per pack by the `conformance`
+  stage. 1.8 added the lapis slot, so 1.7-era art with a single slot renders
+  with modern Minecraft's two functional slots drawn on top of it. The check is
+  deliberately conservative, and this is the converter's most visible decision:
+  **13 of the 142 packs in a 173-pack test corpus keep their enchanting table —
+  the other 91% fall back to vanilla's.** The same stage drops
+  creative-inventory tab art that measures as mostly transparent (unfinished
+  placeholders), on the same per-pack basis.
 - **Custom mob-effect icons** (§2): icons for the 19 potion effects that
   existed in 1.8.9 are recovered from the pack's own art. 8 icons have no
   1.8.9 art to recover from and fall back to vanilla: `levitation`, `glowing`,

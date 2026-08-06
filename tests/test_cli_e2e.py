@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import zipfile
 
 import pytest
@@ -137,12 +138,24 @@ def test_every_convert_argument_is_documented(capsys):
 
 
 def test_help_lists_the_valid_targets(capsys):
+    """Read the --target choices, not the whole help text.
+
+    "1.8.9" does appear in the help — in the `source` positional's prose ("the
+    1.8.9 pack to convert"). Searching the whole text therefore passed even
+    though --target renders `{26.1,26.1.2,26.2}`, and would still pass if
+    --target listed no choices at all. 1.8.9 was excluded from the targets on
+    purpose (9a82697) because it produces a broken pack, so the test must also
+    say it is not offered as one.
+    """
     from mc_pack_converter.cli import build_parser
     with pytest.raises(SystemExit):
         build_parser().parse_args(["convert", "--help"])
     out = capsys.readouterr().out
-    for version in ("1.8.9", "26.1", "26.1.2", "26.2"):
-        assert version in out
+    rendered = re.search(r"--target \{([^}]*)\}", out)
+    assert rendered, "--target does not render its choices in the help"
+    targets = rendered.group(1).split(",")
+    assert targets == ["26.1", "26.1.2", "26.2"]
+    assert "1.8.9" not in targets
 
 
 def test_invalid_target_exits_without_converting(mini_pack, tmp_path):
@@ -222,6 +235,24 @@ def test_report_only_summary_does_not_claim_zip_written(mini_pack, tmp_path, cap
     assert (tmp_path / "pack-26.2-null-textures.md").exists()
 
 
+def test_report_only_does_not_claim_a_stale_zip_was_written(
+        mini_pack, tmp_path, capsys, monkeypatch):
+    """A leftover zip from a previous run is not this run's output.
+
+    The summary used to test `out_path.exists()` — a fact about the filesystem
+    rather than about this run — so --report-only in a directory holding an
+    earlier pack-26.2.zip printed "wrote pack-26.2.zip" over an untouched file.
+    """
+    root = mini_pack()
+    monkeypatch.chdir(tmp_path)
+    stale = tmp_path / "pack-26.2.zip"
+    stale.write_bytes(b"STALE FROM A PREVIOUS RUN")
+    assert main(["convert", str(root), "--report-only"]) == 0
+    out = capsys.readouterr().out
+    assert "wrote" not in out
+    assert stale.read_bytes() == b"STALE FROM A PREVIOUS RUN"
+
+
 def test_reports_written_beside_the_zip(mini_pack, tmp_path, monkeypatch):
     root = mini_pack()
     monkeypatch.chdir(tmp_path)
@@ -248,3 +279,22 @@ def test_missing_source_is_one_line_not_a_traceback(tmp_path, capsys, monkeypatc
     assert "nope.zip" in message
     assert "Traceback" not in message
     assert len(message.strip().splitlines()) == 1
+
+
+def test_unreadable_zip_is_one_line_not_a_traceback(tmp_path, capsys, monkeypatch):
+    """A renamed .rar or a truncated download is a plausible first run.
+
+    It reached zipfile.ZipFile inside the pipeline and dumped a BadZipFile
+    traceback at an audience of non-developers.
+    """
+    monkeypatch.chdir(tmp_path)
+    broken = tmp_path / "broken.zip"
+    broken.write_bytes(b"Rar!\x1a\x07\x00 not a zip at all")
+    code = main(["convert", str(broken)])
+    assert code != 0
+    captured = capsys.readouterr()
+    message = captured.out + captured.err
+    assert "broken.zip" in message
+    assert "Traceback" not in message
+    assert len(message.strip().splitlines()) == 1
+    assert not (tmp_path / "broken-26.2.zip").exists()
