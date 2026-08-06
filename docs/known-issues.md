@@ -217,7 +217,7 @@ stays dropped, but for a different and real reason found by in-game testing
 > that the enchanting table "goes back on the drop list", is no longer what the
 > code does. It is **not** in `data/drop_list.json`; it moved to
 > `data/conformance.json` and is now measured per pack by the `conformance`
-> stage. The proving-ground pack still loses it — on its own measurement (3.1,
+> stage. The proving-ground pack still loses it — on its own measurement (-3.0,
 > against a threshold of 8.0) rather than by name — so the outcome for *this*
 > pack is unchanged and the reasoning below is still why. The guarding test was
 > renamed to `::test_enchanting_table_is_measured_not_assumed`. Everything else
@@ -883,14 +883,24 @@ scaled by the pack's own resolution so a 4× pack is judged like a 1× one:
 The score is `min(-left, -top)` across both slots — the margin by which the
 weaker condition is met, so the finding can quote a number.
 
-**Controls, from `data/conformance.json`, all confirmed in-game:**
+**Controls, re-measured 2026-08-06 by running the shipped predicate over the
+corpus, all confirmed in-game:**
 
 | pack | score | outcome |
 |---|---|---|
-| M8SON (one slot, 1.7-era) | **3.1** | drop — confirmed broken in-game |
-| Kiro FPS V2 cRed | **24.5** | keep — confirmed correct in-game |
+| M8SON (one slot, 1.7-era) | **-3.0** | drop — confirmed broken in-game |
+| Kiro FPS V2 cRed | **16.8** | keep — confirmed correct in-game |
 
-`min_score = 8` sits in open space between them.
+`min_score = 8` sits in open space between them, and the margin is wider than
+those two controls alone show: across the 142 packs shipping the texture, the
+highest drop-side score is **3.75** and the lowest keep-side score is **16.75**.
+
+> **Do not take these two numbers from `data/conformance.json`.** That file's
+> `_slot_presence` prose comment records them as 3.1 and 24.5; both are wrong.
+> Commit `75e784e` has the correct pair, and re-running the predicate in
+> 2026-08-06 reproduced `75e784e`, not the comment. Nothing behavioural turns
+> on it — both packs land the same side of 8.0 either way — but calibrate
+> against the code, not that comment.
 
 **The four-border rule replaced a ring average, and that correction is the
 whole reason this section exists.** The first shipped predicate scored one
@@ -908,9 +918,11 @@ not applied.
 
 Percent of pixels with alpha > 128. It catches unfinished placeholder art that
 is mostly see-through outlines. The corpus distribution across the **141** packs
-shipping these textures is sharply bimodal — **p25 = 2.4%, p50 = 36.8%, and
-nothing in between** — so any threshold inside that gap behaves identically;
-25 is the middle of it. Control: M8SON's four tabs measure **5.1–6.5%** and
+shipping these textures is sharply bimodal — **p25 = 2.4%, p50 = 36.8%** — and
+25 sits in the middle of that gap. Per-pack the gap is clean; per-texture it is
+not quite empty (a 2026-08-06 recount found 49 of 564 textures scoring between
+8 and 30), so moving the threshold a few points would change a handful of
+textures rather than none. Control: M8SON's four tabs measure **5.1–6.5%** and
 drop. They are dev placeholders — red `UN SEL` / blue `SEL` boxes.
 
 ### What this costs, honestly
