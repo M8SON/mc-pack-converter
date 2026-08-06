@@ -197,3 +197,14 @@ def test_verbose_prints_the_full_reports(mini_pack, tmp_path, capsys, monkeypatc
     out = capsys.readouterr().out
     assert "# Conversion Report" in out
     assert "# Null-Texture Safety Report" in out
+
+
+def test_report_only_summary_does_not_claim_zip_written(mini_pack, tmp_path, capsys, monkeypatch):
+    root = mini_pack()
+    monkeypatch.chdir(tmp_path)
+    assert main(["convert", str(root), "--report-only"]) == 0
+    out = capsys.readouterr().out
+    assert "wrote" not in out
+    assert not (tmp_path / "pack-26.2.zip").exists()
+    assert (tmp_path / "pack-26.2-report.md").exists()
+    assert (tmp_path / "pack-26.2-null-textures.md").exists()

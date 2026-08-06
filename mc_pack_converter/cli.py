@@ -87,8 +87,9 @@ def summary_lines(ctx: ConversionContext, out_path: Path,
         "",
         f"{counts[Severity.ERROR]} errors, {counts[Severity.WARNING]} warnings, "
         f"{counts[Severity.INFO]} notes",
-        f"wrote {out_path}",
     ]
+    if out_path.exists():
+        lines.append(f"wrote {out_path}")
     lines += [f"{label}: {path}" for label, path in reports.items()]
     return lines
 
