@@ -1,5 +1,7 @@
 # mc-pack-converter
 
+[![tests](https://github.com/M8SON/mc-pack-converter/actions/workflows/tests.yml/badge.svg)](https://github.com/M8SON/mc-pack-converter/actions/workflows/tests.yml)
+
 Converts Minecraft Java 1.8.9 resource packs to modern versions (26.1, 26.1.2, 26.2).
 
 ## Install
