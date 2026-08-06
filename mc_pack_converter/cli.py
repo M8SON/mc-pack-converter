@@ -37,16 +37,25 @@ def convert(source: Path, out_path: Path, target: str,
     finally:
         shutil.rmtree(workroot, ignore_errors=True)
 
+def default_out_path(source: Path, target: str) -> Path:
+    """Name the output after the source and target, in the cwd.
+
+    A fixed default overwrites the previous run without saying so.
+    """
+    stem = source.stem if source.suffix.lower() == ".zip" else source.name
+    return Path(f"{stem}-{target}.zip")
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="mc-pack-converter")
     sub = ap.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("convert")
     c.add_argument("source", type=Path)
-    c.add_argument("-o", "--out", type=Path, default=Path("converted.zip"))
+    c.add_argument("-o", "--out", type=Path, default=None)
     c.add_argument("--target", default="26.2")
     c.add_argument("--report-only", action="store_true")
     args = ap.parse_args(argv)
-    ctx = convert(args.source, args.out, args.target, args.report_only)
+    out = args.out or default_out_path(args.source, args.target)
+    ctx = convert(args.source, out, args.target, args.report_only)
     print(render_conversion_report(ctx.findings))
     print(render_null_texture_report(ctx.findings))
     if any(f.severity is Severity.ERROR for f in ctx.findings):

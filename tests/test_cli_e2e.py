@@ -91,3 +91,33 @@ def test_contact_sheet_failure_does_not_abort_conversion(tmp_path, mini_pack, mo
     assert out.exists()
     assert any(f.severity is Severity.WARNING and "contact sheet" in f.message
                for f in ctx.findings)
+
+
+def test_default_out_path_from_zip_source():
+    from mc_pack_converter.cli import default_out_path
+    assert default_out_path(Path("/packs/MyPack.zip"), "26.2") == Path("MyPack-26.2.zip")
+
+
+def test_default_out_path_from_directory_source():
+    from mc_pack_converter.cli import default_out_path
+    assert default_out_path(Path("/packs/My Pack"), "26.1.2") == Path("My Pack-26.1.2.zip")
+
+
+def test_default_out_path_ignores_source_directory(tmp_path):
+    # The output belongs in the cwd, not next to the source.
+    from mc_pack_converter.cli import default_out_path
+    assert default_out_path(Path("/somewhere/else/P.zip"), "26.2").parent == Path(".")
+
+
+def test_main_uses_derived_name_when_no_dash_o(mini_pack, monkeypatch, tmp_path):
+    root = mini_pack()
+    monkeypatch.chdir(tmp_path)
+    assert main(["convert", str(root)]) == 0
+    assert (tmp_path / "pack-26.2.zip").exists()
+
+
+def test_main_explicit_out_wins(mini_pack, tmp_path):
+    root = mini_pack()
+    out = tmp_path / "chosen.zip"
+    assert main(["convert", str(root), "-o", str(out)]) == 0
+    assert out.exists()
