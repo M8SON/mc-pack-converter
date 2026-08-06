@@ -121,3 +121,41 @@ def test_main_explicit_out_wins(mini_pack, tmp_path):
     out = tmp_path / "chosen.zip"
     assert main(["convert", str(root), "-o", str(out)]) == 0
     assert out.exists()
+
+
+def test_every_convert_argument_is_documented(capsys):
+    # Read the help the user actually sees rather than argparse internals.
+    from mc_pack_converter.cli import build_parser
+    with pytest.raises(SystemExit):
+        build_parser().parse_args(["convert", "--help"])
+    out = capsys.readouterr().out
+    for flag in ("source", "--out", "--target", "--report-only"):
+        assert flag in out
+    # every flag line carries prose, not just the flag name
+    assert "current directory" in out          # --out
+    assert "without producing" in out          # --report-only
+
+
+def test_help_lists_the_valid_targets(capsys):
+    from mc_pack_converter.cli import build_parser
+    with pytest.raises(SystemExit):
+        build_parser().parse_args(["convert", "--help"])
+    out = capsys.readouterr().out
+    for version in ("1.8.9", "26.1", "26.1.2", "26.2"):
+        assert version in out
+
+
+def test_invalid_target_exits_without_converting(mini_pack, tmp_path):
+    root = mini_pack()
+    out = tmp_path / "never.zip"
+    with pytest.raises(SystemExit) as exc:
+        main(["convert", str(root), "-o", str(out), "--target", "1.21"])
+    assert exc.value.code != 0
+    assert not out.exists()
+
+
+def test_targets_come_from_the_data_table():
+    # The list must not drift from pack_format.json.
+    from mc_pack_converter.cli import TARGETS
+    from mc_pack_converter.data import load_table
+    assert set(TARGETS) == set(load_table("pack_format"))

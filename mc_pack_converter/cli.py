@@ -7,6 +7,7 @@ from .stages.ingest import prepare_working_copy
 from .stages.package import write_output
 from .report import render_conversion_report, render_null_texture_report
 from .contact_sheet import ATLAS_1_14, build_contact_sheet
+from .data import load_table
 
 def convert(source: Path, out_path: Path, target: str,
             report_only: bool) -> ConversionContext:
@@ -45,14 +46,28 @@ def default_out_path(source: Path, target: str) -> Path:
     stem = source.stem if source.suffix.lower() == ".zip" else source.name
     return Path(f"{stem}-{target}.zip")
 
-def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(prog="mc-pack-converter")
+TARGETS = sorted(load_table("pack_format"))
+
+def build_parser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(
+        prog="mc-pack-converter",
+        description="Convert a Minecraft Java 1.8.9 resource pack to a modern version.",
+        epilog="example:  mc-pack-converter convert MyPack.zip --target 26.2",
+    )
     sub = ap.add_subparsers(dest="cmd", required=True)
-    c = sub.add_parser("convert")
-    c.add_argument("source", type=Path)
-    c.add_argument("-o", "--out", type=Path, default=None)
-    c.add_argument("--target", default="26.2")
-    c.add_argument("--report-only", action="store_true")
+    c = sub.add_parser("convert", help="convert a pack")
+    c.add_argument("source", type=Path,
+                   help="the 1.8.9 pack to convert: a .zip or an unpacked folder")
+    c.add_argument("-o", "--out", type=Path, default=None,
+                   help="output zip (default: <pack>-<target>.zip in the current directory)")
+    c.add_argument("--target", default="26.2", choices=TARGETS,
+                   help="Minecraft version to convert to (default: %(default)s)")
+    c.add_argument("--report-only", action="store_true",
+                   help="analyse the pack and write reports without producing a converted pack")
+    return ap
+
+def main(argv=None) -> int:
+    ap = build_parser()
     args = ap.parse_args(argv)
     out = args.out or default_out_path(args.source, args.target)
     ctx = convert(args.source, out, args.target, args.report_only)
