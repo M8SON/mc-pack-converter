@@ -24,9 +24,12 @@ def test_uppercase_filename_is_lowercased(mini_pack):
     _put(root, "textures/blocks/tripWire.png", b"art")
     ctx = ConversionContext(root=root)
     lowercase_paths(ctx)
-    mc = root / "assets/minecraft"
-    assert (mc / "textures/blocks/tripwire.png").read_bytes() == b"art"
-    assert not (mc / "textures/blocks/tripWire.png").exists()
+    blocks = root / "assets/minecraft/textures/blocks"
+    assert (blocks / "tripwire.png").read_bytes() == b"art"
+    # Check the real on-disk spelling, not exists(): on a case-insensitive
+    # filesystem `exists()` answers for either casing, so it can never show
+    # the uppercase name is gone. iterdir() reports what is actually there.
+    assert {p.name for p in blocks.iterdir()} == {"tripwire.png"}
 
 
 def test_uppercase_directory_is_lowercased(mini_pack):
