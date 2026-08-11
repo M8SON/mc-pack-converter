@@ -19,3 +19,6 @@ testpaths = ["tests"]
 
 [tool.setuptools.packages.find]
 include = ["mc_pack_converter*"]
+
+[tool.setuptools.package-data]
+mc_pack_converter = ["data/*.json"]
