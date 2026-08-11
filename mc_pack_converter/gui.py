@@ -15,7 +15,7 @@ try:
     import tkinter as tk
     from tkinter import filedialog, messagebox, ttk
 except ImportError:  # a headless box without Tk; the logic half still imports
-    tk = None
+    tk = filedialog = messagebox = ttk = None
 
 from .job import DEFAULT_TARGET, out_path_beside_source, run_job, validate_source
 from .pipeline import FatalConversionError, Severity
