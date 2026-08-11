@@ -4,6 +4,10 @@ A ResourceLocation must match [a-z0-9_.-/]. Any file whose path has a capital
 is refused by the loader, so the art silently never appears. 130 of 170 corpus
 packs ship at least one; one pack ships 172, including 49 block textures.
 """
+import os
+
+import pytest
+
 from mc_pack_converter.pipeline import ConversionContext, Severity
 from mc_pack_converter.stages.lowercase_paths import lowercase_paths
 
@@ -40,6 +44,11 @@ def test_font_pages_are_lowercased(mini_pack):
     assert (root / "assets/minecraft/textures/font/unicode_page_0a.png").exists()
 
 
+@pytest.mark.skipif(
+    os.name == "nt",
+    reason="fixture needs tripwire.png and tripWire.png to coexist; on NTFS they "
+           "are the same file, so the second write overwrites the first",
+)
 def test_collision_keeps_the_already_lowercase_file(mini_pack):
     """Both spellings shipped: the lowercase one is what Minecraft loads today."""
     root = mini_pack()
@@ -124,3 +133,21 @@ def test_optifine_folder_spaces_are_fixed_but_case_is_kept(mini_pack):
     mc = root / "assets/minecraft"
     assert (mc / "optifine/ctm/glass_gray/glass.properties").exists()
     assert (mc / "optifine/ctm/Glass/1.png").exists(), "case must survive in optifine"
+
+
+def test_case_only_rename_preserves_content(tmp_path):
+    """A case-only rename must go through a temp name.
+
+    On a case-insensitive filesystem `src.rename(dst)` where the two differ only
+    by case is either a no-op or an error, and the naive `if dst.exists()` guard
+    reads it as a collision and deletes the file. Two steps make it work
+    identically on both kinds of filesystem.
+    """
+    from mc_pack_converter.stages.lowercase_paths import _case_only_rename
+    src = tmp_path / "tripWire.png"
+    src.write_bytes(b"art")
+    dst = tmp_path / "tripwire.png"
+    _case_only_rename(src, dst)
+    assert dst.read_bytes() == b"art"
+    assert not any(p.name == "tripWire.png" for p in tmp_path.iterdir())
+    assert not any(p.name.endswith(".casetmp") for p in tmp_path.iterdir())
