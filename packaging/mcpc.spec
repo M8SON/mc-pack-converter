@@ -18,7 +18,10 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=datas,
-    hiddenimports=[],
+    hiddenimports=[
+        "tkinter", "tkinter.filedialog", "tkinter.messagebox", "tkinter.ttk",
+        "PIL", "PIL.Image",
+    ],
     hookspath=[],
     runtime_hooks=[],
     excludes=["pytest"],
