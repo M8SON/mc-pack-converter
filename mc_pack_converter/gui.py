@@ -36,17 +36,23 @@ class GuiState:
         self.result = None
         self.error: BaseException | None = None
 
-    def handle(self, msg: tuple) -> None:
-        kind = msg[0]
-        if kind == "stage":
-            _, self.stage, self.done, self.total = msg
-        elif kind == "done":
-            self.result = msg[1]
-            self.screen = "result"
-        elif kind == "failed":
-            self.error = msg[1]
-            self.screen = "error"
-        # anything else: ignore. A malformed message must not kill the window.
+    def handle(self, msg) -> None:
+        try:
+            kind = msg[0]
+            if kind == "stage":
+                _, self.stage, self.done, self.total = msg
+            elif kind == "done":
+                self.result = msg[1]
+                self.screen = "result"
+            elif kind == "failed":
+                self.error = msg[1]
+                self.screen = "error"
+            # any other kind: ignore
+        except (IndexError, ValueError, TypeError):
+            # A malformed message must never kill the window. This runs inside
+            # the Tk event loop of a windowed exe with no console, so an
+            # exception here would take the UI down with nothing to show for it.
+            return
 
     def headline(self) -> str:
         if self.screen == "progress":

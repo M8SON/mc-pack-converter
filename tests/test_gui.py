@@ -135,7 +135,33 @@ def test_result_headline_flags_errors(tmp_path):
     assert "2 errors" in state.headline()
 
 
-def test_unknown_message_is_ignored_rather_than_crashing():
+@pytest.mark.parametrize("msg", [
+    ("something-else", 1),      # unknown kind, well-formed
+    (),                         # empty
+    ("stage",),                 # known kind, no payload
+    ("stage", "ingest"),        # known kind, too few values
+    ("stage", "ingest", 1, 20, "extra"),  # known kind, too many values
+    ("done",),                  # known kind, missing result
+    ("failed",),                # known kind, missing exception
+    None,                       # not a sequence at all
+    42,                         # not a sequence at all
+])
+def test_malformed_messages_are_ignored_rather_than_crashing(msg):
+    """A bad message must never kill the window.
+
+    handle() runs inside the Tk event loop of a windowed exe with no console,
+    so an exception raised here is invisible to the user and fatal to the UI.
+    """
     state = GuiState(Path("MyPack.zip"), "26.2")
-    state.handle(("something-else", 1))
+    state.handle(msg)
     assert state.screen == "progress"
+    assert state.result is None
+    assert state.error is None
+
+
+def test_wrong_arity_stage_message_does_not_half_mutate_state():
+    state = GuiState(Path("MyPack.zip"), "26.2")
+    state.handle(("stage", "ingest"))
+    assert state.stage == ""
+    assert state.done == 0
+    assert state.total == 0
