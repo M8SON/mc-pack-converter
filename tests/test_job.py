@@ -73,3 +73,77 @@ def test_convert_does_not_print_the_sheet_line(tmp_path, mini_pack, capsys):
 
     convert(root, tmp_path / "converted.zip", "26.1.2", False)
     assert capsys.readouterr().out == ""
+
+
+def test_run_job_writes_reports_beside_the_zip(mini_pack, tmp_path):
+    from mc_pack_converter.job import run_job
+    root = mini_pack()
+    out = tmp_path / "out" / "MyPack-26.2.zip"
+    out.parent.mkdir()
+    result = run_job(root, out, "26.2")
+    assert result.out_path == out
+    assert out.exists()
+    assert result.wrote_zip is True
+    assert result.reports["report"] == out.parent / "MyPack-26.2-report.md"
+    assert result.reports["null-textures"] == out.parent / "MyPack-26.2-null-textures.md"
+    assert result.reports["report"].read_text().startswith("# Conversion Report")
+
+
+def test_run_job_report_only_writes_reports_but_no_zip(mini_pack, tmp_path):
+    from mc_pack_converter.job import run_job
+    root = mini_pack()
+    out = tmp_path / "MyPack-26.2.zip"
+    result = run_job(root, out, "26.2", report_only=True)
+    assert result.wrote_zip is False
+    assert not out.exists()
+    assert result.reports["report"].exists()
+
+
+def test_run_job_counts_findings_by_severity(mini_pack, tmp_path):
+    from mc_pack_converter.pipeline import Severity
+    from mc_pack_converter.job import run_job
+    root = mini_pack()
+    result = run_job(root, tmp_path / "o.zip", "26.2")
+    assert set(result.counts) == set(Severity)
+    assert sum(result.counts.values()) == len(result.ctx.findings)
+
+
+def test_run_job_flags_errors(mini_pack, tmp_path):
+    from mc_pack_converter.job import run_job
+    bad = mini_pack({"assets/minecraft/textures/block/stone.png": b""})
+    result = run_job(bad, tmp_path / "bad.zip", "26.2")
+    assert result.has_errors is True
+
+
+def test_run_job_reports_no_errors_on_a_clean_pack(mini_pack, tmp_path):
+    from mc_pack_converter.job import run_job
+    result = run_job(mini_pack(), tmp_path / "clean.zip", "26.2")
+    assert result.has_errors is False
+
+
+def test_run_job_captures_the_contact_sheet_path(mini_pack, tmp_path):
+    from PIL import Image
+    from mc_pack_converter.job import run_job
+    root = mini_pack()
+    atlas = root / "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png"
+    atlas.parent.mkdir(parents=True, exist_ok=True)
+    Image.new("RGBA", (256, 256), (10, 120, 200, 255)).save(atlas)
+    result = run_job(root, tmp_path / "converted.zip", "26.1.2")
+    assert result.sheet == tmp_path / "converted-slices.png"
+    assert result.sheet.exists()
+
+
+def test_run_job_sheet_is_none_when_nothing_was_sliced(mini_pack, tmp_path):
+    from mc_pack_converter.job import run_job
+    result = run_job(mini_pack(), tmp_path / "plain.zip", "26.1.2")
+    assert result.sheet is None
+
+
+def test_run_job_forwards_every_stage_to_on_stage(mini_pack, tmp_path):
+    from mc_pack_converter.stages import STAGES
+    from mc_pack_converter.job import run_job
+    seen = []
+    run_job(mini_pack(), tmp_path / "o.zip", "26.2",
+            on_stage=lambda name, i, total: seen.append((name, i, total)))
+    assert [s[0] for s in seen] == [name for name, _ in STAGES]
+    assert seen[-1][1] == len(STAGES)

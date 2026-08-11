@@ -1,5 +1,6 @@
 from __future__ import annotations
 import shutil, tempfile, zipfile
+from dataclasses import dataclass
 from pathlib import Path
 
 from .pipeline import ConversionContext, Severity, run_pipeline
@@ -10,8 +11,9 @@ from .report import render_conversion_report, render_null_texture_report
 from .contact_sheet import ATLAS_1_14, build_contact_sheet
 
 # The CLI's default target, shared so the GUI cannot drift from it. NOT
-# derived from TARGETS: that list is string-sorted, so sorted(...)[-1] gives
-# "26.2" today and "26.1.2" the day a "26.10" exists.
+# derived from TARGETS: that list is string-sorted, so sorted(...)[-1] picks
+# by lexical order, not version order — with a future 26.9 and 26.10 both
+# present it returns 26.9, the older one.
 DEFAULT_TARGET = "26.2"
 
 
@@ -80,3 +82,66 @@ def convert(source: Path, out_path: Path, target: str,
         return ctx
     finally:
         shutil.rmtree(workroot, ignore_errors=True)
+
+
+@dataclass(frozen=True)
+class JobResult:
+    """Everything a front end needs to report on one conversion."""
+    ctx: ConversionContext
+    out_path: Path
+    reports: dict[str, Path]
+    report_texts: dict[str, str]
+    sheet: Path | None
+    wrote_zip: bool
+
+    @property
+    def counts(self) -> dict[Severity, int]:
+        counts = {s: 0 for s in Severity}
+        for f in self.ctx.findings:
+            counts[f.severity] += 1
+        return counts
+
+    @property
+    def has_errors(self) -> bool:
+        return any(f.severity is Severity.ERROR for f in self.ctx.findings)
+
+
+def run_job(source: Path, out_path: Path, target: str,
+            report_only: bool = False, *, on_stage=None, on_sheet=None) -> JobResult:
+    """Convert one pack and write its reports beside the output.
+
+    The whole job, shared by the CLI and the GUI: everything main() used to do
+    between validating the source and printing. Callers differ only in how
+    they render the JobResult.
+    """
+    captured: list[Path] = []
+
+    def _sheet(path: Path, n: int) -> None:
+        captured.append(path)
+        if on_sheet is not None:
+            on_sheet(path, n)
+
+    ctx = convert(source, out_path, target, report_only,
+                  on_stage=on_stage, on_sheet=_sheet)
+
+    texts = {
+        "report": render_conversion_report(ctx.findings),
+        "null-textures": render_null_texture_report(ctx.findings),
+    }
+    written = {}
+    for label, text in texts.items():
+        p = out_path.with_name(f"{out_path.stem}-{label}.md")
+        p.write_text(text)
+        written[label] = p
+
+    return JobResult(
+        ctx=ctx,
+        out_path=out_path,
+        reports=written,
+        report_texts=texts,
+        sheet=captured[0] if captured else None,
+        # Whether THIS run produced the zip, not whether a file of that name is
+        # on disk: a leftover zip from a previous run made --report-only claim
+        # it had written one.
+        wrote_zip=not report_only,
+    )

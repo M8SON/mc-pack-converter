@@ -1,10 +1,9 @@
 from __future__ import annotations
 import argparse, sys
 from pathlib import Path
-from .pipeline import ConversionContext, Severity
-from .report import render_conversion_report, render_null_texture_report
+from .pipeline import Severity
 from .data import load_table
-from .job import DEFAULT_TARGET, convert, validate_source
+from .job import DEFAULT_TARGET, convert, run_job, validate_source
 
 def default_out_path(source: Path, target: str) -> Path:
     """Name the output after the source and target, in the cwd.
@@ -39,22 +38,16 @@ def build_parser() -> argparse.ArgumentParser:
                    help="also print the full reports to the terminal")
     return ap
 
-def summary_lines(ctx: ConversionContext, out_path: Path,
-                  reports: dict[str, Path], wrote_zip: bool) -> list[str]:
-    counts = {s: 0 for s in Severity}
-    for f in ctx.findings:
-        counts[f.severity] += 1
+def summary_lines(result) -> list[str]:
+    counts = result.counts
     lines = [
         "",
         f"{counts[Severity.ERROR]} errors, {counts[Severity.WARNING]} warnings, "
         f"{counts[Severity.INFO]} notes",
     ]
-    # Whether THIS run produced the zip, not whether a file of that name is on
-    # disk: a leftover zip from a previous run made --report-only claim it had
-    # written one.
-    if wrote_zip:
-        lines.append(f"wrote {out_path}")
-    lines += [f"{label}: {path}" for label, path in reports.items()]
+    if result.wrote_zip:
+        lines.append(f"wrote {result.out_path}")
+    lines += [f"{label}: {path}" for label, path in result.reports.items()]
     return lines
 
 def main(argv=None) -> int:
@@ -70,27 +63,17 @@ def main(argv=None) -> int:
     def on_stage(name, i, total):
         print(f"[{i}/{total}] {name}")
 
-    ctx = convert(args.source, out, args.target, args.report_only,
-                  on_stage=on_stage,
-                  on_sheet=lambda path, n: print(f"contact sheet: {path} ({n} sprites)"))
-
-    texts = {
-        "report": render_conversion_report(ctx.findings),
-        "null-textures": render_null_texture_report(ctx.findings),
-    }
-    written = {}
-    for label, text in texts.items():
-        p = out.with_name(f"{out.stem}-{label}.md")
-        p.write_text(text)
-        written[label] = p
+    result = run_job(args.source, out, args.target, args.report_only,
+                     on_stage=on_stage,
+                     on_sheet=lambda path, n: print(f"contact sheet: {path} ({n} sprites)"))
 
     if args.verbose:
-        for text in texts.values():
+        for text in result.report_texts.values():
             print(text)
-    for line in summary_lines(ctx, out, written, wrote_zip=not args.report_only):
+    for line in summary_lines(result):
         print(line)
 
-    if any(f.severity is Severity.ERROR for f in ctx.findings):
+    if result.has_errors:
         return 1
     return 0
 
