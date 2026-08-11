@@ -4,9 +4,20 @@ The interaction logic lives in GuiState, which never touches Tk, so it can be
 tested on a headless runner. The widgets only render what GuiState says.
 """
 from __future__ import annotations
+import queue
+import subprocess
+import sys
+import threading
 import traceback
 from pathlib import Path
 
+try:
+    import tkinter as tk
+    from tkinter import filedialog, messagebox, ttk
+except ImportError:  # a headless box without Tk; the logic half still imports
+    tk = None
+
+from .job import DEFAULT_TARGET, out_path_beside_source, run_job, validate_source
 from .pipeline import FatalConversionError, Severity
 
 
@@ -102,3 +113,131 @@ class GuiState:
             return ""
         return "".join(traceback.format_exception(
             type(self.error), self.error, self.error.__traceback__))
+
+
+POLL_MS = 50
+
+
+class App:
+    """The window. Owns every widget; the worker thread owns none of them."""
+
+    def __init__(self, root: tk.Tk, state: GuiState):
+        self.root = root
+        self.state = state
+        self.queue: queue.Queue = queue.Queue()
+
+        root.title("MC Pack Converter")
+        root.geometry("460x220")
+        root.resizable(False, False)
+
+        self.headline = ttk.Label(root, font=("Segoe UI", 12, "bold"))
+        self.headline.pack(anchor="w", padx=16, pady=(16, 8))
+
+        self.bar = ttk.Progressbar(root, length=428, mode="determinate")
+        self.bar.pack(padx=16)
+
+        self.detail = ttk.Label(root, justify="left", font=("Segoe UI", 9))
+        self.detail.pack(anchor="w", padx=16, pady=8)
+
+        self.buttons = ttk.Frame(root)
+        self.buttons.pack(side="bottom", anchor="e", padx=16, pady=12)
+
+        self.render()
+
+    def start(self) -> None:
+        threading.Thread(target=self._work, daemon=True).start()
+        self.root.after(POLL_MS, self._drain)
+
+    def _work(self) -> None:
+        """Runs OFF the Tk thread. Only ever puts messages on the queue."""
+        try:
+            out = out_path_beside_source(self.state.source, self.state.target)
+            result = run_job(
+                self.state.source, out, self.state.target,
+                on_stage=lambda name, i, total: self.queue.put(("stage", name, i, total)),
+            )
+            self.queue.put(("done", result))
+        except BaseException as exc:  # a windowed exe has no console to print to
+            self.queue.put(("failed", exc))
+
+    def _drain(self) -> None:
+        changed = False
+        while True:
+            try:
+                self.state.handle(self.queue.get_nowait())
+                changed = True
+            except queue.Empty:
+                break
+        if changed:
+            self.render()
+        if self.state.screen == "progress":
+            self.root.after(POLL_MS, self._drain)
+
+    def render(self) -> None:
+        self.headline.config(text=self.state.headline())
+        self.detail.config(text="\n".join(self.state.detail_lines()))
+        if self.state.total:
+            self.bar.config(maximum=self.state.total, value=self.state.done)
+        for child in self.buttons.winfo_children():
+            child.destroy()
+        if self.state.screen == "progress":
+            return
+        if self.state.screen == "error":
+            ttk.Button(self.buttons, text="Copy details",
+                       command=self._copy_details).pack(side="left", padx=4)
+        else:
+            ttk.Button(self.buttons, text="Open folder",
+                       command=self._open_folder).pack(side="left", padx=4)
+        ttk.Button(self.buttons, text="Close",
+                   command=self.root.destroy).pack(side="left", padx=4)
+
+    def _copy_details(self) -> None:
+        self.root.clipboard_clear()
+        self.root.clipboard_append(self.state.error_details())
+        messagebox.showinfo("Copied", "Error details copied to the clipboard.")
+
+    def _open_folder(self) -> None:
+        folder = self.state.result.out_path.parent
+        if sys.platform == "win32":
+            subprocess.run(["explorer", str(folder)])
+        else:  # so the window is usable when developing off Windows
+            subprocess.run(["xdg-open", str(folder)])
+
+
+def main(argv: list[str] | None = None) -> int:
+    if tk is None:
+        print("The graphical interface needs Python's tkinter module, which is "
+              "not installed. Use the command line instead:\n"
+              "    mc-pack-converter convert <pack>", file=sys.stderr)
+        return 1
+
+    source, extras = parse_drop(sys.argv[1:] if argv is None else argv)
+
+    root = tk.Tk()
+    if source is None:
+        root.withdraw()
+        chosen = filedialog.askopenfilename(
+            title="Choose a 1.8.9 resource pack",
+            filetypes=[("Resource pack", "*.zip"), ("All files", "*.*")],
+        )
+        if not chosen:
+            root.destroy()
+            return 0  # cancelling the picker is not an error
+        source = Path(chosen)
+        root.deiconify()
+
+    problem = validate_source(source)
+    if problem:
+        root.withdraw()
+        messagebox.showerror("MC Pack Converter", problem)
+        root.destroy()
+        return 1
+
+    app = App(root, GuiState(source, DEFAULT_TARGET, extras))
+    app.start()
+    root.mainloop()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
