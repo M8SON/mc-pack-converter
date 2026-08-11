@@ -4,6 +4,22 @@
 
 Converts Minecraft Java 1.8.9 resource packs to modern versions (26.1, 26.1.2, 26.2).
 
+## Download (Windows, no Python needed)
+
+Grab `MCPackConverter.exe` from the [latest release](https://github.com/M8SON/mc-pack-converter/releases/latest),
+then **drag your pack's `.zip` onto the `.exe`**. The converted pack, two
+reports, and a review sheet appear in the same folder as the pack you dropped.
+
+Double-clicking the exe instead opens a file picker.
+
+**The first run shows a blue "Windows protected your PC" box.** The exe is not
+code-signed — a certificate costs a few hundred dollars a year and this is a
+free tool — so Windows warns about it. Click **More info**, then **Run anyway**.
+It takes a few seconds to start while it unpacks itself.
+
+The exe always converts to the newest supported version. To pick an older
+target, use the command line below.
+
 ## Install
 
 Requires Python 3.11+.
