@@ -16,3 +16,6 @@ mc-pack-converter-gui = "mc_pack_converter.gui:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["mc_pack_converter*"]
