@@ -1,52 +1,9 @@
 from __future__ import annotations
-import argparse, shutil, sys, tempfile, zipfile
+import argparse, sys
 from pathlib import Path
-from .pipeline import ConversionContext, Severity, run_pipeline
-from .stages import STAGES
-from .stages.ingest import prepare_working_copy
-from .stages.package import write_output
-from .report import render_conversion_report, render_null_texture_report
-from .contact_sheet import ATLAS_1_14, build_contact_sheet
+from .pipeline import Severity
 from .data import load_table
-
-def _announce(stages, on_stage):
-    """Wrap each stage so the caller is told before it runs."""
-    total = len(stages)
-    return [
-        (name, lambda ctx, fn=fn, name=name, i=i: (on_stage(name, i, total), fn(ctx))[1])
-        for i, (name, fn) in enumerate(stages, start=1)
-    ]
-
-def convert(source: Path, out_path: Path, target: str,
-            report_only: bool, on_stage=None) -> ConversionContext:
-    workroot = Path(tempfile.mkdtemp(prefix="mcpc_"))
-    try:
-        root = prepare_working_copy(source, workroot)
-        ctx = ConversionContext(root=root, target=target)
-        stages = STAGES if not report_only else [
-            s for s in STAGES if s[0] in ("ingest", "clean", "restructure",
-            "flatten_rename", "atlas_remap", "optifine", "validate")]
-        if on_stage is not None:
-            stages = _announce(stages, on_stage)
-        run_pipeline(ctx, stages)
-        reports = {
-            "conversion-report.md": render_conversion_report(ctx.findings),
-            "null-texture-report.md": render_null_texture_report(ctx.findings),
-        }
-        if not report_only:
-            write_output(ctx, out_path, reports)
-            sheet = out_path.with_name(out_path.stem + "-slices.png")
-            rels = [out for src, out in ctx.sliced if src in ATLAS_1_14]
-            try:
-                n = build_contact_sheet(ctx.root, rels, sheet)
-                if n:
-                    print(f"contact sheet: {sheet} ({n} sprites)")
-            except Exception as exc:  # fail-soft: a review artifact, not the product
-                ctx.add("contact_sheet", Severity.WARNING,
-                        f"contact sheet failed: {exc!r}")
-        return ctx
-    finally:
-        shutil.rmtree(workroot, ignore_errors=True)
+from .job import DEFAULT_TARGET, convert, run_job, validate_source
 
 def default_out_path(source: Path, target: str) -> Path:
     """Name the output after the source and target, in the cwd.
@@ -73,7 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
                    help="the 1.8.9 pack to convert: a .zip or an unpacked folder")
     c.add_argument("-o", "--out", type=Path, default=None,
                    help="output zip (default: <pack>-<target>.zip in the current directory)")
-    c.add_argument("--target", default="26.2", choices=TARGETS,
+    c.add_argument("--target", default=DEFAULT_TARGET, choices=TARGETS,
                    help="Minecraft version to convert to (default: %(default)s)")
     c.add_argument("--report-only", action="store_true",
                    help="analyse the pack and write reports without producing a converted pack")
@@ -81,22 +38,16 @@ def build_parser() -> argparse.ArgumentParser:
                    help="also print the full reports to the terminal")
     return ap
 
-def summary_lines(ctx: ConversionContext, out_path: Path,
-                  reports: dict[str, Path], wrote_zip: bool) -> list[str]:
-    counts = {s: 0 for s in Severity}
-    for f in ctx.findings:
-        counts[f.severity] += 1
+def summary_lines(result) -> list[str]:
+    counts = result.counts
     lines = [
         "",
         f"{counts[Severity.ERROR]} errors, {counts[Severity.WARNING]} warnings, "
         f"{counts[Severity.INFO]} notes",
     ]
-    # Whether THIS run produced the zip, not whether a file of that name is on
-    # disk: a leftover zip from a previous run made --report-only claim it had
-    # written one.
-    if wrote_zip:
-        lines.append(f"wrote {out_path}")
-    lines += [f"{label}: {path}" for label, path in reports.items()]
+    if result.wrote_zip:
+        lines.append(f"wrote {result.out_path}")
+    lines += [f"{label}: {path}" for label, path in result.reports.items()]
     return lines
 
 def main(argv=None) -> int:
@@ -104,42 +55,25 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     out = args.out or default_out_path(args.source, args.target)
 
-    if not args.source.exists():
-        print(f"no such pack: {args.source}", file=sys.stderr)
-        return 1
-
-    # A source that is a file must be a zip. A renamed .rar or a truncated
-    # download otherwise reaches zipfile.ZipFile and dumps a BadZipFile
-    # traceback at a non-developer. Checked here, beside the exists() guard,
-    # rather than by wrapping convert(): every OTHER failure must still surface
-    # with its traceback.
-    if args.source.is_file() and not zipfile.is_zipfile(args.source):
-        print(f"not a readable zip: {args.source}", file=sys.stderr)
+    problem = validate_source(args.source)
+    if problem:
+        print(problem, file=sys.stderr)
         return 1
 
     def on_stage(name, i, total):
         print(f"[{i}/{total}] {name}")
 
-    ctx = convert(args.source, out, args.target, args.report_only,
-                  on_stage=on_stage)
-
-    texts = {
-        "report": render_conversion_report(ctx.findings),
-        "null-textures": render_null_texture_report(ctx.findings),
-    }
-    written = {}
-    for label, text in texts.items():
-        p = out.with_name(f"{out.stem}-{label}.md")
-        p.write_text(text)
-        written[label] = p
+    result = run_job(args.source, out, args.target, args.report_only,
+                     on_stage=on_stage,
+                     on_sheet=lambda path, n: print(f"contact sheet: {path} ({n} sprites)"))
 
     if args.verbose:
-        for text in texts.values():
+        for text in result.report_texts.values():
             print(text)
-    for line in summary_lines(ctx, out, written, wrote_zip=not args.report_only):
+    for line in summary_lines(result):
         print(line)
 
-    if any(f.severity is Severity.ERROR for f in ctx.findings):
+    if result.has_errors:
         return 1
     return 0
 

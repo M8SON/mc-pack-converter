@@ -20,6 +20,7 @@ flattening table and the slice records are all lowercase.
 """
 from __future__ import annotations
 import re
+from pathlib import Path
 from ..pipeline import ConversionContext, Severity
 
 # A ResourceLocation path may only contain these. Anything else is refused.
@@ -52,6 +53,18 @@ def _managed(rel_parts: tuple[str, ...]) -> bool:
     return head not in _SKIP and head in _MANAGED
 
 
+def _case_only_rename(path: Path, target: Path) -> None:
+    """Rename through a temp name, so case-only renames work everywhere.
+
+    On a case-insensitive filesystem `path` and `target` are the same file, and a
+    direct rename is a no-op or an error. Two hops make the operation mean the same
+    thing on NTFS as it does on ext4.
+    """
+    tmp = path.with_name(path.name + ".casetmp")
+    path.rename(tmp)
+    tmp.rename(target)
+
+
 def lowercase_paths(ctx: ConversionContext) -> None:
     assets = ctx.root / "assets"
     if not assets.is_dir():
@@ -75,6 +88,14 @@ def lowercase_paths(ctx: ConversionContext) -> None:
             continue
         target = path.with_name(new_name)
         if target.exists():
+            # On a case-insensitive filesystem a case-only rename looks like a
+            # collision: path and target ARE the same file. Renaming through a
+            # temp name is what the caller meant. Without this the code below
+            # unlinks the only copy and calls it a dropped case-variant.
+            if path.samefile(target):
+                _case_only_rename(path, target)
+                renamed += 1
+                continue
             if path.is_dir():
                 # Both spellings of a folder ship. Merge into the lowercase one
                 # rather than skip, or everything under the capitalised folder

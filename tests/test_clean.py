@@ -1,6 +1,15 @@
+import os
+
+import pytest
+
 from mc_pack_converter.pipeline import ConversionContext, Severity
 from mc_pack_converter.stages.clean import clean
 
+@pytest.mark.skipif(
+    os.name == "nt",
+    reason="fixture needs a file named 'stone.png:Zone.Identifier'; on NTFS ':' "
+           "opens an alternate data stream, so the file cannot be created",
+)
 def test_clean_removes_junk(mini_pack):
     root = mini_pack({
         "assets/minecraft/textures/blocks/stone.png:Zone.Identifier": b"x",

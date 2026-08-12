@@ -79,13 +79,13 @@ def test_contact_sheet_failure_does_not_abort_conversion(tmp_path, mini_pack, mo
     # The archive is already written by the time the sheet is rendered; a
     # cosmetic review artifact must never fail an otherwise-successful
     # conversion (fail-soft).
-    from mc_pack_converter import cli as cli_mod
+    from mc_pack_converter import job as job_mod
     from mc_pack_converter.pipeline import Severity
 
     def _boom(*a, **kw):
         raise OSError("disk full")
 
-    monkeypatch.setattr(cli_mod, "build_contact_sheet", _boom)
+    monkeypatch.setattr(job_mod, "build_contact_sheet", _boom)
     root = mini_pack()
     out = tmp_path / "converted.zip"
     ctx = convert(root, out, target="26.1.2", report_only=False)
