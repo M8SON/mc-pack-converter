@@ -2,7 +2,7 @@ from __future__ import annotations
 import argparse, sys
 from pathlib import Path
 from .pipeline import Severity
-from .data import load_table
+from .data import INPUT_FORMAT, load_table
 from .job import DEFAULT_TARGET, convert, run_job, validate_source
 
 def default_out_path(source: Path, target: str) -> Path:
@@ -13,9 +13,9 @@ def default_out_path(source: Path, target: str) -> Path:
     stem = source.stem if source.suffix.lower() == ".zip" else source.name
     return Path(f"{stem}-{target}.zip")
 
-# pack_format.json's "1.8.9" entry describes the format a pack is READ as,
-# not a valid conversion output; excluded so --target 1.8.9 is rejected.
-INPUT_FORMAT = "1.8.9"
+# INPUT_FORMAT is re-exported from .data, where pack_meta also reads it: the
+# "1.8.9" entry describes the format a pack is READ as, not a valid conversion
+# output, so it is excluded here and --target 1.8.9 is rejected.
 TARGETS = sorted(k for k in load_table("pack_format") if k != INPUT_FORMAT)
 
 def build_parser() -> argparse.ArgumentParser:

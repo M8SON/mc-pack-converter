@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import time
 from ..pipeline import ConversionContext, Severity, FatalConversionError
-from ..data import load_table
+from ..data import INPUT_FORMAT, load_table
 from ..mcmeta import read_mcmeta
 
 def pack_meta(ctx: ConversionContext) -> None:
@@ -16,8 +16,18 @@ def pack_meta(ctx: ConversionContext) -> None:
     # Minecraft 1.21.9+ (all 26.x) replaced the single `pack_format` int with
     # `min_format`/`max_format`. Emitting the legacy field makes the pack show
     # as red "incompatible"; the modern fields make it compatible.
+    #
+    # Declare the whole supported RANGE, not a single point. Nothing outside
+    # this file reads ctx.target — no stage produces different textures for
+    # 26.1 than for 26.2 — so a pack converted to 26.2 really is valid on
+    # 26.1.2 as well, and claiming only 88 made Minecraft 26.1.2 flag a pack
+    # red that it then loaded and rendered perfectly (Mason, 2026-08-11).
+    # max stays at the requested target so converting to an older one does
+    # not over-claim.
+    table = load_table("pack_format")
+    oldest = min(v for k, v in table.items() if k != INPUT_FORMAT)
     data["pack"].pop("pack_format", None)
-    data["pack"]["min_format"] = new_fmt
+    data["pack"]["min_format"] = min(oldest, new_fmt)
     data["pack"]["max_format"] = new_fmt
     # Append a build tag to the description so the user can confirm in-game which
     # converted build they actually loaded (distinguishes a stale copy).

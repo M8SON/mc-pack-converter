@@ -30,8 +30,13 @@ def test_golden_conversion(tmp_path):
         import json
 
         meta = json.loads(zf.read("pack.mcmeta"))
-        assert meta["pack"]["min_format"] == 88  # 26.2, modern min/max schema
-        assert meta["pack"]["max_format"] == 88
+        # The declared RANGE spans every target the converter supports, not
+        # just the requested one: nothing outside pack_meta reads ctx.target,
+        # so this output is genuinely valid on 26.1/26.1.2 as well. Claiming
+        # only 88 made Minecraft 26.1.2 show the pack red while loading it
+        # perfectly (Mason, 2026-08-11).
+        assert meta["pack"]["min_format"] == 84  # 26.1 / 26.1.2
+        assert meta["pack"]["max_format"] == 88  # 26.2
 
 
 def test_convert_cleans_temp_dir(mini_pack, tmp_path):
