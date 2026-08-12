@@ -17,8 +17,8 @@ code-signed — a certificate costs a few hundred dollars a year and this is a
 free tool — so Windows warns about it. Click **More info**, then **Run anyway**.
 It takes a few seconds to start while it unpacks itself.
 
-The exe always converts to the newest supported version. To pick an older
-target, use the command line below.
+The exe converts to 26.2. To pick a different target, use the command line
+below.
 
 ## Install
 

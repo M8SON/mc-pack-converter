@@ -82,7 +82,10 @@ class GuiState:
     def detail_lines(self) -> list[str]:
         lines: list[str] = []
         if self.screen == "progress":
-            lines.append(self.stage)
+            if self.total:
+                lines.append(f"{self.done}/{self.total}  {self.stage}")
+            else:
+                lines.append(self.stage)
         elif self.screen == "error":
             if isinstance(self.error, FatalConversionError):
                 lines.append(str(self.error))

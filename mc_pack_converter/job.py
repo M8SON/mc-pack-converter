@@ -13,7 +13,8 @@ from .contact_sheet import ATLAS_1_14, build_contact_sheet
 # The CLI's default target, shared so the GUI cannot drift from it. NOT
 # derived from TARGETS: that list is string-sorted, so sorted(...)[-1] picks
 # by lexical order, not version order — with a future 26.9 and 26.10 both
-# present it returns 26.9, the older one.
+# present it returns 26.9, the older one. Bump this by hand whenever a newer
+# target is added to data/pack_format.json.
 DEFAULT_TARGET = "26.2"
 
 

@@ -33,6 +33,14 @@ def test_stage_messages_advance_the_counter():
     state.handle(("stage", "atlas_remap", 8, 20))
     assert state.screen == "progress"
     assert (state.stage, state.done, state.total) == ("atlas_remap", 8, 20)
+    assert "8/20" in " ".join(state.detail_lines())
+
+
+def test_progress_detail_omits_the_counter_before_the_first_stage_message():
+    state = GuiState(Path("MyPack.zip"), "26.2")
+    assert state.total == 0
+    text = " ".join(state.detail_lines())
+    assert "0/0" not in text
 
 
 def test_done_switches_to_the_result_screen():
