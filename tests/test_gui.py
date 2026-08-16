@@ -252,3 +252,23 @@ def test_to_dict_is_json_serialisable(tmp_path):
     state.handle(("done", _FakeResultWithFindings(
         tmp_path, [_finding(Severity.INFO, path="a/b.png")])))
     json.dumps(state.to_dict())  # must not raise
+
+
+def test_state_with_no_pack_waits_on_the_drop_screen():
+    """The window must open and wait, not demand a pack before it appears."""
+    state = GuiState(None, "26.2")
+    assert state.screen == "idle"
+    assert state.headline() == "MC Pack Converter"
+    assert "26.2" in " ".join(state.detail_lines())
+    d = state.to_dict()
+    assert d["screen"] == "idle"
+    assert d["source"] == ""
+    assert "findings" not in d
+
+
+def test_a_dropped_pack_starts_the_run():
+    state = GuiState(None, "26.2")
+    state.start(Path(r"C:\Downloads\MyPack.zip"))
+    assert state.screen == "progress"
+    assert state.source == Path(r"C:\Downloads\MyPack.zip")
+    assert "MyPack.zip" in state.headline()

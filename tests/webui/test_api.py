@@ -85,3 +85,67 @@ def test_a_malformed_message_does_not_break_poll():
     q.put(("stage",))
     q.put(None)
     assert api.poll()["screen"] == "progress"
+
+
+def _idle_api(tmp_path):
+    state = GuiState(None, "26.2")
+    started = []
+    return Api(state, queue.Queue(), on_start=started.append), state, started
+
+
+def test_start_rejects_a_pack_that_cannot_be_read(tmp_path):
+    """The reason is RETURNED, not raised: a windowed exe has nowhere to raise
+    to, and the page shows the message in place."""
+    api, state, started = _idle_api(tmp_path)
+    problem = api.start(str(tmp_path / "nope.zip"))
+    assert "no such pack" in problem
+    assert state.screen == "idle"      # still waiting for a good one
+    assert started == []
+
+
+def test_start_rejects_a_file_that_is_not_a_zip(tmp_path):
+    junk = tmp_path / "renamed.zip"
+    junk.write_bytes(b"not a zip at all")
+    api, state, started = _idle_api(tmp_path)
+    assert "not a readable zip" in api.start(str(junk))
+    assert started == []
+
+
+def test_start_accepts_a_real_pack_and_launches_the_worker(tmp_path):
+    pack = tmp_path / "ok.zip"
+    with zipfile.ZipFile(pack, "w") as z:
+        z.writestr("pack.mcmeta", "{}")
+    api, state, started = _idle_api(tmp_path)
+    assert api.start(str(pack)) == ""
+    assert state.screen == "progress"
+    assert started == [pack]
+
+
+def test_a_second_drop_while_converting_is_ignored(tmp_path):
+    """Otherwise a stray drop would start a second conversion over the first."""
+    pack = tmp_path / "ok.zip"
+    with zipfile.ZipFile(pack, "w") as z:
+        z.writestr("pack.mcmeta", "{}")
+    api, state, started = _idle_api(tmp_path)
+    api.start(str(pack))
+    assert api.start(str(pack)) == ""
+    assert started == [pack]           # not started twice
+
+
+def test_the_page_wears_the_packs_own_background(done_api):
+    d = done_api.poll()
+    assert "background" not in d       # the fixture zip ships no gui background
+
+
+def test_the_background_is_served_when_the_pack_has_one(tmp_path):
+    out = tmp_path / "MyPack-26.2.zip"
+    with zipfile.ZipFile(out, "w") as z:
+        z.writestr(A + "textures/gui/options_background.png", _png(16, 16))
+    from types import SimpleNamespace
+    from mc_pack_converter.pipeline import Severity
+    state = GuiState(Path("MyPack.zip"), "26.2")
+    api = Api(state, queue.Queue())
+    state.handle(("done", SimpleNamespace(
+        ctx=SimpleNamespace(findings=[]), out_path=out, reports={},
+        wrote_zip=True, has_errors=False, counts={s: 0 for s in Severity})))
+    assert api.poll()["background"].startswith("data:image/png;base64,")

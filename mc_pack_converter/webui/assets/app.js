@@ -3,7 +3,7 @@ let sheetLoaded = false;
 window._fulls = {};
 
 function show(view) {
-  for (const id of ["findings", "textures", "error"]) $(id).hidden = id !== view;
+  for (const id of ["idle", "findings", "textures", "error"]) $(id).hidden = id !== view;
   for (const b of $("tabs").querySelectorAll("button[data-view]"))
     b.classList.toggle("on", b.dataset.view === view);
   if (view === "textures" && !sheetLoaded) loadSheet();
@@ -106,8 +106,11 @@ async function tick() {
     $("bar").hidden = d.screen !== "progress";
     if (d.total) { $("bar").max = d.total; $("bar").value = d.done; }
 
-    if (d.screen === "progress") return setTimeout(tick, 120);
+    if (d.screen === "idle") { $("tabs").hidden = true; show("idle"); return setTimeout(tick, 250); }
+    if (d.screen === "progress") { show("idle"); $("dropzone").hidden = true;
+                                   return setTimeout(tick, 120); }
     if (d.screen === "error") { $("trace").textContent = d.error_details; show("error"); return; }
+    if (d.background) document.body.style.setProperty("--pack-bg", `url("${d.background}")`);
 
     window._flagged = d.findings.filter((f) => f.path).map((f) => norm(f.path));
     $("tabs").hidden = false;
@@ -149,4 +152,34 @@ $("copy").onclick = async () => {
     $("copy").textContent = "Press Ctrl+C to copy";
   }
 };
+async function submit(path) {
+  $("drop-error").textContent = "";
+  const problem = await window.pywebview.api.start(path);
+  if (problem) $("drop-error").textContent = problem;
+}
+
+// The whole window is the drop target, not a small rectangle to aim at.
+document.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  document.body.classList.add("dragging");
+});
+document.addEventListener("dragleave", (e) => {
+  if (e.relatedTarget === null) document.body.classList.remove("dragging");
+});
+document.addEventListener("drop", (e) => {
+  e.preventDefault();
+  document.body.classList.remove("dragging");
+  const file = e.dataTransfer.files[0];
+  // pywebview stamps the real filesystem path on the File object; a browser
+  // never exposes one, so this is the only way a dropped pack is usable.
+  const path = file && (file.pywebviewFullPath || file.path);
+  if (path) submit(path);
+  else $("drop-error").textContent = "Could not read that file's location.";
+});
+
+$("choose").onclick = async () => {
+  const path = await window.pywebview.api.pick();
+  if (path) submit(path);
+};
+
 window.addEventListener("pywebviewready", tick);
