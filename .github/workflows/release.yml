@@ -19,7 +19,9 @@ jobs:
       # Both imports are guarded at runtime, so their absence would otherwise
       # pass tests and still produce an exe that opens nothing.
       - run: python -c "import tkinter; print('tkinter', tkinter.TkVersion)"
-      - run: python -c "import webview; print('pywebview', webview.__version__)"
+      # The import is the assertion; the version comes from package metadata
+      # because pywebview exposes no __version__ attribute.
+      - run: python -c "import webview, importlib.metadata as m; print('pywebview', m.version('pywebview'))"
       - run: pytest -q
       - run: pyinstaller packaging/mcpc.spec
       - uses: actions/upload-artifact@v4
