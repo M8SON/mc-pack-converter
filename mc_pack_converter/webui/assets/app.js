@@ -69,24 +69,54 @@ const norm = (p) => String(p ?? "")
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
   (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+let pollFails = 0;
+
 async function tick() {
-  const d = await window.pywebview.api.poll();
-  $("headline").textContent = d.headline;
-  $("details").textContent = d.details.join("\n");
-  $("bar").hidden = d.screen !== "progress";
-  if (d.total) { $("bar").max = d.total; $("bar").value = d.done; }
+  try {
+    const d = await window.pywebview.api.poll();
+    pollFails = 0;
+    $("headline").textContent = d.headline;
+    $("details").textContent = d.details.join("\n");
+    $("bar").hidden = d.screen !== "progress";
+    if (d.total) { $("bar").max = d.total; $("bar").value = d.done; }
 
-  if (d.screen === "progress") return setTimeout(tick, 120);
-  if (d.screen === "error") { $("trace").textContent = d.error_details; show("error"); return; }
+    if (d.screen === "progress") return setTimeout(tick, 120);
+    if (d.screen === "error") { $("trace").textContent = d.error_details; show("error"); return; }
 
-  window._flagged = d.findings.filter((f) => f.path).map((f) => norm(f.path));
-  $("tabs").hidden = false;
-  renderFindings(d);
-  show("findings");
+    window._flagged = d.findings.filter((f) => f.path).map((f) => norm(f.path));
+    $("tabs").hidden = false;
+    renderFindings(d);
+    show("findings");
+  } catch (err) {
+    // A windowed exe has no console. A dead poll loop would freeze the page on
+    // "Starting..." forever with nothing to show, so retry a few times and then
+    // say what happened rather than failing silently.
+    if (++pollFails < 4) return setTimeout(tick, 250);
+    $("headline").textContent = "Something went wrong";
+    $("details").textContent = "The page stopped receiving updates.";
+    $("tabs").hidden = true;
+    $("trace").textContent = String((err && err.stack) || err);
+    show("error");
+  }
 }
 
 $("tabs").onclick = (e) => { if (e.target.dataset.view) show(e.target.dataset.view); };
 $("open-folder").onclick = () => window.pywebview.api.open_folder();
 $("lightbox").onclick = () => ($("lightbox").hidden = true);
-$("copy").onclick = () => navigator.clipboard.writeText($("trace").textContent);
+$("copy").onclick = async () => {
+  try {
+    await navigator.clipboard.writeText($("trace").textContent);
+    $("copy").textContent = "Copied";
+  } catch {
+    // The Clipboard API is absent or blocked in some embedded webviews, and this
+    // button is how a user reports a crash. Select the text so it can still be
+    // copied by hand rather than leaving a button that does nothing.
+    const range = document.createRange();
+    range.selectNodeContents($("trace"));
+    const sel = getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    $("copy").textContent = "Press Ctrl+C to copy";
+  }
+};
 window.addEventListener("pywebviewready", tick);
