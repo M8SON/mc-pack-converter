@@ -7,8 +7,11 @@ Converts Minecraft Java 1.8.9 resource packs to modern versions (26.1, 26.1.2, 2
 ## Download (Windows, no Python needed)
 
 Grab `MCPackConverter.exe` from the [latest release](https://github.com/M8SON/mc-pack-converter/releases/latest),
-then **drag your pack's `.zip` onto the `.exe`**. The converted pack, two
-reports, and a review sheet appear in the same folder as the pack you dropped.
+then **drag your pack's `.zip` onto the `.exe`**. A window opens showing the
+conversion's findings and a scrollable sheet of the converted textures — GUI,
+blocks, items, particles, sky, animated textures, and armor rendered on a
+humanoid model. The converted pack lands in the same folder as the pack you
+dropped; the findings are shown in the window, not written to disk.
 
 Double-clicking the exe instead opens a file picker.
 
@@ -60,7 +63,6 @@ working directory:
 [18/20] sounds
 [19/20] pack_meta
 [20/20] validate
-contact sheet: MyPack-26.2-slices.png (119 sprites)
 
 0 errors, 5 warnings, 408 notes
 wrote MyPack-26.2.zip
@@ -68,14 +70,11 @@ report: MyPack-26.2-report.md
 null-textures: MyPack-26.2-null-textures.md
 ```
 
-Four files land in the working directory:
+Three files land in the working directory:
 
 - `MyPack-26.2.zip` — the converted pack
 - `MyPack-26.2-report.md` — every finding, grouped by stage
 - `MyPack-26.2-null-textures.md` — null-texture safety report
-- `MyPack-26.2-slices.png` — a contact sheet of the GUI sprites cut out of old
-  atlases, for eyeballing. Only produced when the pack has atlases that needed
-  slicing.
 
 `source` can be a `.zip` or an unpacked folder. Useful flags:
 

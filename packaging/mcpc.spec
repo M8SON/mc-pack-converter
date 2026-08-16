@@ -9,19 +9,27 @@
 # (data/__init__.py:7), which works under PyInstaller only if they are present
 # in the extracted tree. Using collect_data_files rather than --add-data also
 # sidesteps the ';' vs ':' path-separator difference between platforms.
-from PyInstaller.utils.hooks import collect_data_files
+from PyInstaller.utils.hooks import collect_all, collect_data_files
 
-datas = collect_data_files("mc_pack_converter", includes=["data/*.json"])
+datas = collect_data_files("mc_pack_converter",
+                           includes=["data/*.json", "webui/assets/*"])
+
+# pywebview loads its Windows backend by name at runtime, so the module graph
+# cannot see it. collect_all pulls the backend and its .NET bridge in.
+wv_datas, wv_binaries, wv_hidden = collect_all("webview")
+datas += wv_datas
 
 a = Analysis(
     ["mcpc_entry.py"],
     pathex=[],
-    binaries=[],
+    binaries=wv_binaries,
     datas=datas,
     hiddenimports=[
-        "tkinter", "tkinter.filedialog", "tkinter.messagebox", "tkinter.ttk",
+        "tkinter", "tkinter.filedialog", "tkinter.messagebox",
         "PIL", "PIL.Image",
-    ],
+        "webview", "webview.platforms.edgechromium",
+        "clr", "clr_loader",
+    ] + wv_hidden,
     hookspath=[],
     runtime_hooks=[],
     excludes=["pytest"],

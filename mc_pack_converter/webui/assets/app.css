@@ -1,0 +1,48 @@
+:root { color-scheme: dark; --bg:#1b1b1e; --fg:#e8e8ea; --muted:#9a9aa2;
+        --line:#33333a; --warn:#e0a83a; --err:#e05c5c; }
+* { box-sizing: border-box; }
+/* An author rule beats the UA sheet's [hidden] { display: none }, so every
+   element this page toggles -- #lightbox (display:grid), #tabs (display:flex)
+   -- would otherwise stay visible. The lightbox in particular covers the whole
+   page and swallows every click. */
+[hidden] { display: none !important; }
+body { margin:0; background:var(--bg); color:var(--fg);
+       font:14px/1.5 "Segoe UI", system-ui, sans-serif; }
+header { padding:16px 20px 12px; border-bottom:1px solid var(--line); }
+h1 { margin:0 0 4px; font-size:17px; }
+#details { color:var(--muted); white-space:pre-line; }
+progress { width:100%; height:6px; margin-top:10px; }
+
+nav { display:flex; gap:6px; align-items:center;
+      padding:8px 20px; border-bottom:1px solid var(--line); }
+nav .spacer { flex:1; }
+button { background:#2a2a30; color:var(--fg); border:1px solid var(--line);
+         border-radius:5px; padding:5px 12px; cursor:pointer; font:inherit; }
+button.on { background:#3a3a45; }
+main { padding:16px 20px 48px; }
+
+.finding { padding:8px 12px; border-left:3px solid var(--line);
+           margin-bottom:6px; background:#212127; }
+.finding.warning { border-left-color:var(--warn); }
+.finding.error   { border-left-color:var(--err); }
+.finding .where { color:var(--muted); font-size:12px; }
+details > summary { cursor:pointer; color:var(--muted); margin:12px 0 8px; }
+
+h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em;
+     color:var(--muted); margin:24px 0 10px; }
+.grid { display:grid; gap:10px;
+        grid-template-columns:repeat(auto-fill, minmax(86px, 1fr)); }
+.tile { text-align:center; cursor:pointer; }
+.tile img { width:64px; height:64px; object-fit:contain;
+            image-rendering:pixelated; background:#26262c; border-radius:4px; }
+.tile.armor img { width:80px; height:112px; }
+.tile .cap { display:block; font-size:11px; color:var(--muted);
+             overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tile.flagged img { outline:2px solid var(--warn); }
+.muted { color:var(--muted); }
+
+#lightbox { position:fixed; inset:0; background:#000c; display:grid;
+            place-items:center; cursor:zoom-out; }
+#lightbox img { max-width:88vw; max-height:88vh; image-rendering:pixelated; }
+pre { white-space:pre-wrap; background:#212127; padding:12px;
+      border-radius:5px; max-height:50vh; overflow:auto; }

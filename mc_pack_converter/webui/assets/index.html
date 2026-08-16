@@ -1,0 +1,30 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>MC Pack Converter</title>
+<link rel="stylesheet" href="app.css">
+<body>
+  <header>
+    <h1 id="headline">Starting…</h1>
+    <div id="details"></div>
+    <progress id="bar" max="100" value="0"></progress>
+  </header>
+
+  <nav id="tabs" hidden>
+    <button data-view="findings" class="on">Findings</button>
+    <button data-view="textures">Textures</button>
+    <span class="spacer"></span>
+    <button id="open-folder">Open folder</button>
+  </nav>
+
+  <main>
+    <section id="findings" hidden></section>
+    <section id="textures" hidden><p class="muted">Building the sheet…</p></section>
+    <section id="error" hidden>
+      <pre id="trace"></pre>
+      <button id="copy">Copy details</button>
+    </section>
+  </main>
+
+  <div id="lightbox" hidden><img id="lightbox-img" alt=""></div>
+  <script src="app.js"></script>
+</body>

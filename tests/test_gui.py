@@ -113,7 +113,6 @@ class _FakeResult:
         from mc_pack_converter.pipeline import Severity
         self.out_path = tmp / "MyPack-26.2.zip"
         self.reports = {"report": tmp / "MyPack-26.2-report.md"}
-        self.sheet = tmp / "MyPack-26.2-slices.png"
         self.wrote_zip = True
         self.counts = {Severity.ERROR: 0, Severity.WARNING: 3, Severity.INFO: 9}
         self.has_errors = False
@@ -173,3 +172,83 @@ def test_wrong_arity_stage_message_does_not_half_mutate_state():
     assert state.stage == ""
     assert state.done == 0
     assert state.total == 0
+
+
+class _FakeResultWithFindings:
+    """A JobResult with real findings, for the to_dict() tests."""
+    def __init__(self, tmp, findings):
+        from types import SimpleNamespace
+        from mc_pack_converter.pipeline import Severity
+        self.ctx = SimpleNamespace(findings=findings)
+        self.out_path = tmp / "MyPack-26.2.zip"
+        self.reports = {}
+        self.wrote_zip = True
+        counts = {s: 0 for s in Severity}
+        for f in findings:
+            counts[f.severity] += 1
+        self.counts = counts
+        self.has_errors = counts[Severity.ERROR] > 0
+
+
+def _finding(sev, stage="conformance", message="m", path=None):
+    from mc_pack_converter.pipeline import Finding
+    return Finding(stage, sev, message, path)
+
+
+def test_to_dict_on_progress_carries_the_counter():
+    state = GuiState(Path("MyPack.zip"), "26.2")
+    state.handle(("stage", "atlas_remap", 8, 20))
+    d = state.to_dict()
+    assert d["screen"] == "progress"
+    assert (d["done"], d["total"], d["stage"]) == (8, 20, "atlas_remap")
+    assert "findings" not in d
+
+
+def test_to_dict_orders_findings_by_severity_not_by_stage(tmp_path):
+    from mc_pack_converter.pipeline import Severity
+    findings = [
+        _finding(Severity.INFO, "ingest", "first note"),
+        _finding(Severity.ERROR, "validate", "an error"),
+        _finding(Severity.WARNING, "conformance", "a warning"),
+        _finding(Severity.INFO, "clean", "second note"),
+    ]
+    state = GuiState(Path("MyPack.zip"), "26.2")
+    state.handle(("done", _FakeResultWithFindings(tmp_path, findings)))
+    d = state.to_dict()
+    assert [f["severity"] for f in d["findings"]] == \
+        ["error", "warning", "info", "info"]
+    # stable within a severity: pipeline order is preserved
+    assert [f["message"] for f in d["findings"][2:]] == ["first note", "second note"]
+    assert d["counts"] == {"error": 1, "warning": 1, "info": 2}
+
+
+def test_to_dict_keeps_a_findings_path_and_tolerates_its_absence(tmp_path):
+    from mc_pack_converter.pipeline import Severity
+    findings = [
+        _finding(Severity.WARNING, path="textures/gui/container/enchanting_table.png"),
+        _finding(Severity.WARNING),
+    ]
+    state = GuiState(Path("MyPack.zip"), "26.2")
+    state.handle(("done", _FakeResultWithFindings(tmp_path, findings)))
+    paths = [f["path"] for f in state.to_dict()["findings"]]
+    assert paths == ["textures/gui/container/enchanting_table.png", None]
+
+
+def test_to_dict_on_error_carries_the_traceback():
+    state = GuiState(Path("MyPack.zip"), "26.2")
+    try:
+        raise RuntimeError("disk full")
+    except RuntimeError as exc:
+        state.handle(("failed", exc))
+    d = state.to_dict()
+    assert d["screen"] == "error"
+    assert "Traceback" in d["error_details"]
+
+
+def test_to_dict_is_json_serialisable(tmp_path):
+    import json
+    from mc_pack_converter.pipeline import Severity
+    state = GuiState(Path("MyPack.zip"), "26.2")
+    state.handle(("done", _FakeResultWithFindings(
+        tmp_path, [_finding(Severity.INFO, path="a/b.png")])))
+    json.dumps(state.to_dict())  # must not raise

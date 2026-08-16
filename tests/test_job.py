@@ -43,38 +43,6 @@ def test_out_path_beside_source_handles_a_folder_source(tmp_path):
     assert out_path_beside_source(src, "26.1.2") == tmp_path / "packs" / "My Pack-26.1.2.zip"
 
 
-def test_convert_reports_the_sheet_through_the_callback(tmp_path, mini_pack):
-    from PIL import Image
-    from mc_pack_converter.job import convert
-
-    root = mini_pack()
-    atlas = root / "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png"
-    atlas.parent.mkdir(parents=True, exist_ok=True)
-    Image.new("RGBA", (256, 256), (10, 120, 200, 255)).save(atlas)
-
-    seen = []
-    out = tmp_path / "converted.zip"
-    convert(root, out, "26.1.2", False, on_sheet=lambda p, n: seen.append((p, n)))
-    assert seen, "on_sheet was never called"
-    path, count = seen[0]
-    assert path == tmp_path / "converted-slices.png"
-    assert count > 0
-
-
-def test_convert_does_not_print_the_sheet_line(tmp_path, mini_pack, capsys):
-    """The library layer must not print; the front end decides how to show it."""
-    from PIL import Image
-    from mc_pack_converter.job import convert
-
-    root = mini_pack()
-    atlas = root / "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png"
-    atlas.parent.mkdir(parents=True, exist_ok=True)
-    Image.new("RGBA", (256, 256), (10, 120, 200, 255)).save(atlas)
-
-    convert(root, tmp_path / "converted.zip", "26.1.2", False)
-    assert capsys.readouterr().out == ""
-
-
 def test_run_job_writes_reports_beside_the_zip(mini_pack, tmp_path):
     from mc_pack_converter.job import run_job
     root = mini_pack()
@@ -121,24 +89,6 @@ def test_run_job_reports_no_errors_on_a_clean_pack(mini_pack, tmp_path):
     assert result.has_errors is False
 
 
-def test_run_job_captures_the_contact_sheet_path(mini_pack, tmp_path):
-    from PIL import Image
-    from mc_pack_converter.job import run_job
-    root = mini_pack()
-    atlas = root / "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png"
-    atlas.parent.mkdir(parents=True, exist_ok=True)
-    Image.new("RGBA", (256, 256), (10, 120, 200, 255)).save(atlas)
-    result = run_job(root, tmp_path / "converted.zip", "26.1.2")
-    assert result.sheet == tmp_path / "converted-slices.png"
-    assert result.sheet.exists()
-
-
-def test_run_job_sheet_is_none_when_nothing_was_sliced(mini_pack, tmp_path):
-    from mc_pack_converter.job import run_job
-    result = run_job(mini_pack(), tmp_path / "plain.zip", "26.1.2")
-    assert result.sheet is None
-
-
 def test_run_job_forwards_every_stage_to_on_stage(mini_pack, tmp_path):
     from mc_pack_converter.stages import STAGES
     from mc_pack_converter.job import run_job
@@ -147,3 +97,24 @@ def test_run_job_forwards_every_stage_to_on_stage(mini_pack, tmp_path):
             on_stage=lambda name, i, total: seen.append((name, i, total)))
     assert [s[0] for s in seen] == [name for name, _ in STAGES]
     assert seen[-1][1] == len(STAGES)
+
+
+def test_run_job_writes_reports_by_default(mini_pack, tmp_path):
+    from mc_pack_converter.job import run_job
+    out = tmp_path / "out" / "MyPack-26.2.zip"
+    out.parent.mkdir()
+    result = run_job(mini_pack(), out, "26.2")
+    assert set(result.reports) == {"report", "null-textures"}
+    for path in result.reports.values():
+        assert path.exists()
+
+
+def test_write_reports_false_writes_no_files_but_keeps_the_text(mini_pack, tmp_path):
+    from mc_pack_converter.job import run_job
+    out = tmp_path / "out" / "MyPack-26.2.zip"
+    out.parent.mkdir()
+    result = run_job(mini_pack(), out, "26.2", write_reports=False)
+    assert result.reports == {}
+    assert set(result.report_texts) == {"report", "null-textures"}
+    assert result.report_texts["report"].strip()
+    assert not list(out.parent.glob("*.md"))

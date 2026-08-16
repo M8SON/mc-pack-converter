@@ -5,7 +5,6 @@ tested on a headless runner. The widgets only render what GuiState says.
 """
 from __future__ import annotations
 import queue
-import subprocess
 import sys
 import threading
 import traceback
@@ -13,12 +12,16 @@ from pathlib import Path
 
 try:
     import tkinter as tk
-    from tkinter import filedialog, messagebox, ttk
+    from tkinter import filedialog, messagebox
 except ImportError:  # a headless box without Tk; the logic half still imports
-    tk = filedialog = messagebox = ttk = None
+    tk = filedialog = messagebox = None
 
 from .job import DEFAULT_TARGET, out_path_beside_source, run_job, validate_source
 from .pipeline import FatalConversionError, Severity
+
+# Severity decides whether the user acts, so it decides the order. Python's
+# sort is stable, so findings keep pipeline order within a severity.
+_SEVERITY_RANK = {Severity.ERROR: 0, Severity.WARNING: 1, Severity.INFO: 2}
 
 
 def parse_drop(argv: list[str]) -> tuple[Path | None, list[Path]]:
@@ -103,8 +106,6 @@ class GuiState:
                 lines.append(f"Wrote {self.result.out_path.name}")
             for path in self.result.reports.values():
                 lines.append(path.name)
-            if self.result.sheet is not None:
-                lines.append(self.result.sheet.name)
         if self.extras:
             names = ", ".join(p.name for p in self.extras)
             lines.append(f"Converted {self.source.name} only; ignored {names}")
@@ -117,107 +118,87 @@ class GuiState:
         return "".join(traceback.format_exception(
             type(self.error), self.error, self.error.__traceback__))
 
+    def to_dict(self) -> dict:
+        """The whole model the page renders. JSON-serialisable by construction."""
+        d = {
+            "screen": self.screen,
+            "headline": self.headline(),
+            "details": self.detail_lines(),
+            "source": self.source.name,
+            "target": self.target,
+            "stage": self.stage,
+            "done": self.done,
+            "total": self.total,
+        }
+        if self.screen == "error":
+            d["error_details"] = self.error_details()
+        elif self.screen == "result":
+            counts = self.result.counts
+            d["counts"] = {s.value: counts[s] for s in Severity}
+            d["findings"] = [
+                {"severity": f.severity.value, "stage": f.stage,
+                 "message": f.message, "path": f.path}
+                for f in sorted(self.result.ctx.findings,
+                                key=lambda f: _SEVERITY_RANK[f.severity])
+            ]
+            d["out_path"] = str(self.result.out_path)
+            d["out_name"] = self.result.out_path.name
+        return d
 
-POLL_MS = 50
+
+def _work(state: GuiState, q: queue.Queue) -> None:
+    """Runs OFF the UI thread. Only ever puts messages on the queue."""
+    try:
+        out = out_path_beside_source(state.source, state.target)
+        result = run_job(
+            state.source, out, state.target,
+            on_stage=lambda name, i, total: q.put(("stage", name, i, total)),
+            write_reports=False,   # the page shows the findings; no .md litter
+        )
+        q.put(("done", result))
+    except BaseException as exc:  # a windowed exe has no console to print to
+        q.put(("failed", exc))
 
 
-class App:
-    """The window. Owns every widget; the worker thread owns none of them."""
+def _fallback(state: GuiState, q: queue.Queue) -> int:
+    """No WebView2. Wait for the job already running and write its reports.
 
-    def __init__(self, root: tk.Tk, state: GuiState):
-        self.root = root
-        self.state = state
-        self.queue: queue.Queue = queue.Queue()
+    It WAITS rather than re-running: the worker thread started before the
+    window was attempted, and a second run_job would convert the same pack
+    twice and race the first one writing the same zip.
 
-        root.title("MC Pack Converter")
-        root.geometry("460x220")
-        root.resizable(False, False)
-
-        self.headline = ttk.Label(root, font=("Segoe UI", 12, "bold"))
-        self.headline.pack(anchor="w", padx=16, pady=(16, 8))
-
-        self.bar = ttk.Progressbar(root, length=428, mode="determinate")
-        self.bar.pack(padx=16)
-
-        self.detail = ttk.Label(root, justify="left", font=("Segoe UI", 9))
-        self.detail.pack(anchor="w", padx=16, pady=8)
-
-        self.buttons = ttk.Frame(root)
-        self.buttons.pack(side="bottom", anchor="e", padx=16, pady=12)
-
-        self.render()
-
-    def start(self) -> None:
-        threading.Thread(target=self._work, daemon=True).start()
-        self.root.after(POLL_MS, self._drain)
-
-    def _work(self) -> None:
-        """Runs OFF the Tk thread. Only ever puts messages on the queue."""
-        try:
-            out = out_path_beside_source(self.state.source, self.state.target)
-            result = run_job(
-                self.state.source, out, self.state.target,
-                on_stage=lambda name, i, total: self.queue.put(("stage", name, i, total)),
-            )
-            self.queue.put(("done", result))
-        except BaseException as exc:  # a windowed exe has no console to print to
-            self.queue.put(("failed", exc))
-
-    def _drain(self) -> None:
-        changed = False
-        while True:
-            try:
-                self.state.handle(self.queue.get_nowait())
-                changed = True
-            except queue.Empty:
-                break
-        if changed:
-            self.render()
-        if self.state.screen == "progress":
-            self.root.after(POLL_MS, self._drain)
-
-    def render(self) -> None:
-        self.headline.config(text=self.state.headline())
-        self.detail.config(text="\n".join(self.state.detail_lines()))
-        if self.state.total:
-            self.bar.config(maximum=self.state.total, value=self.state.done)
-        for child in self.buttons.winfo_children():
-            child.destroy()
-        if self.state.screen == "progress":
-            return
-        if self.state.screen == "error":
-            ttk.Button(self.buttons, text="Copy details",
-                       command=self._copy_details).pack(side="left", padx=4)
-        else:
-            ttk.Button(self.buttons, text="Open folder",
-                       command=self._open_folder).pack(side="left", padx=4)
-        ttk.Button(self.buttons, text="Close",
-                   command=self.root.destroy).pack(side="left", padx=4)
-
-    def _copy_details(self) -> None:
-        self.root.clipboard_clear()
-        self.root.clipboard_append(self.state.error_details())
-        messagebox.showinfo("Copied", "Error details copied to the clipboard.")
-
-    def _open_folder(self) -> None:
-        folder = self.state.result.out_path.parent
-        if sys.platform == "win32":
-            subprocess.run(["explorer", str(folder)])
-        else:  # so the window is usable when developing off Windows
-            subprocess.run(["xdg-open", str(folder)])
+    A silent exit is the one outcome that must not happen: the exe is windowed,
+    so an unreported failure looks like nothing happened at all.
+    """
+    while state.screen == "progress":
+        state.handle(q.get())          # blocks until the worker speaks
+    if state.screen == "error":
+        print(f"conversion failed: {state.error!r}", file=sys.stderr)
+        return 1
+    result = state.result
+    print(f"wrote {result.out_path}")
+    # The worker passed write_reports=False for the page's benefit; with no
+    # page, the sidecars are the only output the user can read.
+    for label, text in result.report_texts.items():
+        p = result.out_path.with_name(f"{result.out_path.stem}-{label}.md")
+        p.write_text(text)
+        print(p)
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
-    if tk is None:
-        print("The graphical interface needs Python's tkinter module, which is "
-              "not installed. Use the command line instead:\n"
-              "    mc-pack-converter convert <pack>", file=sys.stderr)
-        return 1
-
     source, extras = parse_drop(sys.argv[1:] if argv is None else argv)
 
-    root = tk.Tk()
+    # Tk survives for exactly two jobs, both of which happen BEFORE a window
+    # exists and neither of which pywebview can do: the file picker and the
+    # rejected-pack dialog.
+    root = None
     if source is None:
+        if tk is None:
+            print("No pack given. Use:  mc-pack-converter convert <pack>",
+                  file=sys.stderr)
+            return 1
+        root = tk.Tk()
         root.withdraw()
         chosen = filedialog.askopenfilename(
             title="Choose a 1.8.9 resource pack",
@@ -227,18 +208,35 @@ def main(argv: list[str] | None = None) -> int:
             root.destroy()
             return 0  # cancelling the picker is not an error
         source = Path(chosen)
-        root.deiconify()
 
     problem = validate_source(source)
     if problem:
-        root.withdraw()
-        messagebox.showerror("MC Pack Converter", problem)
-        root.destroy()
+        if tk is not None:
+            root = root or tk.Tk()
+            root.withdraw()
+            messagebox.showerror("MC Pack Converter", problem)
+        else:
+            print(problem, file=sys.stderr)
         return 1
+    if root is not None:
+        root.destroy()
 
-    app = App(root, GuiState(source, DEFAULT_TARGET, extras))
-    app.start()
-    root.mainloop()
+    state = GuiState(source, DEFAULT_TARGET, extras)
+    q: queue.Queue = queue.Queue()
+    threading.Thread(target=_work, args=(state, q), daemon=True).start()
+
+    try:
+        import webview
+        from .webui.api import Api
+        index = Path(__file__).parent / "webui" / "assets" / "index.html"
+        webview.create_window("MC Pack Converter", str(index),
+                              js_api=Api(state, q), width=980, height=760)
+        webview.start()
+    except Exception as exc:
+        # WebView2 absent, or pywebview failed to make a window at all.
+        print(f"no window available ({exc!r}); converting without one",
+              file=sys.stderr)
+        return _fallback(state, q)
     return 0
 
 

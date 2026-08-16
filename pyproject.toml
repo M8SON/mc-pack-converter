@@ -7,6 +7,7 @@ dependencies = ["Pillow>=10.0"]
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
 build = ["pyinstaller>=6.6"]
+gui = ["pywebview>=5.0"]
 
 [project.scripts]
 mc-pack-converter = "mc_pack_converter.cli:main"
@@ -21,4 +22,4 @@ testpaths = ["tests"]
 include = ["mc_pack_converter*"]
 
 [tool.setuptools.package-data]
-mc_pack_converter = ["data/*.json"]
+mc_pack_converter = ["data/*.json", "webui/assets/*"]

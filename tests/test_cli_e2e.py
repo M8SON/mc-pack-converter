@@ -58,47 +58,6 @@ def test_main_returns_0_on_clean_pack(mini_pack, tmp_path):
     assert main(["convert", str(clean_root), "-o", str(clean_out)]) == 0
 
 
-def test_contact_sheet_written_beside_archive(tmp_path, mini_pack):
-    from PIL import Image
-    root = mini_pack()
-    atlas = root / "assets/minecraft/textures/painting/paintings_kristoffer_zetterstrand.png"
-    atlas.parent.mkdir(parents=True, exist_ok=True)
-    Image.new("RGBA", (256, 256), (10, 120, 200, 255)).save(atlas)
-    out = tmp_path / "converted.zip"
-    convert(root, out, target="26.1.2", report_only=False)
-    sheet = tmp_path / "converted-slices.png"
-    assert sheet.exists(), "contact sheet not written next to the archive"
-    with zipfile.ZipFile(out) as zf:
-        assert "converted-slices.png" not in zf.namelist()
-        assert not any(n.endswith("-slices.png") for n in zf.namelist())
-
-
-def test_no_contact_sheet_when_nothing_sliced(tmp_path, mini_pack):
-    root = mini_pack()
-    out = tmp_path / "plain.zip"
-    convert(root, out, target="26.1.2", report_only=False)
-    assert not (tmp_path / "plain-slices.png").exists()
-
-
-def test_contact_sheet_failure_does_not_abort_conversion(tmp_path, mini_pack, monkeypatch):
-    # The archive is already written by the time the sheet is rendered; a
-    # cosmetic review artifact must never fail an otherwise-successful
-    # conversion (fail-soft).
-    from mc_pack_converter import job as job_mod
-    from mc_pack_converter.pipeline import Severity
-
-    def _boom(*a, **kw):
-        raise OSError("disk full")
-
-    monkeypatch.setattr(job_mod, "build_contact_sheet", _boom)
-    root = mini_pack()
-    out = tmp_path / "converted.zip"
-    ctx = convert(root, out, target="26.1.2", report_only=False)
-    assert out.exists()
-    assert any(f.severity is Severity.WARNING and "contact sheet" in f.message
-               for f in ctx.findings)
-
-
 def test_default_out_path_from_zip_source():
     from mc_pack_converter.cli import default_out_path
     assert default_out_path(Path("/packs/MyPack.zip"), "26.2") == Path("MyPack-26.2.zip")
