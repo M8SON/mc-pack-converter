@@ -9,7 +9,8 @@ import base64, io, json, zipfile
 from pathlib import Path
 from PIL import Image
 
-from .armor import cube_spin_frames, render_armor, spin_frames
+from .armor import (crossed_spin_frames, cube_spin_frames,
+                    render_armor, spin_frames)
 
 A = "assets/minecraft/"
 
@@ -89,6 +90,11 @@ def thumb_data_uri(im: Image.Image, box: int = THUMB) -> str:
 
 TICK_MS = 50  # one Minecraft tick, and the default frametime
 
+# Fire is not a block. The game draws it as crossed planes against a surface,
+# so a cube gives it a top face -- flame floating in the air that never
+# appears in game. Matched on the texture's own name.
+NOT_A_BLOCK = ("fire_", "nether_portal")
+
 
 def animation_of(zf: zipfile.ZipFile, name: str) -> dict | None:
     """The `animation` object from this texture's .mcmeta sidecar, or None.
@@ -157,7 +163,10 @@ def _animated_tile(name: str, im: Image.Image, anim: dict) -> dict | None:
     # frames rather than angles x animation-frames. A flat strip shows the art
     # but not how it tiles against itself at an edge, or how the top reads
     # against the side; on a cube you see all three.
-    spun = cube_spin_frames(frames, SPIN)
+    leaf = name.rsplit("/", 1)[-1]
+    render = (crossed_spin_frames if leaf.startswith(NOT_A_BLOCK)
+              else cube_spin_frames)
+    spun = render(frames, SPIN)
     tile["frames"] = [thumb_data_uri(f, box=max(f.size)) for f in spun]
     tile["frametime"] = (ft if isinstance(ft, int) and ft > 0 else 1) * TICK_MS
     return tile

@@ -152,3 +152,42 @@ def test_the_cube_is_the_same_size_whatever_the_texture_resolution():
     a = render_cube(Image.new("RGBA", (16, 16), (255, 0, 0, 255)))
     b = render_cube(Image.new("RGBA", (64, 64), (255, 0, 0, 255)))
     assert a.getbbox() == b.getbbox()
+
+
+def test_a_plane_has_no_top_or_bottom():
+    """Fire is not a block. A cube gives it a top face -- a patch of flame
+    floating in the air the game never shows, which is what Mason spotted."""
+    from mc_pack_converter.webui.armor import plane_box
+    p = plane_box()
+    assert p.top is None and p.bottom is None and p.left is None
+    assert p.size[2] == 0          # no depth: it is a plane
+
+
+def test_crossed_planes_render_within_the_cube_canvas():
+    from mc_pack_converter.webui.armor import CUBE_CANVAS, render_crossed
+    out = render_crossed(Image.new("RGBA", (16, 16), (255, 120, 0, 255)))
+    assert out.size == CUBE_CANVAS
+    assert out.getbbox() is not None
+
+
+def test_crossed_planes_are_narrower_than_a_cube():
+    """Both stand the same height; the cube is WIDER because it has depth,
+    and that depth is what produced the floating top face."""
+    from mc_pack_converter.webui.armor import render_crossed, render_cube
+    tex = Image.new("RGBA", (16, 16), (255, 120, 0, 255))
+    flat, cube = render_crossed(tex).getbbox(), render_cube(tex).getbbox()
+    assert (flat[2] - flat[0]) < (cube[2] - cube[0])
+
+
+def test_a_cube_covers_its_own_top_edge_but_a_plane_does_not():
+    """The real difference, asserted directly: scan the top row of the shape.
+    A cube's top face fills it; crossed planes leave it mostly empty."""
+    from mc_pack_converter.webui.armor import render_crossed, render_cube
+    tex = Image.new("RGBA", (16, 16), (255, 120, 0, 255))
+    def top_row_fill(img):
+        box = img.getbbox()
+        row = img.crop((box[0], box[1], box[2], box[1] + 3))
+        opaque = sum(1 for p in row.getdata() if p[3] > 0)
+        return opaque / (row.width * row.height)
+    assert top_row_fill(render_cube(tex)) > 0.5
+    assert top_row_fill(render_crossed(tex)) < 0.5

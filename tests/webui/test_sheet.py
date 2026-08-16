@@ -297,58 +297,69 @@ def test_only_armor_tiles_carry_a_large_render(tmp_path):
             assert tile.get("full") is None, f"{tile['name']} should carry no full render"
 
 
-def test_the_page_ships_its_own_stone_background():
-    """The idle screen's background is a bundled file, not a fetched one. If
-    it goes missing from package-data the window opens on a blank colour and
-    no other test would notice."""
-    from pathlib import Path
-    import mc_pack_converter.webui as webui
-    assets = Path(webui.__file__).parent / "assets"
-    wall = assets / "stone.png"
-    assert wall.exists(), "stone.png is missing from webui/assets"
-    assert 'url("stone.png")' in (assets / "app.css").read_text()
-    with Image.open(wall) as im:
-        assert im.size == (128, 128)
 
 
-def test_the_wall_is_built_from_the_packs_own_blocks(tmp_path):
+def test_an_animated_background_contributes_one_frame_not_a_strip(tmp_path):
+    """A pack may animate its menu background; tiling the whole vertical strip
+    would smear it down the page."""
     from mc_pack_converter.webui.wall import build_wall
     path = tmp_path / "p.zip"
     with zipfile.ZipFile(path, "w") as z:
-        for b in ("stone", "dirt", "grass_block_side", "coal_ore", "diamond_ore"):
-            z.writestr(A + f"textures/block/{b}.png", _png(16, 16))
+        z.writestr(A + "textures/gui/options_background.png", _png(16, 512))
     png = build_wall(path)
-    assert png
     with Image.open(io.BytesIO(png)) as im:
-        assert im.size == (128, 128)      # 8x8 blocks at the pack's own 16px
+        assert im.size == (16, 16)
 
 
-def test_a_pack_without_stone_gets_no_wall(tmp_path):
+def test_the_background_is_the_packs_own_texture_verbatim(tmp_path):
+    """Not composed, not generated: the pack's own bytes. Mason rejected two
+    generated walls; the texture the pack ships is the one it should wear."""
+    from mc_pack_converter.webui.wall import build_wall
+    raw = _png(16, 16, (12, 34, 56, 255))
+    path = tmp_path / "p.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr(A + "textures/gui/options_background.png", raw)
+        z.writestr(A + "textures/block/dirt.png", _png(16, 16))
+    assert build_wall(path) == raw          # byte-for-byte, no re-encode
+
+
+def test_dirt_stands_in_when_a_pack_has_no_menu_background(tmp_path):
+    from mc_pack_converter.webui.wall import build_wall
+    dirt = _png(16, 16, (99, 77, 55, 255))
+    path = tmp_path / "p.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr(A + "textures/block/dirt.png", dirt)
+    assert build_wall(path) == dirt
+
+
+def test_a_pack_with_none_of_them_gets_no_background(tmp_path):
     from mc_pack_converter.webui.wall import build_wall
     path = tmp_path / "p.zip"
     with zipfile.ZipFile(path, "w") as z:
-        z.writestr(A + "textures/block/dirt.png", _png(16, 16))
+        z.writestr(A + "textures/item/apple.png", _png(16, 16))
     assert build_wall(path) is None
 
 
-def test_the_wall_honours_a_high_resolution_pack(tmp_path):
-    """A 32x pack should give a 32x wall, not an upscaled 16x one."""
-    from mc_pack_converter.webui.wall import build_wall
+def test_fire_is_drawn_as_crossed_planes_not_a_cube(tmp_path):
+    """Matched on the texture's own name, so a pack's fire_0/fire_1 both get
+    it however the pack is organised."""
+    import json as _json
+    from mc_pack_converter.webui.armor import render_crossed, render_cube
     path = tmp_path / "p.zip"
     with zipfile.ZipFile(path, "w") as z:
-        for b in ("stone", "dirt", "grass_block_side"):
-            z.writestr(A + f"textures/block/{b}.png", _png(32, 32))
-    with Image.open(io.BytesIO(build_wall(path))) as im:
-        assert im.size == (256, 256)
-
-
-def test_an_animated_block_contributes_one_frame_not_a_strip(tmp_path):
-    """stone is never animated, but a pack may animate dirt or an ore; pasting
-    a 16x512 strip into a 16px cell would smear it."""
-    from mc_pack_converter.webui.wall import build_wall
-    path = tmp_path / "p.zip"
-    with zipfile.ZipFile(path, "w") as z:
-        z.writestr(A + "textures/block/stone.png", _png(16, 16))
-        z.writestr(A + "textures/block/dirt.png", _png(16, 512))
-    with Image.open(io.BytesIO(build_wall(path))) as im:
-        assert im.size == (128, 128)
+        z.writestr(A + "textures/block/fire_0.png", _png(16, 64))
+        z.writestr(A + "textures/block/fire_0.png.mcmeta",
+                   _json.dumps({"animation": {}}).encode())
+        z.writestr(A + "textures/block/lava_still.png", _png(16, 64))
+        z.writestr(A + "textures/block/lava_still.png.mcmeta",
+                   _json.dumps({"animation": {}}).encode())
+    tiles = {t["name"]: t for t in build_sheet(path)["sections"][0]["tiles"]}
+    def width(uri):
+        raw = base64.b64decode(uri.split(",", 1)[1])
+        with Image.open(io.BytesIO(raw)) as im:
+            box = im.getbbox()
+            return box[2] - box[0]
+    # Both spin, but fire is the narrower: crossed planes have no depth, and
+    # it is that depth which gave the cube its floating top face.
+    assert width(tiles["fire_0.png"]["frames"][0]) < \
+           width(tiles["lava_still.png"]["frames"][0])

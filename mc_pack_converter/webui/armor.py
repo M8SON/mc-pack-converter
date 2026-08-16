@@ -248,3 +248,34 @@ def cube_spin_frames(frames: list[Image.Image], count: int = 24
     """
     return [render_cube(frames[i % len(frames)], 2 * math.pi * i / count)
             for i in range(count)]
+
+
+# --- textures that are not blocks --------------------------------------------
+#
+# Fire is not a cube. Minecraft draws it as two flat planes crossed at right
+# angles against a surface, which is why a cube gives it a top face: a patch
+# of flame floating in the air that the game never shows.
+
+def plane_box() -> Box:
+    """A flat upright quad. Only front and back exist; a plane has no sides."""
+    uv = (0, 0, CUBE_UNITS, CUBE_UNITS)
+    half = CUBE_UNITS / 2
+    return Box("plane", (CUBE_UNITS, CUBE_UNITS, 0), (-half, -half, 0),
+               front=uv, top=None, right=uv, back=uv, left=None, bottom=None)
+
+
+def render_crossed(texture: Image.Image, yaw: float = 0.0) -> Image.Image:
+    """One texture drawn as two planes crossed at right angles, as fire is."""
+    canvas = Image.new("RGBA", CUBE_CANVAS, (0, 0, 0, 0))
+    for turn in (yaw, yaw + math.pi / 2):
+        canvas.alpha_composite(
+            render_boxes(texture, [plane_box()], turn, base=CUBE_UNITS,
+                         canvas_size=CUBE_CANVAS, origin=CUBE_ORIGIN))
+    return canvas
+
+
+def crossed_spin_frames(frames: list[Image.Image], count: int = 24
+                        ) -> list[Image.Image]:
+    """A full turn of the crossed planes while the texture animates."""
+    return [render_crossed(frames[i % len(frames)], 2 * math.pi * i / count)
+            for i in range(count)]

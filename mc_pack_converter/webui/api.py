@@ -28,7 +28,12 @@ class Api:
         self._on_start = on_start   # starts the worker; set by gui.main()
         self.window = None          # the pywebview window, for the file dialog
 
-    def start(self, path: str) -> str:
+    def targets(self) -> dict:
+        """The versions this converter can produce, and the current pick."""
+        from ..cli import TARGETS
+        return {"targets": TARGETS, "current": self._state.target}
+
+    def start(self, path: str, target: str = "") -> str:
         """Begin converting a dropped or chosen pack.
 
         Returns the reason it cannot be converted, or "" to mean started. The
@@ -41,6 +46,11 @@ class Api:
         problem = validate_source(source)
         if problem:
             return problem
+        if target:
+            from ..cli import TARGETS
+            if target not in TARGETS:
+                return f"unknown version: {target}"
+            self._state.target = target
         self._state.start(source)
         if self._on_start is not None:
             self._on_start(source)

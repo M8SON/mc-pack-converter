@@ -39,15 +39,19 @@ body {
   /* A terrain cross-section: grass on top, dirt, then stone and ore. It is
      FIXED and repeats only across, so the sky stays up and the ground does
      not tile away down the page. Below it, flat stone. */
-  background-color: #4c4c4c;
-  background-image: var(--pack-bg, url("stone.png"));
-  background-size: 256px 256px;
+  /* The pack's own background texture, tiled the way Minecraft tiles it
+     behind its menus. Nothing is composed and nothing is generated: until a
+     pack has been converted there is simply no art to show, so the window is
+     a plain dark ground. */
+  background-color: #2b2622;
+  background-image: var(--pack-bg, none);
+  background-size: 64px 64px;
   background-repeat: repeat;
   image-rendering: pixelated;
 }
 body::before {   /* the darkening vanilla lays over its background panel */
   content: ""; position: fixed; inset: 0; pointer-events: none;
-  background: rgba(0, 0, 0, .66);
+  background: rgba(0, 0, 0, .55);
 }
 body > * { position: relative; }
 
@@ -92,16 +96,10 @@ main { padding: 18px 20px 56px; }
 
 /* The drop target: the whole window accepts a pack, so this is a sign rather
    than a small button to hunt for. */
-#idle { display: grid; place-items: center; min-height: 62vh; text-align: center;
-        position: relative; }
+#idle { display: grid; place-items: center; min-height: 62vh; text-align: center; }
 /* On the drop screen there is no content to read, so let the wall come
    through at full strength -- it is the only thing on the page. */
-#idle::before {
-  content: ""; position: absolute; inset: -18px -20px;
-  background: rgba(255, 255, 255, .34); pointer-events: none;
-  mix-blend-mode: overlay;
-}
-#idle > * { position: relative; }
+
 #dropzone {
   width: min(560px, 86vw); padding: 44px 32px;
   border: calc(var(--px) * 2) dashed #6f6f6f;
@@ -111,6 +109,11 @@ main { padding: 18px 20px 56px; }
                letter-spacing: 0; text-transform: none; }
 #dropzone p  { margin: 0 0 20px; color: var(--ink-dim); font-size: 13px; }
 body.dragging #dropzone { border-color: var(--ok); background: rgba(85,255,85,.10); }
+#targets { display: flex; gap: 8px; justify-content: center; align-items: center;
+           flex-wrap: wrap; margin-bottom: 18px; }
+#targets .label { color: var(--ink-dim); font-size: 13px; margin-right: 4px; }
+#targets button { padding: 6px 14px; font-size: 14px; }
+
 #drop-error { color: var(--err); margin-top: 16px; min-height: 1.5em; font-size: 13px; }
 
 .finding {

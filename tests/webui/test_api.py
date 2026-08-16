@@ -171,3 +171,44 @@ def test_the_background_is_built_from_the_packs_own_blocks(tmp_path, monkeypatch
         ctx=SimpleNamespace(findings=[]), out_path=out, reports={},
         wrote_zip=True, has_errors=False, counts={s: 0 for s in Severity})))
     assert api.poll()["background"].startswith("data:image/png;base64,")
+
+
+def test_the_page_is_offered_every_target_the_cli_has(tmp_path):
+    """The window must not drift from the CLI's list -- a version one can
+    produce and the other cannot is a bug waiting to be reported as 'it made
+    the wrong pack'."""
+    from mc_pack_converter.cli import TARGETS
+    api, state, _ = _idle_api(tmp_path)
+    offered = api.targets()
+    assert offered["targets"] == TARGETS
+    assert offered["current"] == state.target
+
+
+def test_choosing_a_target_converts_to_that_version(tmp_path):
+    pack = tmp_path / "ok.zip"
+    with zipfile.ZipFile(pack, "w") as z:
+        z.writestr("pack.mcmeta", "{}")
+    api, state, started = _idle_api(tmp_path)
+    assert api.start(str(pack), "26.1.2") == ""
+    assert state.target == "26.1.2"
+    assert started == [pack]
+
+
+def test_an_unknown_target_is_refused_rather_than_guessed(tmp_path):
+    pack = tmp_path / "ok.zip"
+    with zipfile.ZipFile(pack, "w") as z:
+        z.writestr("pack.mcmeta", "{}")
+    api, state, started = _idle_api(tmp_path)
+    assert "unknown version" in api.start(str(pack), "1.8.9")
+    assert state.screen == "idle"
+    assert started == []
+
+
+def test_no_target_given_keeps_the_default(tmp_path):
+    from mc_pack_converter.job import DEFAULT_TARGET
+    pack = tmp_path / "ok.zip"
+    with zipfile.ZipFile(pack, "w") as z:
+        z.writestr("pack.mcmeta", "{}")
+    api, state, _ = _idle_api(tmp_path)
+    api.start(str(pack))
+    assert state.target == DEFAULT_TARGET

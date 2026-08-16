@@ -2,6 +2,7 @@ const $ = (id) => document.getElementById(id);
 let sheetLoaded = false;
 window._fulls = {};
 window._frames = {};
+let chosenTarget = "";
 
 function show(view) {
   for (const id of ["idle", "findings", "textures", "error"]) $(id).hidden = id !== view;
@@ -159,7 +160,7 @@ $("copy").onclick = async () => {
 };
 async function submit(path) {
   $("drop-error").textContent = "";
-  const problem = await window.pywebview.api.start(path);
+  const problem = await window.pywebview.api.start(path, chosenTarget);
   if (problem) $("drop-error").textContent = problem;
 }
 
@@ -187,4 +188,19 @@ $("choose").onclick = async () => {
   if (path) submit(path);
 };
 
-window.addEventListener("pywebviewready", tick);
+async function loadTargets() {
+  const { targets, current } = await window.pywebview.api.targets();
+  chosenTarget = current;
+  $("targets").innerHTML = "<span class=\"label\">Convert to</span>" +
+    targets.map((t) => `<button data-target="${esc(t)}"` +
+      `${t === current ? ' class="on"' : ""}>${esc(t)}</button>`).join("");
+  $("targets").onclick = (e) => {
+    const t = e.target.dataset.target;
+    if (!t) return;
+    chosenTarget = t;
+    for (const b of $("targets").querySelectorAll("button"))
+      b.classList.toggle("on", b.dataset.target === t);
+  };
+}
+
+window.addEventListener("pywebviewready", () => { loadTargets(); tick(); });
