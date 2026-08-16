@@ -83,7 +83,7 @@ def thumb_data_uri(im: Image.Image, box: int = THUMB) -> str:
 def build_sheet(zip_path: Path) -> dict:
     """The whole QA sheet model for one converted pack.
 
-    Eager: measured at 1.75s and 1.28MB of base64 for 1021 tiles on the
+    Eager: measured at 1.75s and 1.72MB of base64 for 1021 tiles on the
     reference pack, against a conversion that takes far longer. Full-size
     originals are 22.5MB and are NOT bundled -- api.texture() serves those on
     demand.
