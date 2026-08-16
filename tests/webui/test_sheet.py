@@ -295,3 +295,17 @@ def test_only_armor_tiles_carry_a_large_render(tmp_path):
     for section in build_sheet(path)["sections"]:
         for tile in section["tiles"]:
             assert tile.get("full") is None, f"{tile['name']} should carry no full render"
+
+
+def test_the_page_ships_its_own_stone_background():
+    """The idle screen's background is a bundled file, not a fetched one. If
+    it goes missing from package-data the window opens on a blank colour and
+    no other test would notice."""
+    from pathlib import Path
+    import mc_pack_converter.webui as webui
+    assets = Path(webui.__file__).parent / "assets"
+    wall = assets / "stone.png"
+    assert wall.exists(), "stone.png is missing from webui/assets"
+    assert 'url("stone.png")' in (assets / "app.css").read_text()
+    with Image.open(wall) as im:
+        assert im.size == (128, 128)

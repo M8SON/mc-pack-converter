@@ -18,13 +18,6 @@
   --err:        #ff5555;   /* Minecraft red   */
   --ok:         #55ff55;   /* Minecraft green */
   --px: 2px;               /* one "pixel" of bevel */
-  /* Dirt, drawn as overlapping gradients: no image, no download. */
-  --dirt:
-    radial-gradient(circle at 20% 30%, #5c4732 0 6px, transparent 7px),
-    radial-gradient(circle at 70% 60%, #40301f 0 7px, transparent 8px),
-    radial-gradient(circle at 45% 85%, #55402c 0 5px, transparent 6px),
-    radial-gradient(circle at 88% 18%, #3b2c1d 0 5px, transparent 6px),
-    linear-gradient(#4a3928, #4a3928);
 }
 
 * { box-sizing: border-box; }
@@ -40,16 +33,18 @@ body {
   color: var(--ink);
   font: 15px/1.5 "Consolas", "DejaVu Sans Mono", monospace;
   text-shadow: var(--px) var(--px) 0 var(--ink-shadow);
-  /* A drawn dirt ground, so the window never opens on a black void. The
+  /* A stone-and-ore wall, so the window never opens on a black void. It is a
+     generated 128x128 tile that ships with the app -- nothing is fetched. The
      converted pack's own gui background replaces it once there is one. */
-  background-color: #4a3928;
-  background-image: var(--pack-bg, var(--dirt));
-  background-size: 64px 64px;
+  background-color: #808080;
+  background-image: var(--pack-bg, url("stone.png"));
+  background-size: 384px 384px;
   background-repeat: repeat;
+  image-rendering: pixelated;
 }
-body::before {            /* the darkening vanilla lays over its dirt panel */
+body::before {   /* the darkening vanilla lays over its background panel */
   content: ""; position: fixed; inset: 0; pointer-events: none;
-  background: rgba(0, 0, 0, .55);
+  background: rgba(0, 0, 0, .38);
 }
 body > * { position: relative; }
 
