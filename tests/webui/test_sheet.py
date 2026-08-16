@@ -251,3 +251,37 @@ def test_armor_tiles_are_rendered_on_the_model_not_shown_flat(tmp_path):
     assert thumb.size != (64, 32)                      # not the flat sheet
     assert thumb.width / thumb.height == pytest.approx(CANVAS[0] / CANVAS[1], abs=0.05)
     assert (tile["w"], tile["h"]) == (64, 32)          # true source size kept
+
+
+def test_armor_tiles_carry_a_large_render_for_the_lightbox(tmp_path):
+    """Clicking an armor tile must open the MODEL, not the flat UV sheet.
+
+    Every other tile opens its original texture on demand. For armor that
+    original is the flat atlas, so without this the rendered model would only
+    ever exist at thumbnail size -- too small to judge the art, which is the
+    entire reason the renderer exists.
+    """
+    from mc_pack_converter.webui.armor import CANVAS
+    path = tmp_path / "p.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr(A + "textures/entity/equipment/humanoid/iron.png", _png(64, 32))
+    tile = build_sheet(path)["sections"][0]["tiles"][0]
+    assert tile["full"], "armor tile carries no large render"
+    small = Image.open(io.BytesIO(base64.b64decode(tile["thumb"].split(",", 1)[1])))
+    big = Image.open(io.BytesIO(base64.b64decode(tile["full"].split(",", 1)[1])))
+    # Native canvas, not downscaled -- that is the most information there is,
+    # since the source art is 64x32 and CSS pixelates the rest of the way up.
+    assert big.size == CANVAS
+    assert max(big.size) > max(small.size)
+
+
+def test_only_armor_tiles_carry_a_large_render(tmp_path):
+    """Blocks and items already open their true original; a baked copy would
+    just be dead weight in the page."""
+    path = tmp_path / "p.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr(A + "textures/block/stone.png", _png(16, 16))
+        z.writestr(A + "textures/item/apple.png", _png(16, 16))
+    for section in build_sheet(path)["sections"]:
+        for tile in section["tiles"]:
+            assert tile.get("full") is None, f"{tile['name']} should carry no full render"
