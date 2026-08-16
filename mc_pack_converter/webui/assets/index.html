@@ -4,9 +4,9 @@
 <link rel="stylesheet" href="app.css">
 <body>
   <header>
-    <h1 id="headline">Starting…</h1>
+    <h1 id="headline">MC Pack Converter</h1>
     <div id="details"></div>
-    <progress id="bar" max="100" value="0"></progress>
+    <progress id="bar" max="100" value="0" hidden></progress>
   </header>
 
   <nav id="tabs" hidden>
@@ -17,6 +17,14 @@
   </nav>
 
   <main>
+    <section id="idle">
+      <div id="dropzone">
+        <h2>Drop a 1.8.9 resource pack here</h2>
+        <p>a .zip, or an unpacked pack folder</p>
+        <button id="choose">Choose a pack…</button>
+        <div id="drop-error"></div>
+      </div>
+    </section>
     <section id="findings" hidden></section>
     <section id="textures" hidden><p class="muted">Building the sheet…</p></section>
     <section id="error" hidden>

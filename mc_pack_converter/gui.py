@@ -39,16 +39,24 @@ def parse_drop(argv: list[str]) -> tuple[Path | None, list[Path]]:
 class GuiState:
     """What the window should be showing, driven by worker-thread messages."""
 
-    def __init__(self, source: Path, target: str, extras: list[Path] | None = None):
+    def __init__(self, source: Path | None, target: str,
+                 extras: list[Path] | None = None):
         self.source = source
         self.target = target
         self.extras = extras or []
-        self.screen = "progress"
+        # No pack yet means the window opens on the drop screen and waits,
+        # instead of demanding one before it will even appear.
+        self.screen = "progress" if source is not None else "idle"
         self.stage = ""
         self.done = 0
         self.total = 0
         self.result = None
         self.error: BaseException | None = None
+
+    def start(self, source: Path) -> None:
+        """A pack arrived -- by drop, by picker, or on the command line."""
+        self.source = source
+        self.screen = "progress"
 
     def handle(self, msg) -> None:
         try:
@@ -69,6 +77,8 @@ class GuiState:
             return
 
     def headline(self) -> str:
+        if self.screen == "idle":
+            return "MC Pack Converter"
         if self.screen == "progress":
             return f"{self.source.name} → {self.target}"
         if self.screen == "error":
@@ -84,6 +94,8 @@ class GuiState:
 
     def detail_lines(self) -> list[str]:
         lines: list[str] = []
+        if self.screen == "idle":
+            return [f"Converts a 1.8.9 pack to {self.target}"]
         if self.screen == "progress":
             if self.total:
                 lines.append(f"{self.done}/{self.total}  {self.stage}")
@@ -124,7 +136,7 @@ class GuiState:
             "screen": self.screen,
             "headline": self.headline(),
             "details": self.detail_lines(),
-            "source": self.source.name,
+            "source": self.source.name if self.source else "",
             "target": self.target,
             "stage": self.stage,
             "done": self.done,
@@ -189,53 +201,41 @@ def _fallback(state: GuiState, q: queue.Queue) -> int:
 def main(argv: list[str] | None = None) -> int:
     source, extras = parse_drop(sys.argv[1:] if argv is None else argv)
 
-    # Tk survives for exactly two jobs, both of which happen BEFORE a window
-    # exists and neither of which pywebview can do: the file picker and the
-    # rejected-pack dialog.
-    root = None
-    if source is None:
-        if tk is None:
-            print("No pack given. Use:  mc-pack-converter convert <pack>",
-                  file=sys.stderr)
-            return 1
-        root = tk.Tk()
-        root.withdraw()
-        chosen = filedialog.askopenfilename(
-            title="Choose a 1.8.9 resource pack",
-            filetypes=[("Resource pack", "*.zip"), ("All files", "*.*")],
-        )
-        if not chosen:
-            root.destroy()
-            return 0  # cancelling the picker is not an error
-        source = Path(chosen)
-
-    problem = validate_source(source)
-    if problem:
-        if tk is not None:
-            root = root or tk.Tk()
-            root.withdraw()
-            messagebox.showerror("MC Pack Converter", problem)
-        else:
-            print(problem, file=sys.stderr)
-        return 1
-    if root is not None:
-        root.destroy()
+    # A pack on the command line (dropped onto the exe icon) still works, but
+    # it is no longer required: with no argument the window opens on its drop
+    # screen and waits, instead of ambushing the user with a file dialog.
+    if source is not None and validate_source(source):
+        source = None   # the page will say why, where the user can see it
 
     state = GuiState(source, DEFAULT_TARGET, extras)
     q: queue.Queue = queue.Queue()
-    threading.Thread(target=_work, args=(state, q), daemon=True).start()
+
+    def begin(pack: Path) -> None:
+        threading.Thread(target=_work, args=(state, q), daemon=True).start()
 
     try:
         import webview
         from .webui.api import Api
+        api = Api(state, q, on_start=begin)
         index = Path(__file__).parent / "webui" / "assets" / "index.html"
-        webview.create_window("MC Pack Converter", str(index),
-                              js_api=Api(state, q), width=980, height=760)
+        window = webview.create_window("MC Pack Converter", str(index),
+                                       js_api=api, width=1040, height=800)
+        api.window = window
+        if source is not None:
+            begin(source)
         webview.start()
     except Exception as exc:
-        # WebView2 absent, or pywebview failed to make a window at all.
-        print(f"no window available ({exc!r}); converting without one",
-              file=sys.stderr)
+        # WebView2 absent, or pywebview failed to make a window at all. A
+        # windowed exe has no console, so say so where it can be seen.
+        note = f"no window available ({exc!r})"
+        print(note, file=sys.stderr)
+        if source is None:
+            if tk is not None:
+                root = tk.Tk(); root.withdraw()
+                messagebox.showerror("MC Pack Converter", note)
+                root.destroy()
+            return 1
+        threading.Thread(target=_work, args=(state, q), daemon=True).start()
         return _fallback(state, q)
     return 0
 
