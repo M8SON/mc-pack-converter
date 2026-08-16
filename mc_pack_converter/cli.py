@@ -64,8 +64,7 @@ def main(argv=None) -> int:
         print(f"[{i}/{total}] {name}")
 
     result = run_job(args.source, out, args.target, args.report_only,
-                     on_stage=on_stage,
-                     on_sheet=lambda path, n: print(f"contact sheet: {path} ({n} sprites)"))
+                     on_stage=on_stage)
 
     if args.verbose:
         for text in result.report_texts.values():

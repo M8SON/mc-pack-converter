@@ -103,8 +103,6 @@ class GuiState:
                 lines.append(f"Wrote {self.result.out_path.name}")
             for path in self.result.reports.values():
                 lines.append(path.name)
-            if self.result.sheet is not None:
-                lines.append(self.result.sheet.name)
         if self.extras:
             names = ", ".join(p.name for p in self.extras)
             lines.append(f"Converted {self.source.name} only; ignored {names}")

@@ -8,7 +8,6 @@ from .stages import STAGES
 from .stages.ingest import prepare_working_copy
 from .stages.package import write_output
 from .report import render_conversion_report, render_null_texture_report
-from .contact_sheet import ATLAS_1_14, build_contact_sheet
 
 # The CLI's default target, shared so the GUI cannot drift from it. NOT
 # derived from TARGETS: that list is string-sorted, so sorted(...)[-1] picks
@@ -54,7 +53,7 @@ def _announce(stages, on_stage):
 
 
 def convert(source: Path, out_path: Path, target: str,
-            report_only: bool, on_stage=None, on_sheet=None) -> ConversionContext:
+            report_only: bool, on_stage=None) -> ConversionContext:
     workroot = Path(tempfile.mkdtemp(prefix="mcpc_"))
     try:
         root = prepare_working_copy(source, workroot)
@@ -71,15 +70,6 @@ def convert(source: Path, out_path: Path, target: str,
         }
         if not report_only:
             write_output(ctx, out_path, reports)
-            sheet = out_path.with_name(out_path.stem + "-slices.png")
-            rels = [out for src, out in ctx.sliced if src in ATLAS_1_14]
-            try:
-                n = build_contact_sheet(ctx.root, rels, sheet)
-                if n and on_sheet is not None:
-                    on_sheet(sheet, n)
-            except Exception as exc:  # fail-soft: a review artifact, not the product
-                ctx.add("contact_sheet", Severity.WARNING,
-                        f"contact sheet failed: {exc!r}")
         return ctx
     finally:
         shutil.rmtree(workroot, ignore_errors=True)
@@ -92,7 +82,6 @@ class JobResult:
     out_path: Path
     reports: dict[str, Path]
     report_texts: dict[str, str]
-    sheet: Path | None
     wrote_zip: bool
 
     @property
@@ -108,22 +97,14 @@ class JobResult:
 
 
 def run_job(source: Path, out_path: Path, target: str,
-            report_only: bool = False, *, on_stage=None, on_sheet=None) -> JobResult:
+            report_only: bool = False, *, on_stage=None) -> JobResult:
     """Convert one pack and write its reports beside the output.
 
     The whole job, shared by the CLI and the GUI: everything main() used to do
     between validating the source and printing. Callers differ only in how
     they render the JobResult.
     """
-    captured: list[Path] = []
-
-    def _sheet(path: Path, n: int) -> None:
-        captured.append(path)
-        if on_sheet is not None:
-            on_sheet(path, n)
-
-    ctx = convert(source, out_path, target, report_only,
-                  on_stage=on_stage, on_sheet=_sheet)
+    ctx = convert(source, out_path, target, report_only, on_stage=on_stage)
 
     texts = {
         "report": render_conversion_report(ctx.findings),
@@ -140,7 +121,6 @@ def run_job(source: Path, out_path: Path, target: str,
         out_path=out_path,
         reports=written,
         report_texts=texts,
-        sheet=captured[0] if captured else None,
         # Whether THIS run produced the zip, not whether a file of that name is
         # on disk: a leftover zip from a previous run made --report-only claim
         # it had written one.

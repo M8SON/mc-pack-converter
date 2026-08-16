@@ -113,7 +113,6 @@ class _FakeResult:
         from mc_pack_converter.pipeline import Severity
         self.out_path = tmp / "MyPack-26.2.zip"
         self.reports = {"report": tmp / "MyPack-26.2-report.md"}
-        self.sheet = tmp / "MyPack-26.2-slices.png"
         self.wrote_zip = True
         self.counts = {Severity.ERROR: 0, Severity.WARNING: 3, Severity.INFO: 9}
         self.has_errors = False
