@@ -4,6 +4,10 @@ from pathlib import Path
 from ..pipeline import ConversionContext, Severity, FatalConversionError
 from ..mcmeta import read_mcmeta
 
+# 1.8.9's pack_format. What this converter is built to read, and so what a
+# pack that declares nothing is taken to be.
+ASSUMED_FORMAT = 1
+
 def _find_pack_root(base: Path) -> Path:
     if (base / "pack.mcmeta").exists():
         return base
@@ -59,9 +63,23 @@ def ingest(ctx: ConversionContext) -> None:
     if not meta.exists():
         raise FatalConversionError(f"no pack.mcmeta at {ctx.root}")
     try:
-        fmt = read_mcmeta(meta)["pack"]["pack_format"]
+        data = read_mcmeta(meta)
     except Exception as exc:
         raise FatalConversionError(f"unreadable pack.mcmeta: {exc}")
+
+    pack = data.get("pack")
+    fmt = pack.get("pack_format") if isinstance(pack, dict) else None
+    if isinstance(fmt, str) and fmt.strip().lstrip("-").isdigit():
+        fmt = int(fmt.strip())          # quoted numbers appear in real packs
+    if not isinstance(fmt, int) or isinstance(fmt, bool):
+        # Refusing the whole pack over one missing decorative-ish field is the
+        # wrong trade, and the same one mcmeta.py already declined to make for
+        # GSON sloppiness. A pack reaching this converter is a 1.8.9 pack by
+        # assumption; say so loudly and convert it.
+        ctx.add("ingest", Severity.WARNING,
+                f"pack.mcmeta declares no usable pack_format ({fmt!r}); "
+                f"assuming {ASSUMED_FORMAT} and converting anyway")
+        fmt = ASSUMED_FORMAT
     ctx.add("ingest", Severity.INFO, f"detected pack_format={fmt}")
     if fmt != 1:
         ctx.add("ingest", Severity.WARNING,

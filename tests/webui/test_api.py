@@ -149,15 +149,20 @@ def test_a_second_drop_while_converting_is_ignored(tmp_path):
     assert started == [pack]           # not started twice
 
 
-def test_the_page_wears_the_packs_own_background(done_api):
-    d = done_api.poll()
-    assert "background" not in d       # the fixture zip ships no gui background
+def test_no_background_when_the_pack_ships_no_stone(done_api):
+    """No stone, no wall: the app falls back to its own rather than inventing
+    something from whatever textures happen to be there."""
+    assert "background" not in done_api.poll()
 
 
-def test_the_background_is_served_when_the_pack_has_one(tmp_path):
+def test_the_background_is_built_from_the_packs_own_blocks(tmp_path, monkeypatch):
+    """The window wears the pack you converted: its stone, its dirt, its ores."""
+    import mc_pack_converter.webui.wall as wall_mod
+    monkeypatch.setattr(wall_mod, "remember_wall", lambda png: None)
     out = tmp_path / "MyPack-26.2.zip"
     with zipfile.ZipFile(out, "w") as z:
-        z.writestr(A + "textures/gui/options_background.png", _png(16, 16))
+        for b in ("stone", "dirt", "grass_block_side", "coal_ore"):
+            z.writestr(A + f"textures/block/{b}.png", _png(16, 16))
     from types import SimpleNamespace
     from mc_pack_converter.pipeline import Severity
     state = GuiState(Path("MyPack.zip"), "26.2")

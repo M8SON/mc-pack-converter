@@ -36,15 +36,18 @@ body {
   /* A stone-and-ore wall, so the window never opens on a black void. It is a
      generated 128x128 tile that ships with the app -- nothing is fetched. The
      converted pack's own gui background replaces it once there is one. */
-  background-color: #808080;
+  /* A terrain cross-section: grass on top, dirt, then stone and ore. It is
+     FIXED and repeats only across, so the sky stays up and the ground does
+     not tile away down the page. Below it, flat stone. */
+  background-color: #4c4c4c;
   background-image: var(--pack-bg, url("stone.png"));
-  background-size: 384px 384px;
+  background-size: 256px 256px;
   background-repeat: repeat;
   image-rendering: pixelated;
 }
 body::before {   /* the darkening vanilla lays over its background panel */
   content: ""; position: fixed; inset: 0; pointer-events: none;
-  background: rgba(0, 0, 0, .38);
+  background: rgba(0, 0, 0, .66);
 }
 body > * { position: relative; }
 
@@ -89,7 +92,16 @@ main { padding: 18px 20px 56px; }
 
 /* The drop target: the whole window accepts a pack, so this is a sign rather
    than a small button to hunt for. */
-#idle { display: grid; place-items: center; min-height: 62vh; text-align: center; }
+#idle { display: grid; place-items: center; min-height: 62vh; text-align: center;
+        position: relative; }
+/* On the drop screen there is no content to read, so let the wall come
+   through at full strength -- it is the only thing on the page. */
+#idle::before {
+  content: ""; position: absolute; inset: -18px -20px;
+  background: rgba(255, 255, 255, .34); pointer-events: none;
+  mix-blend-mode: overlay;
+}
+#idle > * { position: relative; }
 #dropzone {
   width: min(560px, 86vw); padding: 44px 32px;
   border: calc(var(--px) * 2) dashed #6f6f6f;

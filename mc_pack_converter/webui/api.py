@@ -15,6 +15,7 @@ from pathlib import Path
 
 from ..job import validate_source
 from .sheet import build_sheet
+from .wall import build_wall, remember_wall, remembered_wall
 
 EMPTY_SHEET = {"sections": [], "excluded": [], "total": 0}
 
@@ -72,6 +73,7 @@ class Api:
 
     _BG = "assets/minecraft/textures/gui/options_background.png"
 
+
     def _pack_background(self) -> str:
         """The converted pack's own gui background, as a data URI.
 
@@ -81,14 +83,15 @@ class Api:
         if getattr(self, "_bg", None) is not None:
             return self._bg
         self._bg = ""
+        if self._state.screen != "result":
+            self._bg = remembered_wall()
+            return self._bg
         if self._state.screen == "result":
-            try:
-                with zipfile.ZipFile(self._state.result.out_path) as z:
-                    raw = z.read(self._BG)
+            png = build_wall(self._state.result.out_path)
+            if png:
                 self._bg = ("data:image/png;base64,"
-                            + base64.b64encode(raw).decode("ascii"))
-            except (OSError, KeyError, zipfile.BadZipFile):
-                self._bg = ""
+                            + base64.b64encode(png).decode("ascii"))
+                remember_wall(png)   # so the NEXT launch opens wearing it
         return self._bg
 
     def sheet(self) -> dict:
