@@ -173,7 +173,18 @@ def build_sheet(zip_path: Path) -> dict:
                         tile = _tile(name, im)
                     if label == "Armor":
                         # The flat UV sheet means nothing to a human eye.
-                        tile["thumb"] = thumb_data_uri(render_armor(im), box=128)
+                        rendered = render_armor(im)
+                        tile["thumb"] = thumb_data_uri(rendered, box=128)
+                        # Clicking any other tile opens its original texture.
+                        # For armor that would be the flat UV sheet again, so
+                        # the model would only ever exist at thumbnail size --
+                        # too small to judge the art, which is the whole point.
+                        # Carry the render at its NATIVE canvas size for the
+                        # lightbox instead. Native is the most information
+                        # there is -- the source art is 64x32, so rendering
+                        # larger would only interpolate more nearest-neighbour
+                        # blocks. CSS pixelates it up to fill the window.
+                        tile["full"] = thumb_data_uri(rendered, box=max(rendered.size))
             except Exception:
                 # A texture the converter emitted broken is a finding, not a
                 # reason to show the user no sheet at all.

@@ -35,7 +35,10 @@ h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em;
 .tile { text-align:center; cursor:pointer; }
 .tile img { width:64px; height:64px; object-fit:contain;
             image-rendering:pixelated; background:#26262c; border-radius:4px; }
-.tile.armor img { width:80px; height:112px; }
+/* Only 12 armor tiles exist and the grid has room, so give them enough size to
+   actually judge the art on the body rather than merely recognise it. */
+.tile.armor { grid-column: span 2; }
+.tile.armor img { width:100%; max-width:160px; height:224px; }
 .tile .cap { display:block; font-size:11px; color:var(--muted);
              overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .tile.flagged img { outline:2px solid var(--warn); }

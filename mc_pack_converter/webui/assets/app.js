@@ -1,5 +1,6 @@
 const $ = (id) => document.getElementById(id);
 let sheetLoaded = false;
+window._fulls = {};
 
 function show(view) {
   for (const id of ["findings", "textures", "error"]) $(id).hidden = id !== view;
@@ -30,6 +31,11 @@ async function loadSheet() {
       sheet.excluded.map((e) => `${e.count} ${esc(e.label.toLowerCase())}`).join(" · ") +
       `</p>`);
   $("textures").innerHTML = parts.join("");
+  // Armor tiles carry their own big render; everything else asks Python for
+  // the original texture on demand. Keyed here rather than stamped into a
+  // data- attribute so a 40 KB data URI never lands in the DOM.
+  for (const s of sheet.sections)
+    for (const t of s.tiles) if (t.full) window._fulls[t.path] = t.full;
   for (const el of $("textures").querySelectorAll(".tile"))
     el.onclick = () => openFull(el.dataset.path);
   for (const el of $("textures").querySelectorAll(".tile[data-frames]")) animate(el);
@@ -55,7 +61,7 @@ function animate(el) {
 }
 
 async function openFull(path) {
-  const uri = await window.pywebview.api.texture(path);
+  const uri = window._fulls[path] || await window.pywebview.api.texture(path);
   if (!uri) return;
   $("lightbox-img").src = uri;
   $("lightbox").hidden = false;
