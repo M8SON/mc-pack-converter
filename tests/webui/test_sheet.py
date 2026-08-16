@@ -309,3 +309,46 @@ def test_the_page_ships_its_own_stone_background():
     assert 'url("stone.png")' in (assets / "app.css").read_text()
     with Image.open(wall) as im:
         assert im.size == (128, 128)
+
+
+def test_the_wall_is_built_from_the_packs_own_blocks(tmp_path):
+    from mc_pack_converter.webui.wall import build_wall
+    path = tmp_path / "p.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        for b in ("stone", "dirt", "grass_block_side", "coal_ore", "diamond_ore"):
+            z.writestr(A + f"textures/block/{b}.png", _png(16, 16))
+    png = build_wall(path)
+    assert png
+    with Image.open(io.BytesIO(png)) as im:
+        assert im.size == (128, 128)      # 8x8 blocks at the pack's own 16px
+
+
+def test_a_pack_without_stone_gets_no_wall(tmp_path):
+    from mc_pack_converter.webui.wall import build_wall
+    path = tmp_path / "p.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr(A + "textures/block/dirt.png", _png(16, 16))
+    assert build_wall(path) is None
+
+
+def test_the_wall_honours_a_high_resolution_pack(tmp_path):
+    """A 32x pack should give a 32x wall, not an upscaled 16x one."""
+    from mc_pack_converter.webui.wall import build_wall
+    path = tmp_path / "p.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        for b in ("stone", "dirt", "grass_block_side"):
+            z.writestr(A + f"textures/block/{b}.png", _png(32, 32))
+    with Image.open(io.BytesIO(build_wall(path))) as im:
+        assert im.size == (256, 256)
+
+
+def test_an_animated_block_contributes_one_frame_not_a_strip(tmp_path):
+    """stone is never animated, but a pack may animate dirt or an ore; pasting
+    a 16x512 strip into a 16px cell would smear it."""
+    from mc_pack_converter.webui.wall import build_wall
+    path = tmp_path / "p.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr(A + "textures/block/stone.png", _png(16, 16))
+        z.writestr(A + "textures/block/dirt.png", _png(16, 512))
+    with Image.open(io.BytesIO(build_wall(path))) as im:
+        assert im.size == (128, 128)

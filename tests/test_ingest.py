@@ -64,3 +64,58 @@ def test_zip_with_a_directory_entry_stored_as_a_file(tmp_path):
     work = tmp_path / "work"
     root = prepare_working_copy(z, work)                # must not raise
     assert (root / "assets/minecraft/textures/models/armor/iron_layer_1.png").exists()
+
+
+def _pack_with_mcmeta(tmp_path, text):
+    root = tmp_path / "pack"
+    (root / "assets/minecraft/textures/blocks").mkdir(parents=True)
+    (root / "pack.mcmeta").write_text(text)
+    return root
+
+
+def _run_ingest(root):
+    from mc_pack_converter.pipeline import ConversionContext
+    from mc_pack_converter.stages.ingest import ingest
+    ctx = ConversionContext(root=root, target="26.2")
+    ingest(ctx)
+    return ctx
+
+
+def test_a_pack_with_no_pack_format_is_converted_anyway(tmp_path):
+    """Mason hit this on a real pack: pack.mcmeta had a pack block with no
+    pack_format, and the converter refused the whole pack with a KeyError
+    dressed up as a fatal error. Refusing over one missing field is the wrong
+    trade -- the same one mcmeta.py already declined to make."""
+    from mc_pack_converter.pipeline import Severity
+    root = _pack_with_mcmeta(tmp_path, '{"pack":{"description":"my pack"}}')
+    ctx = _run_ingest(root)
+    warns = [f for f in ctx.findings if f.severity is Severity.WARNING]
+    assert any("no usable pack_format" in f.message for f in warns)
+    assert any("detected pack_format=1" in f.message for f in ctx.findings)
+
+
+def test_a_quoted_pack_format_is_read_as_a_number(tmp_path):
+    ctx = _run_ingest(_pack_with_mcmeta(tmp_path, '{"pack":{"pack_format":"1"}}'))
+    assert any("detected pack_format=1" in f.message for f in ctx.findings)
+
+
+def test_a_missing_pack_block_is_survivable(tmp_path):
+    ctx = _run_ingest(_pack_with_mcmeta(tmp_path, '{"description":"no pack block"}'))
+    assert any("detected pack_format=1" in f.message for f in ctx.findings)
+
+
+def test_a_real_pack_format_is_still_honoured(tmp_path):
+    from mc_pack_converter.pipeline import Severity
+    ctx = _run_ingest(_pack_with_mcmeta(tmp_path, '{"pack":{"pack_format":34}}'))
+    assert any("detected pack_format=34" in f.message for f in ctx.findings)
+    assert any("may already be converted" in f.message
+               for f in ctx.findings if f.severity is Severity.WARNING)
+
+
+def test_a_structurally_broken_mcmeta_is_still_fatal(tmp_path):
+    """Leniency has a limit: garbage is still garbage."""
+    import pytest
+    from mc_pack_converter.pipeline import FatalConversionError
+    root = _pack_with_mcmeta(tmp_path, '{"pack": ')
+    with pytest.raises(FatalConversionError):
+        _run_ingest(root)
