@@ -37,12 +37,13 @@ async function loadSheet() {
   for (const s of sheet.sections)
     for (const t of s.tiles) if (t.full) window._fulls[t.path] = t.full;
   for (const el of $("textures").querySelectorAll(".tile"))
-    el.onclick = () => openFull(el.dataset.path);
+    el.onclick = () => openFull(el);
   for (const el of $("textures").querySelectorAll(".tile[data-frames]")) animate(el);
 }
 
 function tile(t, label, flagged) {
   const cls = ["tile", label === "Armor" ? "armor" : "",
+               label === "Animated" ? "animated" : "",
                flagged.has(norm(t.path)) ? "flagged" : ""].join(" ");
   const frames = t.frames
     ? ` data-frames='${JSON.stringify(t.frames)}' data-ft="${t.frametime}"` : "";
@@ -60,10 +61,29 @@ function animate(el) {
               Number(el.dataset.ft));
 }
 
-async function openFull(path) {
-  const uri = window._fulls[path] || await window.pywebview.api.texture(path);
-  if (!uri) return;
-  $("lightbox-img").src = uri;
+let lightboxTimer = null;
+
+async function openFull(el) {
+  const path = el.dataset.path;
+  const img = $("lightbox-img");
+  clearInterval(lightboxTimer);
+  lightboxTimer = null;
+
+  // A tile that turns should keep turning when opened -- the whole reason for
+  // the model view is seeing the sides a still frame hides.
+  if (el.dataset.frames) {
+    const frames = JSON.parse(el.dataset.frames);
+    let i = 0;
+    img.src = frames[0];
+    lightboxTimer = setInterval(() => {
+      i = (i + 1) % frames.length;
+      img.src = frames[i];
+    }, Number(el.dataset.ft));
+  } else {
+    const uri = window._fulls[path] || await window.pywebview.api.texture(path);
+    if (!uri) return;
+    img.src = uri;
+  }
   $("lightbox").hidden = false;
 }
 
@@ -108,7 +128,11 @@ async function tick() {
 
 $("tabs").onclick = (e) => { if (e.target.dataset.view) show(e.target.dataset.view); };
 $("open-folder").onclick = () => window.pywebview.api.open_folder();
-$("lightbox").onclick = () => ($("lightbox").hidden = true);
+$("lightbox").onclick = () => {
+  clearInterval(lightboxTimer);   // stop the turn when it is closed
+  lightboxTimer = null;
+  $("lightbox").hidden = true;
+};
 $("copy").onclick = async () => {
   try {
     await navigator.clipboard.writeText($("trace").textContent);

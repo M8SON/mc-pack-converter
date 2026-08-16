@@ -170,7 +170,10 @@ def test_a_multi_frame_strip_becomes_an_animated_tile(tmp_path):
     sheet = build_sheet(z)
     assert [s["label"] for s in sheet["sections"]] == ["Animated"]
     tile = sheet["sections"][0]["tiles"][0]
-    assert len(tile["frames"]) == 16
+    # The emitted frames are the cube SPIN, not the animation's own count --
+    # angle and animation advance together in one loop.
+    from mc_pack_converter.webui.sheet import SPIN
+    assert len(tile["frames"]) == SPIN
     assert tile["frametime"] == 50  # one tick, the Minecraft default
 
 
@@ -218,8 +221,15 @@ def test_an_out_of_range_frame_index_is_dropped_not_raised(tmp_path):
         (A + "textures/block/x.png.mcmeta",
          json.dumps({"animation": {"frames": [0, 1, 5, 1]}}).encode()),
     ])
+    from mc_pack_converter.webui.sheet import SPIN, animation_frames
+    # Assert on the SELECTION, not on the emitted tile: the tile now carries
+    # SPIN frames whatever the animation says, so asserting its length here
+    # would pass no matter how badly the index filter broke.
+    im = Image.open(io.BytesIO(_png(16, 32)))
+    picked = animation_frames(im, {"frames": [0, 1, 5, 1]})
+    assert len(picked) == 3  # 0, 1, 1 -- index 5 dropped
     tile = build_sheet(z)["sections"][0]["tiles"][0]
-    assert len(tile["frames"]) == 3  # 0, 1, 1 -- index 5 dropped
+    assert len(tile["frames"]) == SPIN
 
 
 def test_frametime_is_converted_from_ticks_to_milliseconds(tmp_path):

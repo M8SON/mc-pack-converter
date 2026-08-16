@@ -39,6 +39,10 @@ h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em;
    actually judge the art on the body rather than merely recognise it. */
 .tile.armor { grid-column: span 2; }
 .tile.armor img { width:100%; max-width:160px; height:224px; }
+/* The animated tiles are cubes on a 140x130 canvas, so they need room too --
+   squeezed into a 64px square the turn is impossible to read. */
+.tile.animated { grid-column: span 2; }
+.tile.animated img { width:100%; max-width:160px; height:148px; }
 .tile .cap { display:block; font-size:11px; color:var(--muted);
              overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .tile.flagged img { outline:2px solid var(--warn); }
