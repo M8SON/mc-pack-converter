@@ -1,13 +1,17 @@
 :root { color-scheme: dark; --bg:#1b1b1e; --fg:#e8e8ea; --muted:#9a9aa2;
         --line:#33333a; --warn:#e0a83a; --err:#e05c5c; }
 * { box-sizing: border-box; }
+/* An author rule beats the UA sheet's [hidden] { display: none }, so every
+   element this page toggles -- #lightbox (display:grid), #tabs (display:flex)
+   -- would otherwise stay visible. The lightbox in particular covers the whole
+   page and swallows every click. */
+[hidden] { display: none !important; }
 body { margin:0; background:var(--bg); color:var(--fg);
        font:14px/1.5 "Segoe UI", system-ui, sans-serif; }
 header { padding:16px 20px 12px; border-bottom:1px solid var(--line); }
 h1 { margin:0 0 4px; font-size:17px; }
 #details { color:var(--muted); white-space:pre-line; }
 progress { width:100%; height:6px; margin-top:10px; }
-progress[hidden] { display:none; }
 
 nav { display:flex; gap:6px; align-items:center;
       padding:8px 20px; border-bottom:1px solid var(--line); }

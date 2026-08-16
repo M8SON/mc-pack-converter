@@ -99,11 +99,12 @@ class JobResult:
 def run_job(source: Path, out_path: Path, target: str,
             report_only: bool = False, *, on_stage=None,
             write_reports: bool = True) -> JobResult:
-    """Convert one pack and write its reports beside the output.
+    """Convert one pack, writing its reports beside the output unless told not to.
 
     The whole job, shared by the CLI and the GUI: everything main() used to do
     between validating the source and printing. Callers differ only in how
-    they render the JobResult.
+    they render the JobResult; the GUI passes write_reports=False so it can
+    render the findings itself instead of leaving Markdown files behind.
     """
     ctx = convert(source, out_path, target, report_only, on_stage=on_stage)
 
