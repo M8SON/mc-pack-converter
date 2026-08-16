@@ -91,3 +91,64 @@ def test_golden_diamond_chestplate():
     src = Path(__file__).parent / "diamond.png"
     out = render_armor(Image.open(src))
     assert list(out.getdata()) == list(Image.open(golden).convert("RGBA").getdata())
+
+
+def test_turning_the_model_actually_changes_it():
+    """A yaw that quietly did nothing would still pass every other test here."""
+    import math
+    front = render_armor(_armor(), 0.0)
+    side = render_armor(_armor(), math.pi / 2)
+    assert list(front.getdata()) != list(side.getdata())
+
+
+def test_a_full_turn_returns_to_the_start():
+    import math
+    assert list(render_armor(_armor(), 0.0).getdata()) == \
+           list(render_armor(_armor(), 2 * math.pi).getdata())
+
+
+def test_every_spin_frame_is_distinct_and_non_empty():
+    """Catches a spin that renders the same angle N times, and one that turns
+    the model out of frame.
+
+    Uses the real armor texture, not a flat colour: the humanoid skeleton is
+    geometrically symmetric front-to-back, so with a uniform texture 0 and 180
+    degrees are genuinely identical images and only the ART tells them apart.
+    """
+    from pathlib import Path
+    from mc_pack_converter.webui.armor import spin_frames
+    tex = Image.open(Path(__file__).parent / "diamond.png")
+    frames = spin_frames(tex, 12)
+    assert len(frames) == 12
+    seen = set()
+    for i, f in enumerate(frames):
+        assert f.size == CANVAS
+        assert f.getbbox() is not None, f"frame {i} is empty"
+        seen.add(f.tobytes())
+    assert len(seen) == 12, "some spin frames are identical"
+
+
+@pytest.mark.parametrize("box", HUMANOID, ids=lambda b: b.name)
+def test_every_box_defines_all_six_faces(box):
+    """A missing face leaves the model hollow as it comes about."""
+    for face in ("front", "back", "right", "left", "top", "bottom"):
+        uv = getattr(box, face)
+        assert uv is not None, f"{box.name} has no {face}"
+        u, v, w, h = uv
+        assert 0 <= u and 0 <= v and u + w <= 64 and v + h <= 32
+
+
+def test_a_block_texture_renders_on_a_cube_within_its_canvas():
+    from mc_pack_converter.webui.armor import CUBE_CANVAS, render_cube
+    for res in (16, 32, 64):     # 1x, 2x and 4x packs
+        out = render_cube(Image.new("RGBA", (res, res), (10, 200, 90, 255)))
+        assert out.size == CUBE_CANVAS, f"{res}px texture escaped the canvas"
+        assert out.getbbox() is not None
+
+
+def test_the_cube_is_the_same_size_whatever_the_texture_resolution():
+    """A 32x pack gets the same cube at more detail, not a bigger cube."""
+    from mc_pack_converter.webui.armor import render_cube
+    a = render_cube(Image.new("RGBA", (16, 16), (255, 0, 0, 255)))
+    b = render_cube(Image.new("RGBA", (64, 64), (255, 0, 0, 255)))
+    assert a.getbbox() == b.getbbox()

@@ -9,7 +9,7 @@ import base64, io, json, zipfile
 from pathlib import Path
 from PIL import Image
 
-from .armor import render_armor
+from .armor import cube_spin_frames, render_armor, spin_frames
 
 A = "assets/minecraft/"
 
@@ -64,6 +64,10 @@ def exclusion_for(name: str) -> str | None:
 
 
 THUMB = 64
+# Frames in one full turn. 24 reads as a smooth rotation and costs
+# ~0.05s per model, measured; the whole sheet still builds in seconds.
+SPIN = 24
+SPIN_MS = 100   # 24 frames at 100ms = a 2.4s turn
 
 
 def thumb_data_uri(im: Image.Image, box: int = THUMB) -> str:
@@ -119,8 +123,13 @@ def slice_frames(im: Image.Image, count: int) -> list[Image.Image]:
     return [im.crop((0, i * fh, im.width, (i + 1) * fh)) for i in range(count)]
 
 
-def _animated_tile(name: str, im: Image.Image, anim: dict) -> dict | None:
-    """An animated tile, or None if this texture is really a single frame."""
+def animation_frames(im: Image.Image, anim: dict) -> list[Image.Image] | None:
+    """The texture's animation frames in play order, or None if it is a still.
+
+    Kept separate from the tile it ends up on because the number of frames the
+    PAGE shows is no longer the number the animation has -- the cube spin
+    resamples them -- and this selection still has to be exercised on its own.
+    """
     count = frame_count(im.size)
     if count < 2:
         return None
@@ -133,9 +142,23 @@ def _animated_tile(name: str, im: Image.Image, anim: dict) -> dict | None:
                   if isinstance(i, int) and 0 <= i < count]
         if picked:
             frames = picked
+    return frames
+
+
+def _animated_tile(name: str, im: Image.Image, anim: dict) -> dict | None:
+    """An animated tile, or None if this texture is really a single frame."""
+    frames = animation_frames(im, anim)
+    if frames is None:
+        return None
     ft = anim.get("frametime")
     tile = _tile(name, im)
-    tile["frames"] = [thumb_data_uri(f) for f in frames]
+    # Turn the block through a full circle while the texture animates. Angle
+    # and animation frame advance together in ONE loop, so the cost is SPIN
+    # frames rather than angles x animation-frames. A flat strip shows the art
+    # but not how it tiles against itself at an edge, or how the top reads
+    # against the side; on a cube you see all three.
+    spun = cube_spin_frames(frames, SPIN)
+    tile["frames"] = [thumb_data_uri(f, box=max(f.size)) for f in spun]
     tile["frametime"] = (ft if isinstance(ft, int) and ft > 0 else 1) * TICK_MS
     return tile
 
@@ -175,6 +198,11 @@ def build_sheet(zip_path: Path) -> dict:
                         # The flat UV sheet means nothing to a human eye.
                         rendered = render_armor(im)
                         tile["thumb"] = thumb_data_uri(rendered, box=128)
+                        # Turn it. A fixed 3/4 view hides the back and the far
+                        # side, which is exactly where a bad conversion hides.
+                        tile["frames"] = [thumb_data_uri(f, box=max(f.size))
+                                          for f in spin_frames(im, SPIN)]
+                        tile["frametime"] = SPIN_MS
                         # Clicking any other tile opens its original texture.
                         # For armor that would be the flat UV sheet again, so
                         # the model would only ever exist at thumbnail size --
