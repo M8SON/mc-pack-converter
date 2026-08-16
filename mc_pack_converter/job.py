@@ -97,7 +97,8 @@ class JobResult:
 
 
 def run_job(source: Path, out_path: Path, target: str,
-            report_only: bool = False, *, on_stage=None) -> JobResult:
+            report_only: bool = False, *, on_stage=None,
+            write_reports: bool = True) -> JobResult:
     """Convert one pack and write its reports beside the output.
 
     The whole job, shared by the CLI and the GUI: everything main() used to do
@@ -111,10 +112,11 @@ def run_job(source: Path, out_path: Path, target: str,
         "null-textures": render_null_texture_report(ctx.findings),
     }
     written = {}
-    for label, text in texts.items():
-        p = out_path.with_name(f"{out_path.stem}-{label}.md")
-        p.write_text(text)
-        written[label] = p
+    if write_reports:
+        for label, text in texts.items():
+            p = out_path.with_name(f"{out_path.stem}-{label}.md")
+            p.write_text(text)
+            written[label] = p
 
     return JobResult(
         ctx=ctx,

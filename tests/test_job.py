@@ -97,3 +97,24 @@ def test_run_job_forwards_every_stage_to_on_stage(mini_pack, tmp_path):
             on_stage=lambda name, i, total: seen.append((name, i, total)))
     assert [s[0] for s in seen] == [name for name, _ in STAGES]
     assert seen[-1][1] == len(STAGES)
+
+
+def test_run_job_writes_reports_by_default(mini_pack, tmp_path):
+    from mc_pack_converter.job import run_job
+    out = tmp_path / "out" / "MyPack-26.2.zip"
+    out.parent.mkdir()
+    result = run_job(mini_pack(), out, "26.2")
+    assert set(result.reports) == {"report", "null-textures"}
+    for path in result.reports.values():
+        assert path.exists()
+
+
+def test_write_reports_false_writes_no_files_but_keeps_the_text(mini_pack, tmp_path):
+    from mc_pack_converter.job import run_job
+    out = tmp_path / "out" / "MyPack-26.2.zip"
+    out.parent.mkdir()
+    result = run_job(mini_pack(), out, "26.2", write_reports=False)
+    assert result.reports == {}
+    assert set(result.report_texts) == {"report", "null-textures"}
+    assert result.report_texts["report"].strip()
+    assert not list(out.parent.glob("*.md"))
