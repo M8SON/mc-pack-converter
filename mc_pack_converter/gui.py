@@ -20,6 +20,10 @@ except ImportError:  # a headless box without Tk; the logic half still imports
 from .job import DEFAULT_TARGET, out_path_beside_source, run_job, validate_source
 from .pipeline import FatalConversionError, Severity
 
+# Severity decides whether the user acts, so it decides the order. Python's
+# sort is stable, so findings keep pipeline order within a severity.
+_SEVERITY_RANK = {Severity.ERROR: 0, Severity.WARNING: 1, Severity.INFO: 2}
+
 
 def parse_drop(argv: list[str]) -> tuple[Path | None, list[Path]]:
     """The first dropped path, plus any extras Windows passed alongside it.
@@ -114,6 +118,33 @@ class GuiState:
             return ""
         return "".join(traceback.format_exception(
             type(self.error), self.error, self.error.__traceback__))
+
+    def to_dict(self) -> dict:
+        """The whole model the page renders. JSON-serialisable by construction."""
+        d = {
+            "screen": self.screen,
+            "headline": self.headline(),
+            "details": self.detail_lines(),
+            "source": self.source.name,
+            "target": self.target,
+            "stage": self.stage,
+            "done": self.done,
+            "total": self.total,
+        }
+        if self.screen == "error":
+            d["error_details"] = self.error_details()
+        elif self.screen == "result":
+            counts = self.result.counts
+            d["counts"] = {s.value: counts[s] for s in Severity}
+            d["findings"] = [
+                {"severity": f.severity.value, "stage": f.stage,
+                 "message": f.message, "path": f.path}
+                for f in sorted(self.result.ctx.findings,
+                                key=lambda f: _SEVERITY_RANK[f.severity])
+            ]
+            d["out_path"] = str(self.result.out_path)
+            d["out_name"] = self.result.out_path.name
+        return d
 
 
 POLL_MS = 50
