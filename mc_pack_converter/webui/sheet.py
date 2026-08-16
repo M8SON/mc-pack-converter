@@ -5,7 +5,7 @@ that root in a finally block before any front end sees the result. The zip is
 also the honest subject — it is what the user loads into Minecraft.
 """
 from __future__ import annotations
-import base64, io, zipfile
+import base64, io, json, zipfile
 from pathlib import Path
 from PIL import Image
 
@@ -20,6 +20,7 @@ SECTIONS: list[tuple[str, tuple[str, ...]]] = [
     ("Items",     (A + "textures/item/",)),
     ("Particles", (A + "textures/particle/",)),
     ("Sky",       (A + "textures/environment/", A + "optifine/sky/")),
+    ("Animated",  ()),   # derived, not path-matched: see animation_of()
     ("Armor",     (A + "textures/entity/equipment/",)),
     ("Other",     (A + "textures/painting/", A + "textures/mob_effect/",
                    A + "textures/misc/", A + "textures/map/",
@@ -80,6 +81,63 @@ def thumb_data_uri(im: Image.Image, box: int = THUMB) -> str:
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
 
 
+TICK_MS = 50  # one Minecraft tick, and the default frametime
+
+
+def animation_of(zf: zipfile.ZipFile, name: str) -> dict | None:
+    """The `animation` object from this texture's .mcmeta sidecar, or None.
+
+    A sidecar is not proof of animation: misc/enchanted_item_glint.png.mcmeta
+    is real and carries only a `texture` block.
+    """
+    try:
+        meta = json.loads(zf.read(name + ".mcmeta"))
+    except (KeyError, ValueError, UnicodeDecodeError):
+        return None
+    anim = meta.get("animation")
+    return anim if isinstance(anim, dict) else None
+
+
+def frame_count(size: tuple[int, int]) -> int:
+    """Frames in a vertical strip.
+
+    No .mcmeta in the wild declares a frame height -- all 10 in the reference
+    pack carry only frames/frametime/interpolate, two of them empty. So the
+    count is derived from Minecraft's own rule: frames are square, therefore
+    frame height equals the texture width.
+    """
+    w, h = size
+    if w <= 0 or h % w or h // w < 2:
+        return 1
+    return h // w
+
+
+def slice_frames(im: Image.Image, count: int) -> list[Image.Image]:
+    fh = im.height // count
+    return [im.crop((0, i * fh, im.width, (i + 1) * fh)) for i in range(count)]
+
+
+def _animated_tile(name: str, im: Image.Image, anim: dict) -> dict | None:
+    """An animated tile, or None if this texture is really a single frame."""
+    count = frame_count(im.size)
+    if count < 2:
+        return None
+    frames = slice_frames(im.convert("RGBA"), count)
+    order = anim.get("frames")
+    if isinstance(order, list):
+        # Out-of-range indices are real: prismarine declares up to 3 on a
+        # one-frame texture. Drop them rather than raising.
+        picked = [frames[i] for i in order
+                  if isinstance(i, int) and 0 <= i < count]
+        if picked:
+            frames = picked
+    ft = anim.get("frametime")
+    tile = _tile(name, im)
+    tile["frames"] = [thumb_data_uri(f) for f in frames]
+    tile["frametime"] = (ft if isinstance(ft, int) and ft > 0 else 1) * TICK_MS
+    return tile
+
+
 def build_sheet(zip_path: Path) -> dict:
     """The whole QA sheet model for one converted pack.
 
@@ -102,7 +160,15 @@ def build_sheet(zip_path: Path) -> dict:
                 continue
             try:
                 with Image.open(io.BytesIO(z.read(name))) as im:
-                    tile = _tile(name, im)
+                    anim = animation_of(z, name)
+                    # `is not None`, NOT truthiness: nether_portal.png and
+                    # water_flow.png both declare an EMPTY animation object,
+                    # and `if {}` would skip the two biggest strips in the pack.
+                    tile = _animated_tile(name, im, anim) if anim is not None else None
+                    if tile is not None:
+                        label = "Animated"
+                    else:
+                        tile = _tile(name, im)
             except Exception:
                 # A texture the converter emitted broken is a finding, not a
                 # reason to show the user no sheet at all.

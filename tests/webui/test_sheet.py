@@ -134,3 +134,107 @@ def test_an_unreadable_png_is_skipped_rather_than_killing_the_sheet(tmp_path):
         z.writestr(A + "textures/item/truncated.png", b"\x89PNG\r\n\x1a\n garbage")
     tiles = build_sheet(path)["sections"][0]["tiles"]
     assert [t["name"] for t in tiles] == ["good.png"]
+
+
+import json
+from mc_pack_converter.webui.sheet import frame_count
+
+
+def _anim_zip(tmp_path, entries):
+    path = tmp_path / "anim.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        for name, blob in entries:
+            z.writestr(name, blob)
+    return path
+
+
+def test_frame_count_derives_square_frames_because_mcmeta_never_declares_height():
+    """No real .mcmeta in the corpus carries a frame height; all 10 carry only
+    frames/frametime/interpolate. Minecraft's rule is square frames."""
+    assert frame_count((16, 256)) == 16
+    assert frame_count((32, 1024)) == 32
+    assert frame_count((16, 16)) == 1
+
+
+def test_frame_count_rejects_a_strip_that_is_not_a_whole_number_of_frames():
+    assert frame_count((16, 40)) == 1
+    assert frame_count((0, 40)) == 1
+
+
+def test_a_multi_frame_strip_becomes_an_animated_tile(tmp_path):
+    z = _anim_zip(tmp_path, [
+        (A + "textures/block/fire_0.png", _png(16, 256)),
+        (A + "textures/block/fire_0.png.mcmeta",
+         json.dumps({"animation": {"frames": list(range(16))}}).encode()),
+    ])
+    sheet = build_sheet(z)
+    assert [s["label"] for s in sheet["sections"]] == ["Animated"]
+    tile = sheet["sections"][0]["tiles"][0]
+    assert len(tile["frames"]) == 16
+    assert tile["frametime"] == 50  # one tick, the Minecraft default
+
+
+def test_an_animated_texture_leaves_its_home_section(tmp_path):
+    z = _anim_zip(tmp_path, [
+        (A + "textures/block/stone.png", _png(16, 16)),
+        (A + "textures/block/fire_0.png", _png(16, 256)),
+        (A + "textures/block/fire_0.png.mcmeta",
+         json.dumps({"animation": {}}).encode()),
+    ])
+    sheet = build_sheet(z)
+    blocks = next(s for s in sheet["sections"] if s["label"] == "Blocks")
+    assert [t["name"] for t in blocks["tiles"]] == ["stone.png"]
+    assert sheet["total"] == 2
+
+
+def test_a_sidecar_without_an_animation_key_is_not_animated(tmp_path):
+    """misc/enchanted_item_glint.png.mcmeta is real and has no animation key.
+    A sidecar is not proof of animation."""
+    z = _anim_zip(tmp_path, [
+        (A + "textures/misc/glint.png", _png(64, 64)),
+        (A + "textures/misc/glint.png.mcmeta", b'{"texture": {"blur": true}}'),
+    ])
+    sheet = build_sheet(z)
+    assert [s["label"] for s in sheet["sections"]] == ["Other"]
+    assert sheet["sections"][0]["tiles"][0]["frames"] is None
+
+
+def test_a_square_texture_declaring_animation_is_one_frame_and_stays_put(tmp_path):
+    """block/prismarine.png is real: 16x16, with an animation block whose
+    frames list indexes up to 3. One frame is not an animation."""
+    z = _anim_zip(tmp_path, [
+        (A + "textures/block/prismarine.png", _png(16, 16)),
+        (A + "textures/block/prismarine.png.mcmeta",
+         json.dumps({"animation": {"frametime": 300,
+                                   "frames": [0, 1, 0, 2, 0, 3]}}).encode()),
+    ])
+    sheet = build_sheet(z)
+    assert [s["label"] for s in sheet["sections"]] == ["Blocks"]
+
+
+def test_an_out_of_range_frame_index_is_dropped_not_raised(tmp_path):
+    z = _anim_zip(tmp_path, [
+        (A + "textures/block/x.png", _png(16, 32)),
+        (A + "textures/block/x.png.mcmeta",
+         json.dumps({"animation": {"frames": [0, 1, 5, 1]}}).encode()),
+    ])
+    tile = build_sheet(z)["sections"][0]["tiles"][0]
+    assert len(tile["frames"]) == 3  # 0, 1, 1 -- index 5 dropped
+
+
+def test_frametime_is_converted_from_ticks_to_milliseconds(tmp_path):
+    z = _anim_zip(tmp_path, [
+        (A + "textures/block/lava_still.png", _png(16, 320)),
+        (A + "textures/block/lava_still.png.mcmeta",
+         json.dumps({"animation": {"frametime": 2}}).encode()),
+    ])
+    assert build_sheet(z)["sections"][0]["tiles"][0]["frametime"] == 100
+
+
+def test_a_malformed_mcmeta_does_not_animate_and_does_not_raise(tmp_path):
+    z = _anim_zip(tmp_path, [
+        (A + "textures/block/x.png", _png(16, 32)),
+        (A + "textures/block/x.png.mcmeta", b"{not json"),
+    ])
+    sheet = build_sheet(z)
+    assert [s["label"] for s in sheet["sections"]] == ["Blocks"]
