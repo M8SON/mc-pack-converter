@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from PIL import Image
 from mc_pack_converter.gui import GuiState
-from mc_pack_converter.webui.api import Api
+from mc_pack_converter.webui.api import EMPTY_SHEET, Api
 
 A = "assets/minecraft/"
 
@@ -49,7 +49,14 @@ def test_poll_on_an_empty_queue_still_returns_the_current_state():
     assert api.poll()["screen"] == "progress"
 
 
-def test_sheet_is_built_from_the_output_zip(done_api):
+def test_sheet_is_handed_over_once_the_worker_has_built_it(done_api):
+    """api.sheet() must stay CHEAP: pywebview runs js_api calls on the UI
+    thread, so building the sheet here froze the window. The worker builds it
+    and posts it; this is a handoff."""
+    from mc_pack_converter.webui.sheet import build_sheet
+    state = done_api._state
+    assert done_api.sheet() == EMPTY_SHEET      # nothing built yet
+    state.handle(("sheet", build_sheet(state.result.out_path)))
     sheet = done_api.sheet()
     assert sheet["total"] == 2
     assert {s["label"] for s in sheet["sections"]} == {"GUI", "Items"}
@@ -57,6 +64,16 @@ def test_sheet_is_built_from_the_output_zip(done_api):
 
 def test_sheet_is_built_once_and_cached(done_api):
     assert done_api.sheet() is done_api.sheet()
+
+
+def test_sheet_never_builds_on_the_ui_thread(done_api, monkeypatch):
+    """A guard, not a nicety: if anyone reintroduces a build inside sheet(),
+    the window freezes on Windows and no test would otherwise notice."""
+    import mc_pack_converter.webui.api as api_mod
+    def boom(*a, **k):
+        raise AssertionError("build_sheet must not run inside api.sheet()")
+    monkeypatch.setattr(api_mod, "build_sheet", boom, raising=False)
+    done_api.sheet()
 
 
 def test_sheet_before_the_result_screen_is_empty_rather_than_an_error():

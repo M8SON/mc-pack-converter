@@ -93,11 +93,10 @@ class Api:
 
     def sheet(self) -> dict:
         """The QA sheet, built once. Roughly 1.75s and 1.72MB on a real pack."""
-        if self._sheet is None:
-            if self._state.screen != "result":
-                return EMPTY_SHEET
-            self._sheet = build_sheet(self._state.result.out_path)
-        return self._sheet
+        # Already built, on the worker thread. This call must stay cheap:
+        # pywebview runs it on the UI thread, and anything slow here shows up
+        # to the user as the window not responding.
+        return getattr(self._state, "sheet", None) or EMPTY_SHEET
 
     def texture(self, path: str) -> str:
         """One full-size texture, on demand.

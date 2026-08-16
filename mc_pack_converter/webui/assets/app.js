@@ -1,6 +1,7 @@
 const $ = (id) => document.getElementById(id);
 let sheetLoaded = false;
 window._fulls = {};
+window._frames = {};
 
 function show(view) {
   for (const id of ["idle", "findings", "textures", "error"]) $(id).hidden = id !== view;
@@ -38,15 +39,18 @@ async function loadSheet() {
     for (const t of s.tiles) if (t.full) window._fulls[t.path] = t.full;
   for (const el of $("textures").querySelectorAll(".tile"))
     el.onclick = () => openFull(el);
-  for (const el of $("textures").querySelectorAll(".tile[data-frames]")) animate(el);
+  for (const el of $("textures").querySelectorAll(".tile[data-anim]")) animate(el);
 }
 
 function tile(t, label, flagged) {
   const cls = ["tile", label === "Armor" ? "armor" : "",
                label === "Animated" ? "animated" : "",
                flagged.has(norm(t.path)) ? "flagged" : ""].join(" ");
-  const frames = t.frames
-    ? ` data-frames='${JSON.stringify(t.frames)}' data-ft="${t.frametime}"` : "";
+  // The frames live in a map, NOT in a data- attribute: 20 animated tiles at
+  // 24 base64 frames each put megabytes of text into the DOM, and WebView2
+  // stops responding under it.
+  if (t.frames) window._frames[t.path] = t.frames;
+  const frames = t.frames ? ` data-anim="1" data-ft="${t.frametime}"` : "";
   const src = t.frames ? t.frames[0] : t.thumb;
   return `<div class="${cls}" data-path="${esc(t.path)}"${frames}>
     <img src="${src}" alt=""><span class="cap">${esc(t.name)}</span>
@@ -54,7 +58,8 @@ function tile(t, label, flagged) {
 }
 
 function animate(el) {
-  const frames = JSON.parse(el.dataset.frames);
+  const frames = window._frames[el.dataset.path];
+  if (!frames) return;
   const img = el.querySelector("img");
   let i = 0;
   setInterval(() => { i = (i + 1) % frames.length; img.src = frames[i]; },
@@ -71,8 +76,8 @@ async function openFull(el) {
 
   // A tile that turns should keep turning when opened -- the whole reason for
   // the model view is seeing the sides a still frame hides.
-  if (el.dataset.frames) {
-    const frames = JSON.parse(el.dataset.frames);
+  const frames = window._frames[path];
+  if (frames) {
     let i = 0;
     img.src = frames[0];
     lightboxTimer = setInterval(() => {

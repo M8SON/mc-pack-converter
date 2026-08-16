@@ -17,6 +17,7 @@ except ImportError:  # a headless box without Tk; the logic half still imports
     tk = filedialog = messagebox = None
 
 from .job import DEFAULT_TARGET, out_path_beside_source, run_job, validate_source
+from .webui.sheet import build_sheet
 from .pipeline import FatalConversionError, Severity
 
 # Severity decides whether the user acts, so it decides the order. Python's
@@ -51,6 +52,7 @@ class GuiState:
         self.done = 0
         self.total = 0
         self.result = None
+        self.sheet = None
         self.error: BaseException | None = None
 
     def start(self, source: Path) -> None:
@@ -66,6 +68,8 @@ class GuiState:
             elif kind == "done":
                 self.result = msg[1]
                 self.screen = "result"
+            elif kind == "sheet":
+                self.sheet = msg[1]
             elif kind == "failed":
                 self.error = msg[1]
                 self.screen = "error"
@@ -167,6 +171,16 @@ def _work(state: GuiState, q: queue.Queue) -> None:
             on_stage=lambda name, i, total: q.put(("stage", name, i, total)),
             write_reports=False,   # the page shows the findings; no .md litter
         )
+        # Build the QA sheet HERE, on the worker, not when JavaScript asks
+        # for it. pywebview runs js_api calls on the UI thread, so building
+        # 1021 tiles and 480 rotation frames inside api.sheet() froze the
+        # whole window -- Windows shows that as "not responding".
+        q.put(("stage", "building the texture sheet", 0, 0))
+        try:
+            sheet = build_sheet(result.out_path)
+        except BaseException:
+            sheet = None      # the findings are still worth showing
+        q.put(("sheet", sheet))
         q.put(("done", result))
     except BaseException as exc:  # a windowed exe has no console to print to
         q.put(("failed", exc))

@@ -18,6 +18,13 @@
   --err:        #ff5555;   /* Minecraft red   */
   --ok:         #55ff55;   /* Minecraft green */
   --px: 2px;               /* one "pixel" of bevel */
+  /* Dirt, drawn as overlapping gradients: no image, no download. */
+  --dirt:
+    radial-gradient(circle at 20% 30%, #5c4732 0 6px, transparent 7px),
+    radial-gradient(circle at 70% 60%, #40301f 0 7px, transparent 8px),
+    radial-gradient(circle at 45% 85%, #55402c 0 5px, transparent 6px),
+    radial-gradient(circle at 88% 18%, #3b2c1d 0 5px, transparent 6px),
+    linear-gradient(#4a3928, #4a3928);
 }
 
 * { box-sizing: border-box; }
@@ -33,14 +40,16 @@ body {
   color: var(--ink);
   font: 15px/1.5 "Consolas", "DejaVu Sans Mono", monospace;
   text-shadow: var(--px) var(--px) 0 var(--ink-shadow);
-  background-color: #1c1712;
-  background-image: var(--pack-bg, none);
+  /* A drawn dirt ground, so the window never opens on a black void. The
+     converted pack's own gui background replaces it once there is one. */
+  background-color: #4a3928;
+  background-image: var(--pack-bg, var(--dirt));
   background-size: 64px 64px;
   background-repeat: repeat;
 }
 body::before {            /* the darkening vanilla lays over its dirt panel */
   content: ""; position: fixed; inset: 0; pointer-events: none;
-  background: rgba(0, 0, 0, .72);
+  background: rgba(0, 0, 0, .55);
 }
 body > * { position: relative; }
 
