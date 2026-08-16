@@ -9,6 +9,8 @@ import base64, io, json, zipfile
 from pathlib import Path
 from PIL import Image
 
+from .armor import render_armor
+
 A = "assets/minecraft/"
 
 # Ordered, and the order is load-bearing twice over: it is the order the page
@@ -169,6 +171,9 @@ def build_sheet(zip_path: Path) -> dict:
                         label = "Animated"
                     else:
                         tile = _tile(name, im)
+                    if label == "Armor":
+                        # The flat UV sheet means nothing to a human eye.
+                        tile["thumb"] = thumb_data_uri(render_armor(im), box=128)
             except Exception:
                 # A texture the converter emitted broken is a finding, not a
                 # reason to show the user no sheet at all.

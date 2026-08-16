@@ -238,3 +238,16 @@ def test_a_malformed_mcmeta_does_not_animate_and_does_not_raise(tmp_path):
     ])
     sheet = build_sheet(z)
     assert [s["label"] for s in sheet["sections"]] == ["Blocks"]
+
+
+def test_armor_tiles_are_rendered_on_the_model_not_shown_flat(tmp_path):
+    from mc_pack_converter.webui.armor import CANVAS
+    path = tmp_path / "p.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr(A + "textures/entity/equipment/humanoid/iron.png", _png(64, 32))
+    tile = build_sheet(path)["sections"][0]["tiles"][0]
+    raw = base64.b64decode(tile["thumb"].split(",", 1)[1])
+    thumb = Image.open(io.BytesIO(raw))
+    assert thumb.size != (64, 32)                      # not the flat sheet
+    assert thumb.width / thumb.height == pytest.approx(CANVAS[0] / CANVAS[1], abs=0.05)
+    assert (tile["w"], tile["h"]) == (64, 32)          # true source size kept
