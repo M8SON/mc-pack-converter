@@ -44,7 +44,10 @@ body {
      pack has been converted there is simply no art to show, so the window is
      a plain dark ground. */
   background-color: #2b2622;
-  background-image: var(--pack-bg, none);
+  /* dirt.png is the FIRST-RUN stand-in only: vanilla's own menu is tiled
+     dirt, and it is replaced by the pack's own texture the moment one has
+     been converted. */
+  background-image: var(--pack-bg, url("dirt.png"));
   background-size: 64px 64px;
   background-repeat: repeat;
   image-rendering: pixelated;

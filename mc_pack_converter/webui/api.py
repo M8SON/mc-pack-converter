@@ -85,23 +85,30 @@ class Api:
 
 
     def _pack_background(self) -> str:
-        """The converted pack's own gui background, as a data URI.
+        """The converted pack's own background texture, as a data URI.
 
-        The app wears the pack you just converted. Cached, and absent rather
-        than fatal when a pack does not ship one.
+        The app wears the pack you just converted, and remembers it for next
+        launch. Absent rather than fatal when a pack ships no usable texture.
+
+        Cached against the SCREEN, not merely "have I run once": polling on
+        the drop screen used to store the empty answer, and because "" is not
+        None it was then returned forever -- so the wall was never built when
+        the conversion finished, and never written to the cache either.
         """
-        if getattr(self, "_bg", None) is not None:
+        if getattr(self, "_bg_for", None) == self._state.screen:
             return self._bg
+        self._bg_for = self._state.screen
         self._bg = ""
+
         if self._state.screen != "result":
-            self._bg = remembered_wall()
+            self._bg = remembered_wall()   # the last pack, from a previous run
             return self._bg
-        if self._state.screen == "result":
-            png = build_wall(self._state.result.out_path)
-            if png:
-                self._bg = ("data:image/png;base64,"
-                            + base64.b64encode(png).decode("ascii"))
-                remember_wall(png)   # so the NEXT launch opens wearing it
+
+        png = build_wall(self._state.result.out_path)
+        if png:
+            self._bg = ("data:image/png;base64,"
+                        + base64.b64encode(png).decode("ascii"))
+            remember_wall(png)             # so the NEXT launch opens wearing it
         return self._bg
 
     def sheet(self) -> dict:

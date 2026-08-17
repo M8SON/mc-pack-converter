@@ -363,3 +363,14 @@ def test_fire_is_drawn_as_crossed_planes_not_a_cube(tmp_path):
     # it is that depth which gave the cube its floating top face.
     assert width(tiles["fire_0.png"]["frames"][0]) < \
            width(tiles["lava_still.png"]["frames"][0])
+
+
+def test_a_first_run_stand_in_background_ships_with_the_page():
+    """Before any pack is converted there is no pack art to wear, and a black
+    window reads as broken. Vanilla's own menu is tiled dirt, so that is the
+    stand-in -- replaced by the pack's own texture after one conversion."""
+    from pathlib import Path
+    import mc_pack_converter.webui as webui
+    assets = Path(webui.__file__).parent / "assets"
+    assert (assets / "dirt.png").exists()
+    assert 'url("dirt.png")' in (assets / "app.css").read_text()

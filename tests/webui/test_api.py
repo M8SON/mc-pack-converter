@@ -157,8 +157,8 @@ def test_no_background_when_the_pack_ships_no_stone(done_api):
 
 def test_the_background_is_built_from_the_packs_own_blocks(tmp_path, monkeypatch):
     """The window wears the pack you converted: its stone, its dirt, its ores."""
-    import mc_pack_converter.webui.wall as wall_mod
-    monkeypatch.setattr(wall_mod, "remember_wall", lambda png: None)
+    import mc_pack_converter.webui.api as api_mod
+    monkeypatch.setattr(api_mod, "remember_wall", lambda png: None)
     out = tmp_path / "MyPack-26.2.zip"
     with zipfile.ZipFile(out, "w") as z:
         for b in ("stone", "dirt", "grass_block_side", "coal_ore"):
@@ -212,3 +212,33 @@ def test_no_target_given_keeps_the_default(tmp_path):
     api, state, _ = _idle_api(tmp_path)
     api.start(str(pack))
     assert state.target == DEFAULT_TARGET
+
+
+def test_the_background_appears_when_the_run_finishes_not_only_at_launch(tmp_path, monkeypatch):
+    """The bug Mason hit: polling on the drop screen cached the empty answer,
+    and "" is not None, so the wall was never built when the conversion
+    finished -- and so never cached for next launch either. Black forever."""
+    # patch where api.py LOOKS them up, not where they are defined: it does
+    # `from .wall import ...`, so the module attribute is a separate binding
+    import mc_pack_converter.webui.api as api_mod
+    remembered = []
+    monkeypatch.setattr(api_mod, "remember_wall", remembered.append)
+    monkeypatch.setattr(api_mod, "remembered_wall", lambda: "")
+
+    out = tmp_path / "MyPack-26.2.zip"
+    with zipfile.ZipFile(out, "w") as z:
+        z.writestr(A + "textures/gui/options_background.png", _png(16, 16))
+
+    state = GuiState(None, "26.2")
+    api = Api(state, queue.Queue())
+    assert "background" not in api.poll()      # drop screen, nothing cached
+
+    from types import SimpleNamespace
+    from mc_pack_converter.pipeline import Severity
+    state.start(out)
+    state.handle(("done", SimpleNamespace(
+        ctx=SimpleNamespace(findings=[]), out_path=out, reports={},
+        wrote_zip=True, has_errors=False, counts={s: 0 for s in Severity})))
+
+    assert api.poll()["background"].startswith("data:image/png;base64,")
+    assert remembered, "the wall was not kept for the next launch"
