@@ -366,14 +366,28 @@ def test_fire_is_drawn_as_crossed_planes_not_a_cube(tmp_path):
 
 
 def test_a_first_run_stand_in_background_ships_with_the_page():
-    """Before any pack is converted there is no pack art to wear, and a black
-    window reads as broken. Vanilla's own menu is tiled dirt, so that is the
-    stand-in -- replaced by the pack's own texture after one conversion."""
+    """Before any pack is converted there is no pack art on the machine to
+    wear, and a black window reads as broken. The stand-in is the same terrain
+    wall build_wall makes, run once over the reference pack and committed --
+    real art, not a drawn placeholder, which an earlier generated dirt tile
+    was. Replaced by the converted pack's own after one conversion.
+    """
     from pathlib import Path
+    from PIL import Image
     import mc_pack_converter.webui as webui
     assets = Path(webui.__file__).parent / "assets"
-    assert (assets / "dirt.png").exists()
-    assert 'url("dirt.png")' in (assets / "app.css").read_text()
+    css = (assets / "app.css").read_text()
+
+    for name, size in (("wall.png", (256, 256)), ("grass.png", (16, 16))):
+        assert (assets / name).exists(), f"{name} must ship with the page"
+        with Image.open(assets / name) as im:
+            assert im.size == size
+        assert f'url("{name}")' in css
+
+    # The ground is a 16-tile field, so the CSS fallback size must match it.
+    # 64px here would blow one block up to fill the window.
+    assert "var(--pack-bg-size, 1024px 1024px)" in css
+    assert not (assets / "dirt.png").exists(), "the generated tile is gone"
 
 
 # --- the terrain wall: grass on top, the pack's own ore in its own stone ----

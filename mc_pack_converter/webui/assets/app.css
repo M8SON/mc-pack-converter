@@ -41,11 +41,14 @@ body {
      whole -- nothing is drawn here or in wall.py.
 
      Both layers are FIXED so the horizon does not scroll off when the sheet
-     is long. dirt.png is the first-run stand-in, shown only until a pack has
-     been converted and cached. */
+     is long. wall.png and grass.png are the shipped stand-ins, built by this
+     same code out of the reference pack's own textures and committed, so a
+     machine that has never converted anything still opens on the real thing.
+     They are replaced by the converted pack's own the moment there is one. */
   background-color: #2b2622;
-  background-image: var(--pack-grass, none), var(--pack-bg, url("dirt.png"));
-  background-size: 64px 64px, var(--pack-bg-size, 64px 64px);
+  background-image: var(--pack-grass, url("grass.png")),
+                    var(--pack-bg, url("wall.png"));
+  background-size: 64px 64px, var(--pack-bg-size, 1024px 1024px);
   background-repeat: repeat-x, repeat;
   background-position: top left, top left;
   background-attachment: fixed;
