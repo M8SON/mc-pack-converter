@@ -4,24 +4,28 @@
 
 Converts Minecraft Java 1.8.9 resource packs to modern versions (26.1, 26.1.2, 26.2).
 
-## Download (Windows, no Python needed)
+## Run it on Windows
 
-Grab `MCPackConverter.exe` from the [latest release](https://github.com/M8SON/mc-pack-converter/releases/latest),
-then **drag your pack's `.zip` onto the `.exe`**. A window opens showing the
-conversion's findings and a scrollable sheet of the converted textures — GUI,
-blocks, items, particles, sky, animated textures, and armor rendered on a
-humanoid model. The converted pack lands in the same folder as the pack you
-dropped; the findings are shown in the window, not written to disk.
+Windows [Smart App Control](https://support.microsoft.com/en-us/topic/what-is-smart-app-control-285ea03d-fa88-4495-8b65-fe1f7c1ec763)
+blocks unsigned executables outright, with no way to allow one, so this ships
+as a Python package rather than a bundled `.exe`.
 
-Double-clicking the exe instead opens a file picker.
+1. Install **Python 3.12 from the Microsoft Store** — it is Microsoft-signed,
+   so Smart App Control allows it.
+2. Run `packaging/Install-MCPackConverter.cmd`. Re-run it any time to update.
+3. Run `packaging/MCPackConverter.cmd` — double-click it, or **drag your
+   pack's `.zip` onto it**.
 
-**The first run shows a blue "Windows protected your PC" box.** The exe is not
-code-signed — a certificate costs a few hundred dollars a year and this is a
-free tool — so Windows warns about it. Click **More info**, then **Run anyway**.
-It takes a few seconds to start while it unpacks itself.
+A window opens showing the conversion's findings and a scrollable sheet of the
+converted textures — GUI, blocks, items, particles, sky, animated textures, and
+armor rendered on a humanoid model. Pick the target version in the window. The
+converted pack lands in the same folder as the pack you dropped; the findings
+are shown in the window, not written to disk.
 
-The exe converts to 26.2. To pick a different target, use the command line
-below.
+The launcher deliberately runs `python -m mc_pack_converter.gui` rather than the
+installed `mc-pack-converter-gui` command, because pip generates its entry
+points as unsigned `.exe` shims that Smart App Control blocks for the same
+reason a bundled exe would be.
 
 ## Install
 

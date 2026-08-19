@@ -19,3 +19,17 @@ jobs:
           python-version: "3.11"
       - run: pip install -e ".[dev]"
       - run: pytest -q
+
+  # The Windows install IS how this is delivered now, so a broken [gui] extra
+  # is a shipping failure rather than a nuisance. release.yml used to be the
+  # only thing proving it; it does not exist any more.
+  gui-install:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[gui]"
+      # Asserted by importing it -- pywebview exposes no __version__.
+      - run: python -c "import webview, importlib.metadata as m; print('pywebview', m.version('pywebview'))"

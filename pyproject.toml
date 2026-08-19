@@ -6,7 +6,6 @@ dependencies = ["Pillow>=10.0"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
-build = ["pyinstaller>=6.6"]
 gui = ["pywebview>=5.0"]
 
 [project.scripts]
