@@ -125,6 +125,13 @@ async function tick() {
     $("headline").textContent = d.headline;
     $("details").textContent = d.details.join("\n");
     $("bar").hidden = d.screen !== "progress";
+    // Advisory, and deliberately outside the screen dispatch below: the
+    // notice is about this INSTALL, not about the pack being converted, so it
+    // neither appears nor vanishes as screens change.
+    const up = $("update");
+    up.textContent = d.update || "";
+    up.hidden = !d.update;
+
     if (d.total) { $("bar").max = d.total; $("bar").value = d.done; }
     if (d.screen !== lastScreen) {
       if (d.screen === "progress") forgetPreviousRun();

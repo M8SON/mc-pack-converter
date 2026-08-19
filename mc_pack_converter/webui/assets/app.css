@@ -171,3 +171,7 @@ pre {
   border: var(--px) solid #000; max-height: 46vh; overflow: auto;
   font-size: 12px; text-shadow: none; color: #ff9d9d;
 }
+
+/* The update notice. Quiet on purpose: it is information, not an alert, and
+   it must never compete with the drop target for attention. */
+#update { margin-top: 1.25rem; font-size: 0.85rem; text-align: center; }
