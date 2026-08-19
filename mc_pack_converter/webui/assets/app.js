@@ -118,18 +118,6 @@ function forgetPreviousRun() {
 }
 
 
-// The window wears the converted pack: its stone and ore underfoot, its grass
-// block along the top. The ground is a whole field of blocks rather than one
-// tile, so Python measures it and sends the size along.
-function dress(d) {
-  const css = document.body.style;
-  if (d.background) {
-    css.setProperty("--pack-bg", `url("${d.background}")`);
-    if (d.backgroundSize) css.setProperty("--pack-bg-size", d.backgroundSize);
-  }
-  if (d.grass) css.setProperty("--pack-grass", `url("${d.grass}")`);
-}
-
 async function tick() {
   try {
     const d = await window.pywebview.api.poll();
@@ -138,9 +126,6 @@ async function tick() {
     $("details").textContent = d.details.join("\n");
     $("bar").hidden = d.screen !== "progress";
     if (d.total) { $("bar").max = d.total; $("bar").value = d.done; }
-    dress(d);          // BEFORE the early returns below, or the drop screen --
-                       // which is the whole reason the last pack is cached --
-                       // would never wear anything but the shipped stand-in.
     if (d.screen !== lastScreen) {
       if (d.screen === "progress") forgetPreviousRun();
       lastScreen = d.screen;

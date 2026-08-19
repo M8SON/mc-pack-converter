@@ -365,12 +365,12 @@ def test_fire_is_drawn_as_crossed_planes_not_a_cube(tmp_path):
            width(tiles["lava_still.png"]["frames"][0])
 
 
-def test_a_first_run_stand_in_background_ships_with_the_page():
-    """Before any pack is converted there is no pack art on the machine to
-    wear, and a black window reads as broken. The stand-in is the same terrain
-    wall build_wall makes, run once over the reference pack and committed --
-    real art, not a drawn placeholder, which an earlier generated dirt tile
-    was. Replaced by the converted pack's own after one conversion.
+def test_the_background_ships_with_the_app_and_is_not_per_pack():
+    """The window's background is a fixed asset: the terrain wall built once
+    from the reference pack's own stone, ore and grass and committed. It is
+    deliberately NOT rebuilt per conversion -- converting some other pack must
+    not change what the program looks like. Rebuild it on purpose with
+    `python -m mc_pack_converter.webui.wall <converted-pack.zip>`.
     """
     from pathlib import Path
     from PIL import Image
@@ -384,9 +384,11 @@ def test_a_first_run_stand_in_background_ships_with_the_page():
             assert im.size == size
         assert f'url("{name}")' in css
 
-    # The ground is a 16-tile field, so the CSS fallback size must match it.
-    # 64px here would blow one block up to fill the window.
-    assert "var(--pack-bg-size, 1024px 1024px)" in css
+    # A 16-tile field at 64px a block. Sizing it 64px would blow one block up
+    # to fill the window.
+    assert "background-size: 64px 64px, 1024px 1024px;" in css
+    # No CSS variable to override: nothing may swap the background at runtime.
+    assert "--pack-bg" not in css
     assert not (assets / "dirt.png").exists(), "the generated tile is gone"
 
 

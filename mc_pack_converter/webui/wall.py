@@ -131,46 +131,28 @@ def cache_dir() -> Path:
     return Path(base) / "MCPackConverter"
 
 
-def cache_path() -> Path:
-    """Where the last pack's ground is kept between runs."""
-    return cache_dir() / "wall.png"
+def main(argv: list[str] | None = None) -> int:
+    """Rebuild the wall the app ships, from a converted pack.
+
+    The background is a fixed asset, so it changes only when it is rebuilt on
+    purpose:  python -m mc_pack_converter.webui.wall <converted-pack.zip>
+    """
+    import sys
+    args = sys.argv[1:] if argv is None else argv
+    if len(args) != 1:
+        print(__doc__ and main.__doc__, file=sys.stderr)
+        return 2
+    assets = Path(__file__).parent / "assets"
+    ground, grass = build_wall(Path(args[0])), build_grass(Path(args[0]))
+    if not ground or not grass:
+        print(f"pack has no stone/ore/grass to build a wall from: {args[0]}",
+              file=sys.stderr)
+        return 1
+    (assets / "wall.png").write_bytes(ground)
+    (assets / "grass.png").write_bytes(grass)
+    print(f"wrote {assets / 'wall.png'} and {assets / 'grass.png'}")
+    return 0
 
 
-def _remember(path: Path, png: bytes) -> None:
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(png)
-    except OSError:
-        pass          # a background is never worth failing a conversion over
-
-
-def _remembered(path: Path) -> bytes | None:
-    try:
-        return path.read_bytes()
-    except OSError:
-        return None
-
-
-def remember_wall(png: bytes) -> None:
-    """Keep it so the drop screen opens wearing the last pack converted."""
-    _remember(cache_path(), png)
-
-
-def remembered_wall() -> bytes | None:
-    """The cached ground, or None on the very first run."""
-    return _remembered(cache_path())
-
-
-def remember_grass(png: bytes) -> None:
-    _remember(cache_dir() / "grass.png", png)
-
-
-def remembered_grass() -> bytes | None:
-    return _remembered(cache_dir() / "grass.png")
-
-
-def tile_size(png: bytes) -> str:
-    """The CSS background-size that renders this image's blocks at 64px each,
-    the scale vanilla draws its own tiled menu background at."""
-    with Image.open(io.BytesIO(png)) as im:
-        return f"{im.width * 4}px {im.height * 4}px"
+if __name__ == "__main__":
+    raise SystemExit(main())

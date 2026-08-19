@@ -149,30 +149,6 @@ def test_a_second_drop_while_converting_is_ignored(tmp_path):
     assert started == [pack]           # not started twice
 
 
-def test_no_background_when_the_pack_ships_no_stone(done_api):
-    """No stone, no wall: the app falls back to its own rather than inventing
-    something from whatever textures happen to be there."""
-    assert "background" not in done_api.poll()
-
-
-def test_the_background_is_built_from_the_packs_own_blocks(tmp_path, monkeypatch):
-    """The window wears the pack you converted: its stone, its dirt, its ores."""
-    import mc_pack_converter.webui.api as api_mod
-    monkeypatch.setattr(api_mod, "remember_wall", lambda png: None)
-    out = tmp_path / "MyPack-26.2.zip"
-    with zipfile.ZipFile(out, "w") as z:
-        for b in ("stone", "dirt", "grass_block_side", "coal_ore"):
-            z.writestr(A + f"textures/block/{b}.png", _png(16, 16))
-    from types import SimpleNamespace
-    from mc_pack_converter.pipeline import Severity
-    state = GuiState(Path("MyPack.zip"), "26.2")
-    api = Api(state, queue.Queue())
-    state.handle(("done", SimpleNamespace(
-        ctx=SimpleNamespace(findings=[]), out_path=out, reports={},
-        wrote_zip=True, has_errors=False, counts={s: 0 for s in Severity})))
-    assert api.poll()["background"].startswith("data:image/png;base64,")
-
-
 def test_the_page_is_offered_every_target_the_cli_has(tmp_path):
     """The window must not drift from the CLI's list -- a version one can
     produce and the other cannot is a bug waiting to be reported as 'it made
@@ -214,43 +190,10 @@ def test_no_target_given_keeps_the_default(tmp_path):
     assert state.target == DEFAULT_TARGET
 
 
-def test_the_background_appears_when_the_run_finishes_not_only_at_launch(tmp_path, monkeypatch):
-    """The bug Mason hit: polling on the drop screen cached the empty answer,
-    and "" is not None, so the wall was never built when the conversion
-    finished -- and so never cached for next launch either. Black forever."""
-    # patch where api.py LOOKS them up, not where they are defined: it does
-    # `from .wall import ...`, so the module attribute is a separate binding
-    import mc_pack_converter.webui.api as api_mod
-    remembered = []
-    monkeypatch.setattr(api_mod, "remember_wall", remembered.append)
-    monkeypatch.setattr(api_mod, "remembered_wall", lambda: "")
-
-    out = tmp_path / "MyPack-26.2.zip"
-    with zipfile.ZipFile(out, "w") as z:
-        z.writestr(A + "textures/gui/options_background.png", _png(16, 16))
-
-    state = GuiState(None, "26.2")
-    api = Api(state, queue.Queue())
-    assert "background" not in api.poll()      # drop screen, nothing cached
-
-    from types import SimpleNamespace
-    from mc_pack_converter.pipeline import Severity
-    state.start(out)
-    state.handle(("done", SimpleNamespace(
-        ctx=SimpleNamespace(findings=[]), out_path=out, reports={},
-        wrote_zip=True, has_errors=False, counts={s: 0 for s in Severity})))
-
-    assert api.poll()["background"].startswith("data:image/png;base64,")
-    assert remembered, "the wall was not kept for the next launch"
-
-
-def _dressed_api(tmp_path, monkeypatch, blocks):
+def _finished_api(tmp_path, blocks=("stone",)):
     """An Api sitting on a finished run whose output ships `blocks`."""
-    import mc_pack_converter.webui.api as api_mod
     from types import SimpleNamespace
     from mc_pack_converter.pipeline import Severity
-    monkeypatch.setattr(api_mod, "remember_wall", lambda png: None)
-    monkeypatch.setattr(api_mod, "remember_grass", lambda png: None)
     out = tmp_path / "MyPack-26.2.zip"
     with zipfile.ZipFile(out, "w") as z:
         for b in blocks:
@@ -263,38 +206,24 @@ def _dressed_api(tmp_path, monkeypatch, blocks):
     return api
 
 
-def test_the_page_is_given_the_grass_layer_and_the_grounds_measured_size(
-        tmp_path, monkeypatch):
-    """The ground is a 16-tile field, not a single tile, so the page cannot
-    guess its background-size -- it has to be measured and sent."""
-    d = _dressed_api(tmp_path, monkeypatch,
-                     ("stone", "grass_block_side", "iron_ore")).poll()
-    assert d["background"].startswith("data:image/png;base64,")
-    assert d["grass"].startswith("data:image/png;base64,")
-    assert d["backgroundSize"] == "1024px 1024px"      # 16 tiles at 64px each
-
-
-def test_no_grass_layer_when_the_pack_ships_no_grass_block(tmp_path, monkeypatch):
-    d = _dressed_api(tmp_path, monkeypatch, ("stone",)).poll()
-    assert "grass" not in d
-    assert d["background"].startswith("data:image/png;base64,")
-
-
-def test_a_single_tile_background_is_still_sized_at_one_block(tmp_path, monkeypatch):
-    """The verbatim fallback is one 16px texture; sizing it like a field would
-    blow one block up to fill the window."""
-    d = _dressed_api(tmp_path, monkeypatch, ("dirt",)).poll()
-    assert d["backgroundSize"] == "64px 64px"
+def test_the_page_is_never_sent_a_background(tmp_path):
+    """The background is a fixed asset shipped with the app, not something
+    derived from whatever pack was last converted. Converting a pack must not
+    change what the window is wearing -- that was the whole complaint.
+    """
+    d = _finished_api(tmp_path, ("stone", "grass_block_side", "iron_ore")).poll()
+    for key in ("background", "backgroundSize", "grass"):
+        assert key not in d
 
 
 # --- converting a second pack without restarting the app -------------------
 
-def test_a_second_pack_can_be_dropped_once_the_first_has_finished(tmp_path, monkeypatch):
+def test_a_second_pack_can_be_dropped_once_the_first_has_finished(tmp_path):
     """Reported from the exe: dropping another pack on the result screen did
     nothing and the window kept showing the previous pack, so the only way to
     convert a second one was Task Manager. start() refused on the result
     screen AND returned "" -- which the page reads as 'started fine'."""
-    api = _dressed_api(tmp_path, monkeypatch, ("stone",))
+    api = _finished_api(tmp_path)
     started: list = []
     api._on_start = started.append
     second = tmp_path / "Other.zip"

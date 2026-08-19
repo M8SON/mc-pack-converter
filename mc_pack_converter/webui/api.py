@@ -15,8 +15,6 @@ from pathlib import Path
 
 from ..job import validate_source
 from .sheet import build_sheet
-from .wall import (build_wall, build_grass, remember_wall, remembered_wall,
-                   remember_grass, remembered_grass, tile_size)
 
 EMPTY_SHEET = {"sections": [], "excluded": [], "total": 0}
 
@@ -103,44 +101,7 @@ class Api:
                 self._state.handle(self._queue.get_nowait())
             except queue.Empty:
                 break
-        d = self._state.to_dict()
-        d.update(self._pack_dressing())
-        return d
-
-    def _pack_dressing(self) -> dict:
-        """The converted pack's own ground and grass layer, as data URIs.
-
-        The app wears the pack you just converted, and remembers it for next
-        launch. Absent rather than fatal when a pack ships no usable texture.
-
-        Cached against the SCREEN, not merely "have I run once": polling on
-        the drop screen used to store the empty answer, and because "" is not
-        None it was then returned forever -- so the wall was never built when
-        the conversion finished, and never written to the cache either.
-        """
-        if getattr(self, "_bg_for", None) == self._state.screen:
-            return self._bg
-        self._bg_for = self._state.screen
-        self._bg = {}
-
-        if self._state.screen != "result":
-            ground, grass = remembered_wall(), remembered_grass()
-        else:                              # and keep them for the NEXT launch
-            out = self._state.result.out_path
-            ground, grass = build_wall(out), build_grass(out)
-            if ground:
-                remember_wall(ground)
-            if grass:
-                remember_grass(grass)
-
-        if ground:
-            self._bg["background"] = _data_uri(ground)
-            # The ground is a whole field of blocks, not one tile, so the page
-            # cannot assume a size -- it is measured here and sent along.
-            self._bg["backgroundSize"] = tile_size(ground)
-        if grass:
-            self._bg["grass"] = _data_uri(grass)
-        return self._bg
+        return self._state.to_dict()
 
     def sheet(self) -> dict:
         """The QA sheet, built once. Roughly 1.75s and 1.72MB on a real pack."""
