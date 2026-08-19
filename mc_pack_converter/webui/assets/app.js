@@ -3,6 +3,7 @@ let sheetLoaded = false;
 window._fulls = {};
 window._frames = {};
 let chosenTarget = "";
+let lastScreen = "";
 
 function show(view) {
   for (const id of ["idle", "findings", "textures", "error"]) $(id).hidden = id !== view;
@@ -103,6 +104,20 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
 
 let pollFails = 0;
 
+// A second pack may be dropped once the first has finished, so everything the
+// page is holding about the previous one has to go with it. Without this the
+// Textures tab keeps serving the pack before last from sheetLoaded, and the
+// full-size images and animation frames are keyed by path, so they collide.
+function forgetPreviousRun() {
+  sheetLoaded = false;
+  window._fulls = {};
+  window._frames = {};
+  window._flagged = [];
+  $("textures").innerHTML = `<p class="muted">Building the sheet…</p>`;
+  $("findings").innerHTML = "";
+}
+
+
 // The window wears the converted pack: its stone and ore underfoot, its grass
 // block along the top. The ground is a whole field of blocks rather than one
 // tile, so Python measures it and sends the size along.
@@ -126,6 +141,10 @@ async function tick() {
     dress(d);          // BEFORE the early returns below, or the drop screen --
                        // which is the whole reason the last pack is cached --
                        // would never wear anything but the shipped stand-in.
+    if (d.screen !== lastScreen) {
+      if (d.screen === "progress") forgetPreviousRun();
+      lastScreen = d.screen;
+    }
 
     if (d.screen === "idle") { $("tabs").hidden = true; show("idle"); return setTimeout(tick, 250); }
     if (d.screen === "progress") { show("idle"); $("dropzone").hidden = true;

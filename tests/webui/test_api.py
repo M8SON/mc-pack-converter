@@ -285,3 +285,35 @@ def test_a_single_tile_background_is_still_sized_at_one_block(tmp_path, monkeypa
     blow one block up to fill the window."""
     d = _dressed_api(tmp_path, monkeypatch, ("dirt",)).poll()
     assert d["backgroundSize"] == "64px 64px"
+
+
+# --- converting a second pack without restarting the app -------------------
+
+def test_a_second_pack_can_be_dropped_once_the_first_has_finished(tmp_path, monkeypatch):
+    """Reported from the exe: dropping another pack on the result screen did
+    nothing and the window kept showing the previous pack, so the only way to
+    convert a second one was Task Manager. start() refused on the result
+    screen AND returned "" -- which the page reads as 'started fine'."""
+    api = _dressed_api(tmp_path, monkeypatch, ("stone",))
+    started: list = []
+    api._on_start = started.append
+    second = tmp_path / "Other.zip"
+    with zipfile.ZipFile(second, "w") as z:
+        z.writestr("pack.mcmeta", '{"pack": {"pack_format": 1}}')
+        z.writestr(A + "textures/block/stone.png", _png(16, 16))
+
+    assert api.start(str(second)) == ""
+    assert started == [second]
+    assert api._state.screen == "progress"
+
+
+def test_a_drop_mid_conversion_is_still_ignored(tmp_path):
+    """Only a FINISHED run may be replaced. A drop while the worker is still
+    going would race two conversions onto the same output zip."""
+    pack = tmp_path / "p.zip"
+    with zipfile.ZipFile(pack, "w") as z:
+        z.writestr("pack.mcmeta", '{"pack": {"pack_format": 1}}')
+    api, state, started = _idle_api(tmp_path)
+    api.start(str(pack))
+    assert api.start(str(pack)) == ""
+    assert started == [pack]

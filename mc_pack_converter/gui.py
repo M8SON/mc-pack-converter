@@ -56,9 +56,19 @@ class GuiState:
         self.error: BaseException | None = None
 
     def start(self, source: Path) -> None:
-        """A pack arrived -- by drop, by picker, or on the command line."""
+        """A pack arrived -- by drop, by picker, or on the command line.
+
+        Forgets the previous run. Without this a second pack is converted
+        while the window still wears the first one's result and sheet.
+        """
         self.source = source
         self.screen = "progress"
+        self.stage = ""
+        self.done = 0
+        self.total = 0
+        self.result = None
+        self.sheet = None
+        self.error = None
 
     def handle(self, msg) -> None:
         try:
