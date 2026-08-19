@@ -272,3 +272,22 @@ def test_a_dropped_pack_starts_the_run():
     assert state.screen == "progress"
     assert state.source == Path(r"C:\Downloads\MyPack.zip")
     assert "MyPack.zip" in state.headline()
+
+
+def test_starting_again_forgets_the_previous_run(tmp_path):
+    """Otherwise the second conversion is shown wearing the first one's
+    result and sheet -- 'it was loading up old versions of the pack'."""
+    from mc_pack_converter.gui import GuiState
+    state = GuiState(None, "26.2")
+    state.result = object()
+    state.sheet = {"sections": []}
+    state.done, state.total, state.stage = 7, 9, "slicing"
+    state.error = RuntimeError("old")
+
+    state.start(tmp_path / "next.zip")
+
+    assert state.screen == "progress"
+    assert state.result is None
+    assert state.sheet is None
+    assert state.error is None
+    assert (state.done, state.total, state.stage) == (0, 0, "")

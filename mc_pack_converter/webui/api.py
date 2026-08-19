@@ -46,7 +46,11 @@ class Api:
         page shows that reason in place, which is why this returns a message
         rather than raising: a windowed exe has nowhere to raise to.
         """
-        if self._state.screen not in ("idle", "error"):
+        # A finished run may be replaced -- dropping a second pack is how you
+        # convert two of them without restarting the app. A drop while the
+        # worker is still going is ignored, since two conversions would race
+        # each other onto the same output zip.
+        if self._state.screen not in ("idle", "error", "result"):
             return ""                      # already working; ignore the drop
         source = Path(path)
         problem = validate_source(source)
