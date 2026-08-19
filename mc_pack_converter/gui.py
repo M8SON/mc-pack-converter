@@ -156,6 +156,9 @@ class GuiState:
             "stage": self.stage,
             "done": self.done,
             "total": self.total,
+            # Not per-pack, so start() does not clear it: whether this copy is
+            # stale has nothing to do with which pack was dropped.
+            "update": getattr(self, "update_notice", None),
         }
         if self.screen == "error":
             d["error_details"] = self.error_details()
@@ -260,6 +263,12 @@ def main(argv: list[str] | None = None) -> int:
 
     state = GuiState(source, DEFAULT_TARGET, extras)
     q: queue.Queue = queue.Queue()
+
+    # Off the UI thread, and started before the window so the answer is
+    # usually there by the time the page first polls. Advisory only: it sets
+    # one string on the state and never installs anything.
+    from .webui.update import start_update_check
+    start_update_check(state)
 
     def begin(pack: Path) -> None:
         threading.Thread(target=_work, args=(state, q), daemon=True).start()
