@@ -237,28 +237,34 @@ async function loadTargets() {
 }
 
 let booted = false;
+
+// window.pywebview.api exists as an EMPTY OBJECT from the moment pywebview's
+// first script runs; its methods are only added later, by _createApi in
+// finish.js. Testing the object for truthiness therefore succeeds long before
+// anything is callable -- which booted the page early, threw on the first call
+// and latched `booted`, leaving a live window wired to nothing. Test for a
+// method, never for the object.
+const bridgeReady = () => typeof window.pywebview?.api?.ready === "function";
+
 function boot() {
-  if (booted) return;
+  if (booted || !bridgeReady()) return;
   booted = true;
   window.pywebview.api.ready();
   loadTargets();
   tick();
 }
 
-// pywebview injects its bridge when navigation completes, which is after this
-// file has run, so the event listener is normally attached in time. But when
-// it is not -- or the bridge never arrives at all -- the window comes up inert:
-// the HTML and CSS render, so there is a drop screen with the shipped stand-in
-// background and an empty version list, and nothing on it does anything. Watch
-// for the bridge directly as well, and if it never turns up, say so on the page
-// instead of leaving a dead window with no explanation.
-window.addEventListener("pywebviewready", boot, { once: true });
-if (window.pywebview && window.pywebview.api) boot();
-else {
+// Three ways in, because none of them is reliable on its own: the event may
+// fire before this file runs, and it may not fire at all if the bridge never
+// installs. boot() is idempotent and re-checks, so they cannot conflict.
+window.addEventListener("pywebviewready", boot);
+boot();
+if (!booted) {
   let waited = 0;
   const waiting = setInterval(() => {
-    if (window.pywebview && window.pywebview.api) { clearInterval(waiting); boot(); }
-    else if ((waited += 200) >= 15000) {
+    boot();
+    if (booted) return clearInterval(waiting);
+    if ((waited += 200) >= 15000) {
       clearInterval(waiting);
       $("drop-error").textContent =
         "This window never connected to the converter. Close it and open the app again.";
