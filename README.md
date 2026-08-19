@@ -27,15 +27,19 @@ installed `mc-pack-converter-gui` command, because pip generates its entry
 points as unsigned `.exe` shims that Smart App Control blocks for the same
 reason a bundled exe would be.
 
-## Install
+## Install from source
 
-Requires Python 3.11+.
+Requires Python 3.11+. This is the command-line converter; for the window, see
+[Run it on Windows](#run-it-on-windows) above.
 
 ```
-pip install .
+pip install .          # command line only
+pip install ".[gui]"   # and the window
 ```
 
-The only runtime dependency is [Pillow](https://python-pillow.org/).
+The only runtime dependency is [Pillow](https://python-pillow.org/). The window
+additionally needs [pywebview](https://pywebview.flowrl.com/), which is why it
+is an optional extra rather than a hard dependency.
 
 ## Quickstart
 
