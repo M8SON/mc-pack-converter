@@ -122,7 +122,7 @@ def build_grass(zip_path: Path) -> bytes | None:
         return None
 
 
-def _cache_dir() -> Path:
+def cache_dir() -> Path:
     """Per-user, not beside the exe: the exe may sit somewhere unwritable, and
     a tool should not scribble next to itself."""
     import os
@@ -133,7 +133,7 @@ def _cache_dir() -> Path:
 
 def cache_path() -> Path:
     """Where the last pack's ground is kept between runs."""
-    return _cache_dir() / "wall.png"
+    return cache_dir() / "wall.png"
 
 
 def _remember(path: Path, png: bytes) -> None:
@@ -162,11 +162,11 @@ def remembered_wall() -> bytes | None:
 
 
 def remember_grass(png: bytes) -> None:
-    _remember(_cache_dir() / "grass.png", png)
+    _remember(cache_dir() / "grass.png", png)
 
 
 def remembered_grass() -> bytes | None:
-    return _remembered(_cache_dir() / "grass.png")
+    return _remembered(cache_dir() / "grass.png")
 
 
 def tile_size(png: bytes) -> str:

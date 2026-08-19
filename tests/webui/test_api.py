@@ -317,3 +317,17 @@ def test_a_drop_mid_conversion_is_still_ignored(tmp_path):
     api.start(str(pack))
     assert api.start(str(pack)) == ""
     assert started == [pack]
+
+
+def test_the_page_announces_itself_so_a_dead_bridge_is_visible_in_the_log(
+        tmp_path, monkeypatch):
+    """If the launch log has no "page ready" line, JavaScript never reached
+    Python -- which is the difference between a window that is merely idle and
+    one whose bridge never started."""
+    import mc_pack_converter.gui as gui
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    monkeypatch.setattr(gui, "_diag_file", None)
+    api, state, started = _idle_api(tmp_path)
+
+    assert api.ready() is True
+    assert "page ready" in (tmp_path / "MCPackConverter" / "last-run.log").read_text()

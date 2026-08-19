@@ -7,6 +7,7 @@ from __future__ import annotations
 import queue
 import sys
 import threading
+import time
 import traceback
 from pathlib import Path
 
@@ -222,6 +223,30 @@ def _fallback(state: GuiState, q: queue.Queue) -> int:
     return 0
 
 
+_diag_file: "Path | None" = None
+
+
+def _diag(msg: str) -> None:
+    """Append one line to the launch log, rewritten fresh on every launch.
+
+    A windowed exe has no console. When the window comes up dead -- no version
+    list, no background, an unresponsive close button -- this file is the only
+    record of how far startup actually got, and in particular whether the page
+    ever reached Python at all.
+    """
+    global _diag_file
+    try:
+        if _diag_file is None:
+            from .webui.wall import cache_dir
+            _diag_file = cache_dir() / "last-run.log"
+            _diag_file.parent.mkdir(parents=True, exist_ok=True)
+            _diag_file.write_text("", encoding="utf-8")
+        with _diag_file.open("a", encoding="utf-8") as fh:
+            fh.write(f"{time.strftime('%H:%M:%S')} {msg}\n")
+    except OSError:
+        pass          # diagnostics must never be the thing that breaks a launch
+
+
 def main(argv: list[str] | None = None) -> int:
     source, extras = parse_drop(sys.argv[1:] if argv is None else argv)
 
@@ -231,6 +256,8 @@ def main(argv: list[str] | None = None) -> int:
     if source is not None and validate_source(source):
         source = None   # the page will say why, where the user can see it
 
+    _diag(f"launch: argv={sys.argv[1:]!r} source={source!r}")
+
     state = GuiState(source, DEFAULT_TARGET, extras)
     q: queue.Queue = queue.Queue()
 
@@ -239,19 +266,23 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         import webview
+        _diag(f"webview {getattr(webview, '__version__', '?')} imported")
         from .webui.api import Api
         api = Api(state, q, on_start=begin)
         index = Path(__file__).parent / "webui" / "assets" / "index.html"
         window = webview.create_window("MC Pack Converter", str(index),
                                        js_api=api, width=1040, height=800)
         api.window = window
+        _diag("window created")
         if source is not None:
             begin(source)
         webview.start()
+        _diag("window closed; exiting")
     except Exception as exc:
         # WebView2 absent, or pywebview failed to make a window at all. A
         # windowed exe has no console, so say so where it can be seen.
         note = f"no window available ({exc!r})"
+        _diag(note)
         print(note, file=sys.stderr)
         if source is None:
             if tk is not None:

@@ -291,3 +291,32 @@ def test_starting_again_forgets_the_previous_run(tmp_path):
     assert state.sheet is None
     assert state.error is None
     assert (state.done, state.total, state.stage) == (0, 0, "")
+
+
+def test_the_launch_log_records_startup_and_starts_empty_each_launch(tmp_path, monkeypatch):
+    """A windowed exe has no console. When the window comes up dead this file
+    is the only evidence of how far startup got, so it must survive a crash
+    and must not accumulate across launches."""
+    import mc_pack_converter.gui as gui
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    monkeypatch.setattr(gui, "_diag_file", None)
+
+    gui._diag("launch: first")
+    gui._diag("window created")
+    log = tmp_path / "MCPackConverter" / "last-run.log"
+    assert "launch: first" in log.read_text()
+    assert "window created" in log.read_text()
+
+    monkeypatch.setattr(gui, "_diag_file", None)      # a fresh launch
+    gui._diag("launch: second")
+    assert "first" not in log.read_text()
+
+
+def test_a_broken_log_never_breaks_a_launch(tmp_path, monkeypatch):
+    """An unwritable profile must not stop the window opening."""
+    import mc_pack_converter.gui as gui
+    blocker = tmp_path / "blocker"
+    blocker.write_text("not a directory")
+    monkeypatch.setenv("LOCALAPPDATA", str(blocker))
+    monkeypatch.setattr(gui, "_diag_file", None)
+    gui._diag("should not raise")          # no exception is the assertion
