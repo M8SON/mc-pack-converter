@@ -32,7 +32,14 @@ class Api:
         self._queue = q
         self._sheet = None
         self._on_start = on_start   # starts the worker; set by gui.main()
-        self.window = None          # the pywebview window, for the file dialog
+        # PRIVATE, and it must stay private. pywebview builds the JavaScript
+        # bridge by walking dir() on this object and recursing into every
+        # public attribute, running property getters as it goes. Window's
+        # width/height/x/y each wait up to 15 seconds on its "shown" event, so
+        # a public name here stalled the bridge for up to a minute on startup
+        # -- a live window, wired to nothing. It also exposed destroy(),
+        # run_js() and load_url() to the page.
+        self._window = None         # the pywebview window, for the file dialog
 
     def ready(self) -> bool:
         """Called by the page the instant its bridge works.
@@ -79,10 +86,10 @@ class Api:
 
     def pick(self) -> str:
         """The file dialog, opened from the window rather than from Tk."""
-        if self.window is None:
+        if self._window is None:
             return ""
         import webview   # imported here so the module loads without pywebview
-        chosen = self.window.create_file_dialog(
+        chosen = self._window.create_file_dialog(
             webview.OPEN_DIALOG,
             file_types=("Resource pack (*.zip)", "All files (*.*)"),
         )

@@ -272,7 +272,7 @@ def main(argv: list[str] | None = None) -> int:
         index = Path(__file__).parent / "webui" / "assets" / "index.html"
         window = webview.create_window("MC Pack Converter", str(index),
                                        js_api=api, width=1040, height=800)
-        api.window = window
+        api._window = window
         _diag("window created")
         if source is not None:
             begin(source)

@@ -331,3 +331,86 @@ def test_the_page_announces_itself_so_a_dead_bridge_is_visible_in_the_log(
 
     assert api.ready() is True
     assert "page ready" in (tmp_path / "MCPackConverter" / "last-run.log").read_text()
+
+
+# --- what pywebview walks when it builds the JS bridge ---------------------
+
+def _bridge_walk(obj, seen=None, out=None):
+    """pywebview's own algorithm for deciding what to expose to JavaScript.
+
+    Copied from webview/util.py inject_pywebview. The part that matters is
+    that it recurses into every PUBLIC non-callable attribute, and that
+    getattr() RUNS property getters while it does so.
+    """
+    if seen is None:
+        seen, out = [], []
+    if id(obj) in seen:
+        return out
+    seen.append(id(obj))
+    for name in dir(obj):
+        if name.startswith("_"):
+            continue
+        try:
+            attr = getattr(obj, name)
+        except Exception:
+            continue
+        if callable(attr):
+            out.append(name)
+        elif hasattr(attr, "__module__"):
+            _bridge_walk(attr, seen, out)
+    return out
+
+
+class _TouchyWindow:
+    """Stands in for pywebview's Window, whose width/height/x/y properties
+    each wait up to 15 seconds on its 'shown' event."""
+
+    def __init__(self):
+        self.touched = []
+
+    def _blocking(self):
+        self.touched.append("property")
+        raise AssertionError("a blocking Window property was read")
+
+    width = property(_blocking)
+    height = property(_blocking)
+    x = property(_blocking)
+    y = property(_blocking)
+
+    def destroy(self):
+        pass
+
+    def create_file_dialog(self, *a, **k):
+        pass
+
+
+def test_the_window_is_held_privately_so_the_bridge_never_walks_into_it(tmp_path):
+    """Holding the pywebview window under a PUBLIC name stalled the page.
+
+    pywebview builds the bridge on a background thread by walking dir() on
+    this object; every public attribute is recursed into and every property
+    getter runs. Window.width/height/x/y each wait up to 15s on the window's
+    'shown' event, so a public reference stalls injection for up to a minute
+    before JavaScript can reach Python at all -- measured at 60.0s public
+    versus 0.0s private. The user saw a live window on the stand-in
+    background with no version list and nothing wired up.
+    """
+    api, state, started = _idle_api(tmp_path)
+    win = _TouchyWindow()
+    api._window = win
+
+    exposed = _bridge_walk(api)
+
+    assert win.touched == []
+    assert set(exposed) == {"ready", "targets", "start", "poll", "sheet",
+                            "texture", "open_folder", "pick"}
+
+
+def test_the_api_holds_nothing_public_that_is_not_a_method(tmp_path):
+    """The guard for the bug above, at its source. Any public non-callable on
+    this object is something pywebview will recurse into when it builds the
+    bridge -- so the window, the state and the queue must all stay private.
+    """
+    api, state, started = _idle_api(tmp_path)
+    public = [n for n in dir(api) if not n.startswith("_")]
+    assert [n for n in public if not callable(getattr(api, n))] == []
