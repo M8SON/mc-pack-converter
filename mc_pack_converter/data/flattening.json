@@ -419,6 +419,10 @@
   "textures/item/wood_shovel.png": "textures/item/wooden_shovel.png",
   "textures/item/wood_sword.png": "textures/item/wooden_sword.png",
   "textures/item/wooden_armorstand.png": "textures/item/armor_stand.png",
+  "textures/misc/enchanted_item_glint.png": [
+    "textures/misc/enchanted_glint_item.png",
+    "textures/misc/enchanted_glint_armor.png"
+  ],
   "textures/models/armor/chainmail_layer_1.png": "textures/entity/equipment/humanoid/chainmail.png",
   "textures/models/armor/chainmail_layer_2.png": "textures/entity/equipment/humanoid_leggings/chainmail.png",
   "textures/models/armor/diamond_layer_1.png": "textures/entity/equipment/humanoid/diamond.png",
