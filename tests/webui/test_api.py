@@ -242,3 +242,46 @@ def test_the_background_appears_when_the_run_finishes_not_only_at_launch(tmp_pat
 
     assert api.poll()["background"].startswith("data:image/png;base64,")
     assert remembered, "the wall was not kept for the next launch"
+
+
+def _dressed_api(tmp_path, monkeypatch, blocks):
+    """An Api sitting on a finished run whose output ships `blocks`."""
+    import mc_pack_converter.webui.api as api_mod
+    from types import SimpleNamespace
+    from mc_pack_converter.pipeline import Severity
+    monkeypatch.setattr(api_mod, "remember_wall", lambda png: None)
+    monkeypatch.setattr(api_mod, "remember_grass", lambda png: None)
+    out = tmp_path / "MyPack-26.2.zip"
+    with zipfile.ZipFile(out, "w") as z:
+        for b in blocks:
+            z.writestr(A + f"textures/block/{b}.png", _png(16, 16))
+    state = GuiState(Path("MyPack.zip"), "26.2")
+    api = Api(state, queue.Queue())
+    state.handle(("done", SimpleNamespace(
+        ctx=SimpleNamespace(findings=[]), out_path=out, reports={},
+        wrote_zip=True, has_errors=False, counts={s: 0 for s in Severity})))
+    return api
+
+
+def test_the_page_is_given_the_grass_layer_and_the_grounds_measured_size(
+        tmp_path, monkeypatch):
+    """The ground is a 16-tile field, not a single tile, so the page cannot
+    guess its background-size -- it has to be measured and sent."""
+    d = _dressed_api(tmp_path, monkeypatch,
+                     ("stone", "grass_block_side", "iron_ore")).poll()
+    assert d["background"].startswith("data:image/png;base64,")
+    assert d["grass"].startswith("data:image/png;base64,")
+    assert d["backgroundSize"] == "1024px 1024px"      # 16 tiles at 64px each
+
+
+def test_no_grass_layer_when_the_pack_ships_no_grass_block(tmp_path, monkeypatch):
+    d = _dressed_api(tmp_path, monkeypatch, ("stone",)).poll()
+    assert "grass" not in d
+    assert d["background"].startswith("data:image/png;base64,")
+
+
+def test_a_single_tile_background_is_still_sized_at_one_block(tmp_path, monkeypatch):
+    """The verbatim fallback is one 16px texture; sizing it like a field would
+    blow one block up to fill the window."""
+    d = _dressed_api(tmp_path, monkeypatch, ("dirt",)).poll()
+    assert d["backgroundSize"] == "64px 64px"

@@ -374,3 +374,126 @@ def test_a_first_run_stand_in_background_ships_with_the_page():
     assets = Path(webui.__file__).parent / "assets"
     assert (assets / "dirt.png").exists()
     assert 'url("dirt.png")' in (assets / "app.css").read_text()
+
+
+# --- the terrain wall: grass on top, the pack's own ore in its own stone ----
+
+STONE_RGB = (125, 125, 125, 255)
+ORE_RGB = {"iron_ore": (200, 180, 160, 255),
+           "gold_ore": (250, 220, 60, 255),
+           "diamond_ore": (60, 220, 240, 255)}
+
+
+def _speckled(colour, size=16):
+    """A texture that is NOT one flat colour, so a test can tell a pasted
+    tile apart from a redrawn one."""
+    im = Image.new("RGBA", (size, size), colour)
+    for i in range(1, size):          # (0,0) stays the flat colour: the tests probe it
+        im.putpixel((i, (i * 7) % size), (0, 0, 0, 255))
+    buf = io.BytesIO()
+    im.save(buf, "PNG")
+    return buf.getvalue()
+
+
+def _terrain_zip(tmp_path, ores=tuple(ORE_RGB), stone=True, grass=None,
+                 ore_size=16):
+    path = tmp_path / "p.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        if stone:
+            z.writestr(A + "textures/block/stone.png", _png(16, 16, STONE_RGB))
+        for name in ores:
+            z.writestr(A + f"textures/block/{name}.png",
+                       _speckled(ORE_RGB[name], ore_size))
+        if grass is not None:
+            z.writestr(A + "textures/block/grass_block_side.png", grass)
+    return path
+
+
+def _tiles(png):
+    """The composed field as a list of 16x16 tile images, row-major."""
+    with Image.open(io.BytesIO(png)) as im:
+        im = im.convert("RGBA")
+        assert im.size == (256, 256), "16 tiles of 16px a side"
+        return [im.crop((x * 16, y * 16, x * 16 + 16, y * 16 + 16))
+                for y in range(16) for x in range(16)]
+
+
+def test_the_ground_is_the_packs_stone_with_its_own_ores_scattered_in_it(tmp_path):
+    """Mason asked for stone with diamond, gold and iron spread through it.
+    Iron is commonest and diamond rarest, the way the game ranks them."""
+    from mc_pack_converter.webui.wall import build_wall
+    from collections import Counter
+    tiles = _tiles(build_wall(_terrain_zip(tmp_path)))
+    counts = Counter(t.getpixel((0, 0)) for t in tiles)
+    assert counts[ORE_RGB["iron_ore"]] == 12
+    assert counts[ORE_RGB["gold_ore"]] == 7
+    assert counts[ORE_RGB["diamond_ore"]] == 4
+    assert counts[STONE_RGB] == 256 - 23
+
+
+def test_every_ore_tile_is_the_packs_own_pixels_pasted_not_redrawn(tmp_path):
+    """The whole point. Two generated ore walls were rejected; these tiles
+    must be the pack's bytes, decoded and pasted whole."""
+    from mc_pack_converter.webui.wall import build_wall
+    sources = {ORE_RGB[n]: Image.open(io.BytesIO(_speckled(ORE_RGB[n]))).convert("RGBA")
+               for n in ORE_RGB}
+    ore_tiles = [t for t in _tiles(build_wall(_terrain_zip(tmp_path)))
+                 if t.getpixel((0, 0)) in sources]
+    assert len(ore_tiles) == 23
+    for tile in ore_tiles:
+        assert list(tile.getdata()) == list(sources[tile.getpixel((0, 0))].getdata())
+
+
+def test_the_ores_do_not_land_in_the_same_place_every_row(tmp_path):
+    """Scattered, not striped: a seeded shuffle that happened to deal one ore
+    per row would read as a pattern, not as ore."""
+    from mc_pack_converter.webui.wall import build_wall
+    tiles = _tiles(build_wall(_terrain_zip(tmp_path)))
+    per_row = [sum(1 for x in range(16)
+                   if tiles[y * 16 + x].getpixel((0, 0)) != STONE_RGB)
+               for y in range(16)]
+    assert len(set(per_row)) > 1
+
+
+def test_the_same_pack_always_gets_the_same_wall(tmp_path):
+    """A wall that reshuffled every launch would look like a bug."""
+    from mc_pack_converter.webui.wall import build_wall
+    path = _terrain_zip(tmp_path)
+    assert build_wall(path) == build_wall(path)
+
+
+def test_stone_with_no_ore_textures_is_still_a_stone_field(tmp_path):
+    from mc_pack_converter.webui.wall import build_wall
+    tiles = _tiles(build_wall(_terrain_zip(tmp_path, ores=())))
+    assert all(t.getpixel((0, 0)) == STONE_RGB for t in tiles)
+
+
+def test_an_ore_at_a_different_resolution_is_left_out_rather_than_resized(tmp_path):
+    """Resizing would invent pixels the pack never drew. A 32x ore in a 16x
+    pack is simply not placed."""
+    from mc_pack_converter.webui.wall import build_wall
+    tiles = _tiles(build_wall(_terrain_zip(tmp_path, ores=("gold_ore",),
+                                           ore_size=32)))
+    assert all(t.getpixel((0, 0)) == STONE_RGB for t in tiles)
+
+
+def test_the_grass_layer_is_the_packs_own_side_texture_verbatim(tmp_path):
+    from mc_pack_converter.webui.wall import build_grass
+    raw = _png(16, 16, (10, 200, 40, 255))
+    assert build_grass(_terrain_zip(tmp_path, grass=raw)) == raw
+
+
+def test_a_pack_with_no_grass_block_gets_no_grass_layer(tmp_path):
+    from mc_pack_converter.webui.wall import build_grass
+    assert build_grass(_terrain_zip(tmp_path)) is None
+
+
+def test_the_stone_field_beats_a_custom_menu_background(tmp_path):
+    """Asked for explicitly: the terrain wall is the point, so a pack that
+    also ships gui/options_background.png still gets stone and ore."""
+    from mc_pack_converter.webui.wall import build_wall
+    path = _terrain_zip(tmp_path)
+    with zipfile.ZipFile(path, "a") as z:
+        z.writestr(A + "textures/gui/options_background.png",
+                   _png(16, 16, (1, 1, 1, 255)))
+    assert len(_tiles(build_wall(path))) == 256

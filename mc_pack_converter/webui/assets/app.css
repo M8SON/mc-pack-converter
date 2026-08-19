@@ -33,23 +33,22 @@ body {
   color: var(--ink);
   font: 15px/1.5 "Consolas", "DejaVu Sans Mono", monospace;
   text-shadow: var(--px) var(--px) 0 var(--ink-shadow);
-  /* A stone-and-ore wall, so the window never opens on a black void. It is a
-     generated 128x128 tile that ships with the app -- nothing is fetched. The
-     converted pack's own gui background replaces it once there is one. */
-  /* A terrain cross-section: grass on top, dirt, then stone and ore. It is
-     FIXED and repeats only across, so the sky stays up and the ground does
-     not tile away down the page. Below it, flat stone. */
-  /* The pack's own background texture, tiled the way Minecraft tiles it
-     behind its menus. Nothing is composed and nothing is generated: until a
-     pack has been converted there is simply no art to show, so the window is
-     a plain dark ground. */
+  /* A cross-section of the converted pack's own world: a layer of its grass
+     block across the top, and a field of its stone with its iron, gold and
+     diamond ore below. Two layers rather than one image, so the grass stays a
+     horizon at the top of the window however tall it gets while the ground
+     repeats away underneath. Every pixel is a texture out of the pack, pasted
+     whole -- nothing is drawn here or in wall.py.
+
+     Both layers are FIXED so the horizon does not scroll off when the sheet
+     is long. dirt.png is the first-run stand-in, shown only until a pack has
+     been converted and cached. */
   background-color: #2b2622;
-  /* dirt.png is the FIRST-RUN stand-in only: vanilla's own menu is tiled
-     dirt, and it is replaced by the pack's own texture the moment one has
-     been converted. */
-  background-image: var(--pack-bg, url("dirt.png"));
-  background-size: 64px 64px;
-  background-repeat: repeat;
+  background-image: var(--pack-grass, none), var(--pack-bg, url("dirt.png"));
+  background-size: 64px 64px, var(--pack-bg-size, 64px 64px);
+  background-repeat: repeat-x, repeat;
+  background-position: top left, top left;
+  background-attachment: fixed;
   image-rendering: pixelated;
 }
 body::before {   /* the darkening vanilla lays over its background panel */
