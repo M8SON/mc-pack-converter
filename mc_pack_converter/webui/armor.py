@@ -252,9 +252,65 @@ def cube_spin_frames(frames: list[Image.Image], count: int = 24
 
 # --- textures that are not blocks --------------------------------------------
 #
-# Fire is not a cube. Minecraft draws it as two flat planes crossed at right
-# angles against a surface, which is why a cube gives it a top face: a patch
-# of flame floating in the air that the game never shows.
+# Fire is not a cube, and it is not a cross either. Minecraft clings it to the
+# VERTICAL FACES of the block it burns on, so what you see is the block's side
+# profile in flame with nothing across its middle and nothing on top. Drawing
+# it as two planes crossed through the centre -- which this module did until
+# Mason said "it looks like a cross in the middle whereas in the game its
+# rended on all sides of a block" -- puts flame inside the block volume and
+# makes it narrower than the block it is burning on.
+
+
+def fire_boxes() -> list[Box]:
+    """The four upright quads on a block's vertical faces.
+
+    Each is flat in one axis and pinned to that axis's surface. A quad carries
+    the UVs of the two faces that share its plane, so it reads the same from
+    either side -- fire has no back.
+    """
+    uv = (0, 0, CUBE_UNITS, CUBE_UNITS)
+    half = CUBE_UNITS / 2
+    flat_z = (CUBE_UNITS, CUBE_UNITS, 0)
+    flat_x = (0, CUBE_UNITS, CUBE_UNITS)
+    return [
+        Box("north", flat_z, (-half, -half, -half), front=uv, back=uv,
+            top=None, right=None, left=None, bottom=None),
+        Box("south", flat_z, (-half, -half, half), front=uv, back=uv,
+            top=None, right=None, left=None, bottom=None),
+        Box("west", flat_x, (-half, -half, -half), right=uv, left=uv,
+            front=None, top=None, back=None, bottom=None),
+        Box("east", flat_x, (half, -half, -half), right=uv, left=uv,
+            front=None, top=None, back=None, bottom=None),
+    ]
+
+
+def render_fire(texture: Image.Image, yaw: float = 0.0) -> Image.Image:
+    """Fire on the four faces of the block it burns on, turned by `yaw`.
+
+    ONE render_boxes call, not four composited in sequence: it orders every
+    face of every box by depth together, so a far quad can never paint over a
+    near one. That is precisely what the old two-call render_crossed got
+    wrong, and it only got away with it because planes crossed at the centre
+    intersect rather than occlude.
+    """
+    return render_boxes(texture, fire_boxes(), yaw, base=CUBE_UNITS,
+                        canvas_size=CUBE_CANVAS, origin=CUBE_ORIGIN)
+
+
+def fire_spin_frames(frames: list[Image.Image], count: int = 24
+                     ) -> list[Image.Image]:
+    """A full turn of the fire quads while the texture animates."""
+    return [render_fire(frames[i % len(frames)], 2 * math.pi * i / count)
+            for i in range(count)]
+
+
+# --- the nether portal is a plane, not a block and not fire -------------------
+#
+# The portal is one flat quad through the middle of its block, along whichever
+# axis the portal was built on. Crossed planes show it from both orientations
+# at once, which is why fire moving onto the block's faces must NOT take the
+# portal with it -- they were only ever sharing a code path, not a shape.
+
 
 def plane_box() -> Box:
     """A flat upright quad. Only front and back exist; a plane has no sides."""
@@ -265,7 +321,7 @@ def plane_box() -> Box:
 
 
 def render_crossed(texture: Image.Image, yaw: float = 0.0) -> Image.Image:
-    """One texture drawn as two planes crossed at right angles, as fire is."""
+    """One texture drawn as two planes crossed at right angles."""
     canvas = Image.new("RGBA", CUBE_CANVAS, (0, 0, 0, 0))
     for turn in (yaw, yaw + math.pi / 2):
         canvas.alpha_composite(
