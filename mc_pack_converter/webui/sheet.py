@@ -9,7 +9,7 @@ import base64, io, json, zipfile
 from pathlib import Path
 from PIL import Image
 
-from .armor import (crossed_spin_frames, cube_spin_frames,
+from .armor import (crossed_spin_frames, cube_spin_frames, fire_spin_frames,
                     render_armor, spin_frames)
 
 A = "assets/minecraft/"
@@ -68,7 +68,24 @@ THUMB = 64
 # Frames in one full turn. 24 reads as a smooth rotation and costs
 # ~0.05s per model, measured; the whole sheet still builds in seconds.
 SPIN = 24
-SPIN_MS = 100   # 24 frames at 100ms = a 2.4s turn
+# How long one full turn takes, for everything on the page. The game does not
+# rotate blocks at all, so this is a free choice; the animation frametime is
+# not, and is honoured exactly. Measured on the reference pack, 3s costs 375
+# frames against 508 at 4s and keeps every turn inside 3.20-4.80s rather than
+# 3.20-6.40s.
+TURN_MS = 3000
+
+
+def spin_count(frames: int, step_ms: int) -> int:
+    """Spin frames for an animation of `frames` frames stepping every `step_ms`.
+
+    The smallest MULTIPLE of the animation's own length that reaches TURN_MS.
+    A multiple is the whole point: the old flat 24 replayed part of any
+    animation whose length did not divide it -- fire has 16 frames, so frames
+    0-7 appeared twice per turn and 8-15 once, which is the stutter Mason saw.
+    """
+    need = -(-TURN_MS // step_ms)          # ceil: frames to reach the target
+    return -(-need // frames) * frames     # ceil to a whole number of cycles
 
 
 def thumb_data_uri(im: Image.Image, box: int = THUMB) -> str:
@@ -90,10 +107,15 @@ def thumb_data_uri(im: Image.Image, box: int = THUMB) -> str:
 
 TICK_MS = 50  # one Minecraft tick, and the default frametime
 
-# Fire is not a block. The game draws it as crossed planes against a surface,
-# so a cube gives it a top face -- flame floating in the air that never
-# appears in game. Matched on the texture's own name.
-NOT_A_BLOCK = ("fire_", "nether_portal")
+# Two textures a cube gets wrong, in two DIFFERENT ways. Matched on the
+# texture's own name.
+#   Fire clings to the block's vertical faces; a cube gives it a top face,
+#   flame floating in the air that never appears in game.
+#   The nether portal is a single flat quad through the middle of its block,
+#   drawn crossed so both build orientations read at once.
+# They shared one branch before fire moved onto the faces. They must not now.
+ON_THE_FACES = ("fire_",)
+THROUGH_THE_MIDDLE = ("nether_portal",)
 
 
 def animation_of(zf: zipfile.ZipFile, name: str) -> dict | None:
@@ -159,16 +181,21 @@ def _animated_tile(name: str, im: Image.Image, anim: dict) -> dict | None:
     ft = anim.get("frametime")
     tile = _tile(name, im)
     # Turn the block through a full circle while the texture animates. Angle
-    # and animation frame advance together in ONE loop, so the cost is SPIN
-    # frames rather than angles x animation-frames. A flat strip shows the art
+    # and animation frame advance together in ONE loop, so the cost is the spin
+    # count rather than angles x animation-frames. A flat strip shows the art
     # but not how it tiles against itself at an edge, or how the top reads
     # against the side; on a cube you see all three.
     leaf = name.rsplit("/", 1)[-1]
-    render = (crossed_spin_frames if leaf.startswith(NOT_A_BLOCK)
-              else cube_spin_frames)
-    spun = render(frames, SPIN)
+    if leaf.startswith(ON_THE_FACES):
+        render = fire_spin_frames
+    elif leaf.startswith(THROUGH_THE_MIDDLE):
+        render = crossed_spin_frames
+    else:
+        render = cube_spin_frames
+    step = (ft if isinstance(ft, int) and ft > 0 else 1) * TICK_MS
+    spun = render(frames, spin_count(len(frames), step))
     tile["frames"] = [thumb_data_uri(f, box=max(f.size)) for f in spun]
-    tile["frametime"] = (ft if isinstance(ft, int) and ft > 0 else 1) * TICK_MS
+    tile["frametime"] = step
     return tile
 
 
@@ -211,7 +238,7 @@ def build_sheet(zip_path: Path) -> dict:
                         # side, which is exactly where a bad conversion hides.
                         tile["frames"] = [thumb_data_uri(f, box=max(f.size))
                                           for f in spin_frames(im, SPIN)]
-                        tile["frametime"] = SPIN_MS
+                        tile["frametime"] = TURN_MS // SPIN
                         # Clicking any other tile opens its original texture.
                         # For armor that would be the flat UV sheet again, so
                         # the model would only ever exist at thumbnail size --

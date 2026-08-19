@@ -154,9 +154,65 @@ def test_the_cube_is_the_same_size_whatever_the_texture_resolution():
     assert a.getbbox() == b.getbbox()
 
 
+# --- fire sits on the block's faces -------------------------------------------
+#
+# Reported by Mason: "it looks like a cross in the middle whereas in the game
+# its rended on all sides of a block." He is right. render_crossed composites
+# two plane_box()es rotated 90 degrees apart, BOTH CENTRED ON THE ORIGIN, so it
+# draws an X through the middle of the block volume. In game fire clings to the
+# vertical faces of the block it burns on.
+
+
+def test_fire_quads_stand_on_the_block_faces_not_through_its_centre():
+    """Every quad sits at the block's surface, none through the middle."""
+    from mc_pack_converter.webui.armor import CUBE_UNITS, fire_boxes
+    half = CUBE_UNITS / 2
+    boxes = fire_boxes()
+    assert len(boxes) == 4
+    for b in boxes:
+        ox, _, oz = b.origin
+        w, _, d = b.size
+        # A quad is flat in exactly one axis, and that axis is pinned to +-half.
+        flat = ox if w == 0 else oz
+        assert abs(abs(flat) - half) < 1e-9, f"{b.name} is not on a face"
+        assert (w == 0) != (d == 0), f"{b.name} is not a quad"
+
+
+def test_fire_has_no_top_or_bottom_face():
+    """A cube gives fire a top face -- flame floating in air the game never
+    shows. Four upright quads keep that property."""
+    from mc_pack_converter.webui.armor import fire_boxes
+    for b in fire_boxes():
+        assert b.top is None and b.bottom is None, f"{b.name} has a horizontal face"
+
+
+def test_fire_traces_the_block_it_burns_on_exactly():
+    """The direct consequence of moving off the centre, and the strongest form
+    of it: planes crossed through the middle are NARROWER than the block, while
+    quads on its faces trace its outline exactly. A hollow box and a solid one
+    share a silhouette, so this is bbox equality, not a fill test -- measured
+    identical at (10, 15, 130, 115) with a top-row fill of 0.69 either way."""
+    from mc_pack_converter.webui.armor import render_cube, render_fire
+    tex = Image.new("RGBA", (16, 16), (255, 120, 0, 255))
+    assert render_fire(tex).getbbox() == render_cube(tex).getbbox()
+
+
+def test_fire_turns_without_a_degenerate_face():
+    """Each quad passes edge-on twice per turn. render_boxes raises on a
+    collapsed parallelogram, so a full circle is the assertion."""
+    import math
+    from mc_pack_converter.webui.armor import CUBE_CANVAS, render_fire
+    tex = Image.new("RGBA", (16, 16), (255, 120, 0, 255))
+    for i in range(24):
+        out = render_fire(tex, 2 * math.pi * i / 24)
+        assert out.size == CUBE_CANVAS
+        assert out.getbbox() is not None
+
+
+# --- the crossed planes, kept for the nether portal ---------------------------
+
+
 def test_a_plane_has_no_top_or_bottom():
-    """Fire is not a block. A cube gives it a top face -- a patch of flame
-    floating in the air the game never shows, which is what Mason spotted."""
     from mc_pack_converter.webui.armor import plane_box
     p = plane_box()
     assert p.top is None and p.bottom is None and p.left is None
@@ -165,29 +221,24 @@ def test_a_plane_has_no_top_or_bottom():
 
 def test_crossed_planes_render_within_the_cube_canvas():
     from mc_pack_converter.webui.armor import CUBE_CANVAS, render_crossed
-    out = render_crossed(Image.new("RGBA", (16, 16), (255, 120, 0, 255)))
+    out = render_crossed(Image.new("RGBA", (16, 16), (140, 60, 220, 255)))
     assert out.size == CUBE_CANVAS
     assert out.getbbox() is not None
 
 
 def test_crossed_planes_are_narrower_than_a_cube():
-    """Both stand the same height; the cube is WIDER because it has depth,
-    and that depth is what produced the floating top face."""
+    """Planes through the centre do not reach the block's outer faces. This is
+    exactly what made them wrong for fire -- and right for a portal, which is
+    a quad inside the block rather than a skin on it."""
     from mc_pack_converter.webui.armor import render_crossed, render_cube
-    tex = Image.new("RGBA", (16, 16), (255, 120, 0, 255))
+    tex = Image.new("RGBA", (16, 16), (140, 60, 220, 255))
     flat, cube = render_crossed(tex).getbbox(), render_cube(tex).getbbox()
     assert (flat[2] - flat[0]) < (cube[2] - cube[0])
 
 
-def test_a_cube_covers_its_own_top_edge_but_a_plane_does_not():
-    """The real difference, asserted directly: scan the top row of the shape.
-    A cube's top face fills it; crossed planes leave it mostly empty."""
-    from mc_pack_converter.webui.armor import render_crossed, render_cube
-    tex = Image.new("RGBA", (16, 16), (255, 120, 0, 255))
-    def top_row_fill(img):
-        box = img.getbbox()
-        row = img.crop((box[0], box[1], box[2], box[1] + 3))
-        opaque = sum(1 for p in row.getdata() if p[3] > 0)
-        return opaque / (row.width * row.height)
-    assert top_row_fill(render_cube(tex)) > 0.5
-    assert top_row_fill(render_crossed(tex)) < 0.5
+def test_crossed_planes_are_narrower_than_fire_on_the_faces():
+    """The same fact stated against fire, which now traces the block exactly."""
+    from mc_pack_converter.webui.armor import render_crossed, render_fire
+    tex = Image.new("RGBA", (16, 16), (140, 60, 220, 255))
+    flat, fire = render_crossed(tex).getbbox(), render_fire(tex).getbbox()
+    assert (flat[2] - flat[0]) < (fire[2] - fire[0])

@@ -170,10 +170,11 @@ def test_a_multi_frame_strip_becomes_an_animated_tile(tmp_path):
     sheet = build_sheet(z)
     assert [s["label"] for s in sheet["sections"]] == ["Animated"]
     tile = sheet["sections"][0]["tiles"][0]
-    # The emitted frames are the cube SPIN, not the animation's own count --
-    # angle and animation advance together in one loop.
-    from mc_pack_converter.webui.sheet import SPIN
-    assert len(tile["frames"]) == SPIN
+    # The emitted frames are the spin count, not the animation's own count --
+    # angle and animation advance together in one loop. 16 frames at one tick
+    # need 64 to reach a 3s turn, and 64 is a whole 4 cycles of the animation.
+    from mc_pack_converter.webui.sheet import spin_count
+    assert len(tile["frames"]) == spin_count(16, 50) == 64
     assert tile["frametime"] == 50  # one tick, the Minecraft default
 
 
@@ -221,15 +222,15 @@ def test_an_out_of_range_frame_index_is_dropped_not_raised(tmp_path):
         (A + "textures/block/x.png.mcmeta",
          json.dumps({"animation": {"frames": [0, 1, 5, 1]}}).encode()),
     ])
-    from mc_pack_converter.webui.sheet import SPIN, animation_frames
-    # Assert on the SELECTION, not on the emitted tile: the tile now carries
-    # SPIN frames whatever the animation says, so asserting its length here
-    # would pass no matter how badly the index filter broke.
+    from mc_pack_converter.webui.sheet import animation_frames, spin_count
+    # Assert on the SELECTION, not on the emitted tile: the tile carries a
+    # whole number of cycles of whatever the selection produced, so asserting
+    # its length here would pass no matter how badly the index filter broke.
     im = Image.open(io.BytesIO(_png(16, 32)))
     picked = animation_frames(im, {"frames": [0, 1, 5, 1]})
     assert len(picked) == 3  # 0, 1, 1 -- index 5 dropped
     tile = build_sheet(z)["sections"][0]["tiles"][0]
-    assert len(tile["frames"]) == SPIN
+    assert len(tile["frames"]) == spin_count(3, 50) == 60
 
 
 def test_frametime_is_converted_from_ticks_to_milliseconds(tmp_path):
@@ -340,29 +341,58 @@ def test_a_pack_with_none_of_them_gets_no_background(tmp_path):
     assert build_wall(path) is None
 
 
-def test_fire_is_drawn_as_crossed_planes_not_a_cube(tmp_path):
+def test_fire_is_drawn_on_the_block_faces_and_lava_on_a_cube(tmp_path):
     """Matched on the texture's own name, so a pack's fire_0/fire_1 both get
-    it however the pack is organised."""
+    it however the pack is organised.
+
+    Asserted by rendering rather than by silhouette, and on a TWO-TONE
+    texture rather than a flat one. Both details are load-bearing. Fire now
+    traces the block exactly, so width no longer separates it from a cube; and
+    on a single flat colour the two renderers are byte-identical, because a
+    hollow box and a solid one differ only where the cube has a top face and
+    fire does not. Two tones make that face visible -- 900 differing pixels.
+    """
     import json as _json
-    from mc_pack_converter.webui.armor import render_crossed, render_cube
+    from mc_pack_converter.webui.armor import render_cube, render_fire
+
+    def two_tone_frame():
+        """Top half blue, bottom half red, so a top face is distinguishable."""
+        im = Image.new("RGBA", (16, 16), (255, 0, 0, 255))
+        for y in range(8):
+            for x in range(16):
+                im.putpixel((x, y), (0, 0, 255, 255))
+        return im
+
+    def two_tone_strip(frames=4):
+        """That frame repeated down a strip, so every frame is two-tone. A
+        gradient over the whole strip would leave each frame a flat colour."""
+        one = two_tone_frame()
+        strip = Image.new("RGBA", (16, 16 * frames))
+        for i in range(frames):
+            strip.paste(one, (0, i * 16))
+        buf = io.BytesIO()
+        strip.save(buf, "PNG")
+        return buf.getvalue()
+
     path = tmp_path / "p.zip"
     with zipfile.ZipFile(path, "w") as z:
-        z.writestr(A + "textures/block/fire_0.png", _png(16, 64))
-        z.writestr(A + "textures/block/fire_0.png.mcmeta",
-                   _json.dumps({"animation": {}}).encode())
-        z.writestr(A + "textures/block/lava_still.png", _png(16, 64))
-        z.writestr(A + "textures/block/lava_still.png.mcmeta",
-                   _json.dumps({"animation": {}}).encode())
-    tiles = {t["name"]: t for t in build_sheet(path)["sections"][0]["tiles"]}
-    def width(uri):
-        raw = base64.b64decode(uri.split(",", 1)[1])
-        with Image.open(io.BytesIO(raw)) as im:
-            box = im.getbbox()
-            return box[2] - box[0]
-    # Both spin, but fire is the narrower: crossed planes have no depth, and
-    # it is that depth which gave the cube its floating top face.
-    assert width(tiles["fire_0.png"]["frames"][0]) < \
-           width(tiles["lava_still.png"]["frames"][0])
+        for leaf in ("fire_0.png", "lava_still.png"):
+            z.writestr(A + "textures/block/" + leaf, two_tone_strip())
+            z.writestr(A + "textures/block/" + leaf + ".mcmeta",
+                       _json.dumps({"animation": {}}).encode())
+    tiles = {t["name"]: t
+             for sec in build_sheet(path)["sections"] for t in sec["tiles"]}
+    frame0 = two_tone_frame()
+
+    def expected(render):
+        img = render(frame0, 0.0)
+        return thumb_data_uri(img, box=max(img.size))
+
+    # The two renderings really are different, or the assertions below would
+    # both pass on a single code path.
+    assert expected(render_fire) != expected(render_cube)
+    assert tiles["fire_0.png"]["frames"][0] == expected(render_fire)
+    assert tiles["lava_still.png"]["frames"][0] == expected(render_cube)
 
 
 def test_the_background_ships_with_the_app_and_is_not_per_pack():
@@ -513,3 +543,114 @@ def test_the_stone_field_beats_a_custom_menu_background(tmp_path):
         z.writestr(A + "textures/gui/options_background.png",
                    _png(16, 16, (1, 1, 1, 255)))
     assert len(_tiles(build_wall(path))) == 256
+
+
+# --- rotation and animation are separate quantities ---------------------------
+#
+# They were one. A single frame list drove both, played at one interval, so the
+# turn took `24 x frametime x 50ms` -- a duration set by the TEXTURE'S
+# ANIMATION SPEED. Measured on the reference pack: fire turned in 1.20s,
+# water_still 2.40s, lava_flow 3.60s, sea_lantern 6.00s, while armor sat at a
+# fixed 2.40s. Mason reported it as "the 3d models rotate too fast".
+#
+# The game defines the frametime and does not rotate blocks at all, so the
+# animation must be exact and the turn is free to choose. His rule: "Everything
+# should emulate the game because the whole point of the converter is that you
+# want to make sure your textures are okay and good for the game."
+
+
+def test_a_turn_holds_whole_animation_cycles():
+    """The old flat 24 only looped cleanly when the frame count divided it.
+    Fire has 16 frames, so frames 0-7 played TWICE per turn and 8-15 once."""
+    from mc_pack_converter.webui.sheet import spin_count
+    for n, step in ((16, 50), (32, 50), (32, 100), (20, 100), (5, 250), (16, 150)):
+        assert spin_count(n, step) % n == 0, f"{n} frames at {step}ms repeats"
+
+
+def test_a_turn_is_never_faster_than_the_target():
+    from mc_pack_converter.webui.sheet import TURN_MS, spin_count
+    for n, step in ((16, 50), (32, 50), (32, 100), (20, 100), (5, 250), (16, 150)):
+        assert spin_count(n, step) * step >= TURN_MS
+
+
+def test_a_turn_is_the_shortest_one_that_qualifies():
+    """Measured against the reference pack, at the 3s target that was chosen
+    over 4s: 375 frames rather than 508, and turns inside 3.20-4.80s rather
+    than 3.20-6.40s."""
+    from mc_pack_converter.webui.sheet import spin_count
+    assert spin_count(16, 50) == 64     # fire_0, fire_1     -> 3.20s
+    assert spin_count(32, 50) == 64     # nether_portal, water_flow -> 3.20s
+    assert spin_count(32, 100) == 32    # water_still        -> 3.20s
+    assert spin_count(20, 100) == 40    # lava_still         -> 4.00s
+    assert spin_count(5, 250) == 15     # sea_lantern        -> 3.75s
+    assert spin_count(16, 150) == 32    # lava_flow          -> 4.80s
+
+
+def test_a_still_texture_on_a_cube_still_turns():
+    """One animation frame must not mean one spin frame, or the cube freezes."""
+    from mc_pack_converter.webui.sheet import TURN_MS, spin_count
+    assert spin_count(1, 50) * 50 >= TURN_MS
+
+
+def test_the_animation_keeps_the_games_own_frametime(tmp_path):
+    """The interval is the texture's frametime, unchanged. It is only correct
+    now because the frame list finally holds whole cycles."""
+    import json as _json
+    from mc_pack_converter.webui.sheet import spin_count
+    path = tmp_path / "p.zip"
+    strip = Image.new("RGBA", (16, 16 * 16), (255, 120, 0, 255))
+    buf = io.BytesIO(); strip.save(buf, "PNG")
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr(A + "textures/block/fire_0.png", buf.getvalue())
+        z.writestr(A + "textures/block/fire_0.png.mcmeta",
+                   _json.dumps({"animation": {"frametime": 1}}).encode())
+    tiles = {t["name"]: t
+             for sec in build_sheet(path)["sections"] for t in sec["tiles"]}
+    fire = tiles["fire_0.png"]
+    assert fire["frametime"] == 50               # 1 tick, as the game plays it
+    assert len(fire["frames"]) == spin_count(16, 50) == 64
+
+
+def test_armor_turns_at_the_same_speed_as_everything_else(tmp_path):
+    """Armor has no animation to honour, so its turn is a plain constant --
+    but it is the SAME constant, or the page turns at two speeds."""
+    from mc_pack_converter.webui.sheet import TURN_MS
+    path = tmp_path / "p.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr(A + "textures/entity/equipment/iron_layer_1.png", _png(64, 32))
+        z.writestr("pack.mcmeta", b"{}")
+    tiles = [t for sec in build_sheet(path)["sections"] if sec["label"] == "Armor"
+             for t in sec["tiles"]]
+    assert tiles, "no armor tiles to check"
+    for t in tiles:
+        assert len(t["frames"]) * t["frametime"] == TURN_MS
+
+
+def test_the_nether_portal_stays_a_plane_when_fire_moves_to_the_faces(tmp_path):
+    """Fire and the portal shared one branch, for two different reasons. Moving
+    fire onto the block's faces must not drag the portal along: a portal is one
+    flat quad through the middle of its block, not flame on four sides."""
+    import json as _json
+    from mc_pack_converter.webui.armor import render_crossed, render_fire
+    path = tmp_path / "p.zip"
+    strip = Image.new("RGBA", (16, 16 * 4), (255, 0, 0, 255))
+    for y in range(8):
+        for x in range(16):
+            strip.putpixel((x, y), (0, 0, 255, 255))
+    buf = io.BytesIO(); strip.save(buf, "PNG")
+    with zipfile.ZipFile(path, "w") as z:
+        for leaf in ("fire_0.png", "nether_portal.png"):
+            z.writestr(A + "textures/block/" + leaf, buf.getvalue())
+            z.writestr(A + "textures/block/" + leaf + ".mcmeta",
+                       _json.dumps({"animation": {}}).encode())
+    tiles = {t["name"]: t
+             for sec in build_sheet(path)["sections"] for t in sec["tiles"]}
+    frame0 = Image.open(io.BytesIO(buf.getvalue())).crop((0, 0, 16, 16)).convert("RGBA")
+
+    def expected(render):
+        img = render(frame0, 0.0)
+        return thumb_data_uri(img, box=max(img.size))
+
+    assert expected(render_fire) != expected(render_crossed)
+    assert tiles["fire_0.png"]["frames"][0] == expected(render_fire)
+    assert tiles["nether_portal.png"]["frames"][0] == expected(render_crossed)
