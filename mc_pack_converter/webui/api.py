@@ -34,6 +34,17 @@ class Api:
         self._on_start = on_start   # starts the worker; set by gui.main()
         self.window = None          # the pywebview window, for the file dialog
 
+    def ready(self) -> bool:
+        """Called by the page the instant its bridge works.
+
+        The launch log is the only way to tell a window that came up inert
+        from one that never got a working bridge at all: if there is no "page
+        ready" line, JavaScript never reached Python.
+        """
+        from ..gui import _diag          # lazy: gui imports this module
+        _diag("page ready")
+        return True
+
     def targets(self) -> dict:
         """The versions this converter can produce, and the current pick."""
         from ..cli import TARGETS

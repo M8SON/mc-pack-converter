@@ -236,4 +236,32 @@ async function loadTargets() {
   };
 }
 
-window.addEventListener("pywebviewready", () => { loadTargets(); tick(); });
+let booted = false;
+function boot() {
+  if (booted) return;
+  booted = true;
+  window.pywebview.api.ready();
+  loadTargets();
+  tick();
+}
+
+// pywebview injects its bridge when navigation completes, which is after this
+// file has run, so the event listener is normally attached in time. But when
+// it is not -- or the bridge never arrives at all -- the window comes up inert:
+// the HTML and CSS render, so there is a drop screen with the shipped stand-in
+// background and an empty version list, and nothing on it does anything. Watch
+// for the bridge directly as well, and if it never turns up, say so on the page
+// instead of leaving a dead window with no explanation.
+window.addEventListener("pywebviewready", boot, { once: true });
+if (window.pywebview && window.pywebview.api) boot();
+else {
+  let waited = 0;
+  const waiting = setInterval(() => {
+    if (window.pywebview && window.pywebview.api) { clearInterval(waiting); boot(); }
+    else if ((waited += 200) >= 15000) {
+      clearInterval(waiting);
+      $("drop-error").textContent =
+        "This window never connected to the converter. Close it and open the app again.";
+    }
+  }, 200);
+}
