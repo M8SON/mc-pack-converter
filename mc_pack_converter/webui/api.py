@@ -15,9 +15,15 @@ from pathlib import Path
 
 from ..job import validate_source
 from .sheet import build_sheet
-from .wall import build_wall, remember_wall, remembered_wall
+from .wall import (build_wall, build_grass, remember_wall, remembered_wall,
+                   remember_grass, remembered_grass, tile_size)
 
 EMPTY_SHEET = {"sections": [], "excluded": [], "total": 0}
+
+
+
+def _data_uri(png: bytes) -> str:
+    return "data:image/png;base64," + base64.b64encode(png).decode("ascii")
 
 
 class Api:
@@ -76,16 +82,11 @@ class Api:
             except queue.Empty:
                 break
         d = self._state.to_dict()
-        bg = self._pack_background()
-        if bg:
-            d["background"] = bg
+        d.update(self._pack_dressing())
         return d
 
-    _BG = "assets/minecraft/textures/gui/options_background.png"
-
-
-    def _pack_background(self) -> str:
-        """The converted pack's own background texture, as a data URI.
+    def _pack_dressing(self) -> dict:
+        """The converted pack's own ground and grass layer, as data URIs.
 
         The app wears the pack you just converted, and remembers it for next
         launch. Absent rather than fatal when a pack ships no usable texture.
@@ -98,17 +99,25 @@ class Api:
         if getattr(self, "_bg_for", None) == self._state.screen:
             return self._bg
         self._bg_for = self._state.screen
-        self._bg = ""
+        self._bg = {}
 
         if self._state.screen != "result":
-            self._bg = remembered_wall()   # the last pack, from a previous run
-            return self._bg
+            ground, grass = remembered_wall(), remembered_grass()
+        else:                              # and keep them for the NEXT launch
+            out = self._state.result.out_path
+            ground, grass = build_wall(out), build_grass(out)
+            if ground:
+                remember_wall(ground)
+            if grass:
+                remember_grass(grass)
 
-        png = build_wall(self._state.result.out_path)
-        if png:
-            self._bg = ("data:image/png;base64,"
-                        + base64.b64encode(png).decode("ascii"))
-            remember_wall(png)             # so the NEXT launch opens wearing it
+        if ground:
+            self._bg["background"] = _data_uri(ground)
+            # The ground is a whole field of blocks, not one tile, so the page
+            # cannot assume a size -- it is measured here and sent along.
+            self._bg["backgroundSize"] = tile_size(ground)
+        if grass:
+            self._bg["grass"] = _data_uri(grass)
         return self._bg
 
     def sheet(self) -> dict:
@@ -136,7 +145,7 @@ class Api:
                 raw = z.read(path)
         except (OSError, zipfile.BadZipFile, KeyError):
             return ""
-        return "data:image/png;base64," + base64.b64encode(raw).decode("ascii")
+        return _data_uri(raw)
 
     def open_folder(self) -> None:
         if self._state.screen != "result":
