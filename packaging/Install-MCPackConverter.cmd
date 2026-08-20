@@ -14,8 +14,8 @@ rem archive is a stale build wearing the right address.
 rem The cost is that dependencies reinstall too, so this takes a minute.
 setlocal
 echo Installing MC Pack Converter...
-python -m pip install --no-cache-dir --force-reinstall "mc-pack-converter[gui] @ https://github.com/M8SON/mc-pack-converter/archive/refs/heads/master.zip"
-rem Record which build this is, so the window can tell you when it is stale.
+python -m pip install --no-cache-dir --force-reinstall "mc-pack-converter @ https://github.com/M8SON/mc-pack-converter/archive/refs/heads/master.zip"
+rem Record which build this is, so the report can tell you when it is stale.
 rem AFTER the install, never before: a SHA written first and then a failed pip
 rem is a file that lies, and it lies in the direction of staying quiet.
 python -m mc_pack_converter.webui.update

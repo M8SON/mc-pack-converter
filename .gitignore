@@ -6,3 +6,5 @@ __pycache__/
 converted.zip
 *.egg-info/
 docs/superpowers/
+node_modules/
+package-lock.json

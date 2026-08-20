@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "description": "jsdom for tests/webui/test_boot.py -- the only test that runs app.js rather than grepping its text. Optional: test_boot.py skips when node or jsdom is unavailable.",
+  "devDependencies": {
+    "jsdom": "^24.1.3"
+  }
+}

@@ -105,6 +105,29 @@ def thumb_data_uri(im: Image.Image, box: int = THUMB) -> str:
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
 
 
+# The lightbox's own ceiling. The bridge used to serve full-size originals on
+# demand -- 22.5MB across the reference pack -- and a static page has no such
+# channel. Measured: only 126 of 1019 shown tiles are downscaled at all, and
+# 20.6MB of their 21.9MB is three OptiFine sky textures at 6144px. Capping
+# here inlines 111 of the 126 for 0.66MB and leaves 15 atlases below native
+# size, which are judged whole rather than pixel by pixel.
+FULL = 512
+
+
+def full_data_uri(im: Image.Image) -> str | None:
+    """A larger view for the lightbox, or None when the thumbnail already is
+    the original. thumb_data_uri never upscales, so anything within THUMB is
+    already being shown at full resolution."""
+    if max(im.size) <= THUMB:
+        return None
+    return thumb_data_uri(im, box=FULL)
+
+
+# The shape build_sheet returns when there is nothing to show -- a report-only
+# run, or a conversion that produced no zip to read back.
+EMPTY_SHEET = {"sections": [], "excluded": [], "total": 0}
+
+
 TICK_MS = 50  # one Minecraft tick, and the default frametime
 
 # Two textures a cube gets wrong, in two DIFFERENT ways. Matched on the
@@ -202,10 +225,13 @@ def _animated_tile(name: str, im: Image.Image, anim: dict) -> dict | None:
 def build_sheet(zip_path: Path) -> dict:
     """The whole QA sheet model for one converted pack.
 
-    Eager: measured at 1.75s and 1.72MB of base64 for 1021 tiles on the
-    reference pack, against a conversion that takes far longer. Full-size
-    originals are 22.5MB and are NOT bundled -- api.texture() serves those on
-    demand.
+    Eager: measured on the reference pack (M8SON 1.8 PVP PACK, 26.2 target)
+    at 5.7s for 1019 tiles -- 6.36MB of base64 and JSON, comparable to the
+    pack's own 7.3s conversion rather than negligible next to it, but still
+    cheap enough to build up front. There is no bridge left to serve tiles
+    on demand from, so up-front is the only shape available: full-size
+    originals are inlined too, capped at FULL rather than left unbundled --
+    see FULL's own comment above.
     """
     buckets: dict[str, list] = {}
     excluded: dict[str, int] = {}
@@ -276,6 +302,7 @@ def _tile(name: str, im: Image.Image) -> dict:
         "w": im.width,
         "h": im.height,
         "thumb": thumb_data_uri(im),
+        "full": full_data_uri(im),
         "frames": None,
         "frametime": None,
     }

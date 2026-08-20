@@ -1,6 +1,11 @@
 /* Minecraft's own GUI vocabulary: a dirt-panel ground, bevelled buttons, and
-   an inventory slot around every texture. Drawn entirely in CSS -- no font and
-   no image is downloaded, so the page still loads no external resource.
+   an inventory slot around every texture. Drawn entirely in CSS -- no font is
+   downloaded. The two images it does reference below (grass.png, wall.png --
+   8,837 bytes together) are inlined by report.py as data: URIs when this CSS
+   is rendered into the report, since the report is written beside the
+   converted pack, not beside these assets, and a bare filename reference
+   there would dangle. So the page still loads no external resource once it
+   is on disk.
 
    The only images used are wall.png and grass.png, which ship with the app
    and do not change: the terrain wall is the program's background, not a
@@ -17,7 +22,6 @@
   --btn-hi:     #8a8a8a;
   --warn:       #ffaa00;   /* Minecraft gold  */
   --err:        #ff5555;   /* Minecraft red   */
-  --ok:         #55ff55;   /* Minecraft green */
   --px: 2px;               /* one "pixel" of bevel */
 }
 
@@ -67,12 +71,6 @@ header {
 h1 { margin: 0 0 6px; font-size: 20px; font-weight: normal; letter-spacing: .5px; }
 #details { color: var(--ink-dim); white-space: pre-line; font-size: 13px; }
 
-/* Vanilla's loading bar: a black-bordered trough with a flat green fill. */
-progress { width: 100%; height: 14px; margin-top: 12px; appearance: none;
-           border: var(--px) solid #000; background: #2b2b2b; }
-progress::-webkit-progress-bar { background: #2b2b2b; }
-progress::-webkit-progress-value { background: var(--ok); }
-
 /* A vanilla button: light on top and left, dark on bottom and right, and the
    bevel inverts while it is held down. */
 button {
@@ -97,28 +95,6 @@ nav {
 nav .spacer { flex: 1; }
 
 main { padding: 18px 20px 56px; }
-
-/* The drop target: the whole window accepts a pack, so this is a sign rather
-   than a small button to hunt for. */
-#idle { display: grid; place-items: center; min-height: 62vh; text-align: center; }
-/* On the drop screen there is no content to read, so let the wall come
-   through at full strength -- it is the only thing on the page. */
-
-#dropzone {
-  width: min(560px, 86vw); padding: 44px 32px;
-  border: calc(var(--px) * 2) dashed #6f6f6f;
-  background: rgba(0, 0, 0, .35);
-}
-#dropzone h2 { margin: 0 0 10px; font-size: 20px; color: var(--ink);
-               letter-spacing: 0; text-transform: none; }
-#dropzone p  { margin: 0 0 20px; color: var(--ink-dim); font-size: 13px; }
-body.dragging #dropzone { border-color: var(--ok); background: rgba(85,255,85,.10); }
-#targets { display: flex; gap: 8px; justify-content: center; align-items: center;
-           flex-wrap: wrap; margin-bottom: 18px; }
-#targets .label { color: var(--ink-dim); font-size: 13px; margin-right: 4px; }
-#targets button { padding: 6px 14px; font-size: 14px; }
-
-#drop-error { color: var(--err); margin-top: 16px; min-height: 1.5em; font-size: 13px; }
 
 .finding {
   padding: 10px 14px; margin-bottom: 8px;
@@ -164,12 +140,6 @@ h2 { font-size: 13px; font-weight: normal; letter-spacing: .12em;
   padding: 12px; background: var(--slot);
   box-shadow: inset var(--px) var(--px) 0 0 var(--panel-dark),
               inset calc(var(--px) * -1) calc(var(--px) * -1) 0 0 var(--panel-lit);
-}
-
-pre {
-  white-space: pre-wrap; background: rgba(0, 0, 0, .6); padding: 14px;
-  border: var(--px) solid #000; max-height: 46vh; overflow: auto;
-  font-size: 12px; text-shadow: none; color: #ff9d9d;
 }
 
 /* The update notice. Quiet on purpose: it is information, not an alert, and

@@ -20,16 +20,40 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: pytest -q
 
-  # The Windows install IS how this is delivered now, so a broken [gui] extra
-  # is a shipping failure rather than a nuisance. release.yml used to be the
-  # only thing proving it; it does not exist any more.
-  gui-install:
+  # The Windows install IS how this is delivered, so a regression there is a
+  # shipping failure rather than a nuisance -- release.yml does not exist, so
+  # this is the only thing that proves it at the packaging level. What must
+  # hold flipped when the window (and its [gui] extra) was deleted: a plain
+  # install must NOT pull in pywebview, and the entry point Windows users
+  # actually hit -- `python -m mc_pack_converter.gui` with nothing dropped on
+  # it -- must still run and explain itself rather than crash.
+  # test_no_pywebview.py cannot catch a dependency creeping back in through
+  # package metadata; it only greps the source tree. This is the check that can.
+  windows-install:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install -e ".[gui]"
-      # Asserted by importing it -- pywebview exposes no __version__.
-      - run: python -c "import webview, importlib.metadata as m; print('pywebview', m.version('pywebview'))"
+      - run: pip install -e .
+      - name: A plain install must not have pulled in pywebview
+        shell: pwsh
+        run: |
+          python -c "import webview"
+          if ($LASTEXITCODE -eq 0) {
+            Write-Error "pywebview is importable -- something reintroduced the dependency"
+            exit 1
+          }
+          Write-Host "pywebview absent, as expected"
+      - name: The no-pack entry point must exit non-zero and explain itself
+        shell: pwsh
+        run: |
+          $output = python -m mc_pack_converter.gui 2>&1 | Out-String
+          if ($LASTEXITCODE -eq 0) {
+            throw "expected a non-zero exit with no pack given"
+          }
+          if ($output -notmatch "Drag a 1\.8\.9 resource pack") {
+            throw "expected the usage line; got: $output"
+          }
+          Write-Host "no-arg run exited $LASTEXITCODE and printed the usage line"
