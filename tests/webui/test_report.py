@@ -68,3 +68,54 @@ def test_the_model_is_json_serialisable(tmp_path):
     serialised = json.dumps(m)
     roundtripped = json.loads(serialised)
     assert roundtripped["findings"][0]["path"] == "textures/block/stone.png"
+
+
+def test_the_report_reaches_out_to_nothing(tmp_path):
+    """The single-file property, asserted directly rather than assumed. A
+    stylesheet link or a script src would make the report break the moment it
+    is moved or emailed."""
+    from mc_pack_converter.webui.report import build_model, render_html
+    html = render_html(build_model(_result(tmp_path),
+                                   sheet={"sections": [], "total": 0}))
+    assert "http://" not in html
+    assert "https://" not in html
+    assert 'href="app.css"' not in html
+    assert 'src="app.js"' not in html
+
+
+def test_the_stylesheet_and_script_are_inlined(tmp_path):
+    from mc_pack_converter.webui.report import (ASSETS, build_model,
+                                                render_html)
+    html = render_html(build_model(_result(tmp_path),
+                                   sheet={"sections": [], "total": 0}))
+    css = (ASSETS / "app.css").read_text()
+    assert css.strip().splitlines()[0] in html
+
+
+def test_the_model_is_embedded_and_readable(tmp_path):
+    import json, re
+    from mc_pack_converter.webui.report import build_model, render_html
+    model = build_model(_result(tmp_path), sheet={"sections": [], "total": 7})
+    html = render_html(model)
+    blob = re.search(r"window\.MODEL\s*=\s*(\{.*?\});", html, re.S).group(1)
+    assert json.loads(blob)["sheet"]["total"] == 7
+
+
+def test_a_closing_script_tag_in_the_data_cannot_escape(tmp_path):
+    """A finding's message is pack-controlled text. '</script>' inside the
+    JSON would end the block early and put the rest of the model on the page
+    as markup."""
+    import json, re
+    from mc_pack_converter.webui.report import build_model, render_html
+    r = _result(tmp_path, [("validate", Severity.WARNING, "</script><b>hi")])
+    html = render_html(build_model(r, sheet={"sections": [], "total": 0}))
+    assert "</script><b>hi" not in html
+    blob = re.search(r"window\.MODEL\s*=\s*(\{.*?\});", html, re.S).group(1)
+    assert json.loads(blob)["findings"][0]["message"] == "</script><b>hi"
+
+
+def test_no_trace_of_pywebview_survives(tmp_path):
+    from mc_pack_converter.webui.report import build_model, render_html
+    html = render_html(build_model(_result(tmp_path),
+                                   sheet={"sections": [], "total": 0}))
+    assert "pywebview" not in html
