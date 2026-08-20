@@ -98,28 +98,6 @@ nav .spacer { flex: 1; }
 
 main { padding: 18px 20px 56px; }
 
-/* The drop target: the whole window accepts a pack, so this is a sign rather
-   than a small button to hunt for. */
-#idle { display: grid; place-items: center; min-height: 62vh; text-align: center; }
-/* On the drop screen there is no content to read, so let the wall come
-   through at full strength -- it is the only thing on the page. */
-
-#dropzone {
-  width: min(560px, 86vw); padding: 44px 32px;
-  border: calc(var(--px) * 2) dashed #6f6f6f;
-  background: rgba(0, 0, 0, .35);
-}
-#dropzone h2 { margin: 0 0 10px; font-size: 20px; color: var(--ink);
-               letter-spacing: 0; text-transform: none; }
-#dropzone p  { margin: 0 0 20px; color: var(--ink-dim); font-size: 13px; }
-body.dragging #dropzone { border-color: var(--ok); background: rgba(85,255,85,.10); }
-#targets { display: flex; gap: 8px; justify-content: center; align-items: center;
-           flex-wrap: wrap; margin-bottom: 18px; }
-#targets .label { color: var(--ink-dim); font-size: 13px; margin-right: 4px; }
-#targets button { padding: 6px 14px; font-size: 14px; }
-
-#drop-error { color: var(--err); margin-top: 16px; min-height: 1.5em; font-size: 13px; }
-
 .finding {
   padding: 10px 14px; margin-bottom: 8px;
   background: rgba(0, 0, 0, .45); border-left: calc(var(--px) * 2) solid #6f6f6f;

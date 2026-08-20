@@ -101,6 +101,42 @@ def test_the_model_is_embedded_and_readable(tmp_path):
     assert json.loads(blob)["sheet"]["total"] == 7
 
 
+def _asset(name):
+    from mc_pack_converter.webui.report import ASSETS
+    return (ASSETS / name).read_text()
+
+
+def test_the_page_reads_the_embedded_model():
+    assert "window.MODEL" in _asset("app.js")
+
+
+def test_the_page_no_longer_speaks_to_a_bridge():
+    """The bridge is gone. Any surviving call is a page that is live and
+    wired to nothing -- which this app shipped twice."""
+    js = _asset("app.js")
+    for gone in ("pywebview", "api.poll", "api.sheet", "api.texture",
+                 "setTimeout(tick", "pywebviewready"):
+        assert gone not in js, gone
+
+
+def test_the_lightbox_uses_the_inlined_original():
+    """`full` when there is one, `thumb` when the thumbnail already is the
+    original -- 893 of 1019 tiles on the reference pack."""
+    js = _asset("app.js")
+    assert "t.full" in js or ".full ||" in js
+
+
+def test_no_trace_of_the_old_bridge_survives(tmp_path):
+    """Renamed from the pywebview-derived name Task 3 used: pytest derives
+    tmp_path's directory name from the test function's own name, so a test
+    with "pywebview" in its name puts "pywebview" into out_path via tmp_path
+    and fails this assertion on its own name rather than on real leftovers."""
+    from mc_pack_converter.webui.report import build_model, render_html
+    html = render_html(build_model(_result(tmp_path),
+                                   sheet={"sections": [], "total": 0}))
+    assert "pywebview" not in html
+
+
 def test_a_closing_script_tag_in_the_data_cannot_escape(tmp_path):
     """A finding's message is pack-controlled text. '</script>' inside the
     JSON would end the block early and put the rest of the model on the page

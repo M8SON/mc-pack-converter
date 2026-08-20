@@ -187,7 +187,7 @@ def test_the_page_actually_binds_the_notice():
     """A model field nothing reads is the failure this app has already shipped
     twice: a page that is live and wired to nothing."""
     js = _asset("app.js")
-    assert 'd.update' in js
+    assert 'M.update' in js
     assert '$("update")' in js
 
 
