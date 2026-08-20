@@ -1,10 +1,10 @@
 """The report: one self-contained HTML file, opened in whatever browser the
 user already has.
 
-This replaces the pywebview window. The window needed a system WebKit that pip
-cannot install, which made the program Windows-only in practice; the page it
-displayed was already self-contained, so writing it to a file costs nothing and
-works everywhere.
+This replaces the native window the program used to open. That window needed
+a system WebKit that pip cannot install, which made the program Windows-only
+in practice; the page it displayed was already self-contained, so writing it
+to a file costs nothing and works everywhere.
 """
 from __future__ import annotations
 import json

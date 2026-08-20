@@ -97,80 +97,42 @@ def test_a_missing_half_says_nothing(tmp_path, recorded, fetched):
 # --- wiring: the notice reaches the page without touching the UI thread ------
 
 
-def test_the_state_carries_no_notice_until_one_is_set():
-    """Absent, not empty-string: the page hides the line on a falsy value, and
-    a window that has never checked must look identical to one that found
-    nothing."""
-    from mc_pack_converter.gui import DEFAULT_TARGET, GuiState
-    st = GuiState(None, DEFAULT_TARGET, [])
-    assert st.to_dict().get("update") in (None, "")
-
-
-def test_a_notice_set_on_the_state_reaches_the_page_model():
-    from mc_pack_converter.gui import DEFAULT_TARGET, GuiState
-    st = GuiState(None, DEFAULT_TARGET, [])
-    st.update_notice = "An update is available — re-run Install-MCPackConverter.cmd"
-    assert st.to_dict()["update"] == st.update_notice
-
-
-def test_a_new_run_does_not_clear_the_notice():
-    """start() resets result, sheet, counters and error so a second pack does
-    not show the first one's output. The update notice is not per-pack."""
-    from mc_pack_converter.gui import DEFAULT_TARGET, GuiState
-    st = GuiState(None, DEFAULT_TARGET, [])
-    st.update_notice = "stale"
-    st.start(__import__("pathlib").Path("x.zip"))
-    assert st.to_dict()["update"] == "stale"
-
-
-def test_polling_never_reaches_the_network(monkeypatch):
-    """The whole safety argument in one assertion. poll() runs on the UI
-    thread; a network call there is the sixty-second stall all over again."""
-    import queue as _q
-    from mc_pack_converter.gui import DEFAULT_TARGET, GuiState
-    from mc_pack_converter.webui import update as up
-    from mc_pack_converter.webui.api import Api
-
-    def forbidden(*a, **k):
-        raise AssertionError("poll() performed a network call")
-
-    monkeypatch.setattr(up, "_http_get", forbidden, raising=True)
-    monkeypatch.setattr(up, "latest_sha", forbidden, raising=True)
-    monkeypatch.setattr(up, "check", forbidden, raising=True)
-    api = Api(GuiState(None, DEFAULT_TARGET, []), _q.Queue())
-    api.poll()
-
-
 def test_the_checker_stores_what_it_finds_and_swallows_what_it_cannot(tmp_path):
     """start_update_check runs on its own thread; here it is driven directly so
-    the assertion is about the outcome, not about scheduling."""
-    from mc_pack_converter.gui import DEFAULT_TARGET, GuiState
+    the assertion is about the outcome, not about scheduling.
+
+    run_update_check is duck-typed on `state` -- it only ever assigns
+    .update_notice -- so a bare holder stands in, matching what gui.main()
+    actually passes it.
+    """
+    from types import SimpleNamespace
     from mc_pack_converter.webui.update import record_sha, run_update_check
-    st = GuiState(None, DEFAULT_TARGET, [])
+    st = SimpleNamespace(update_notice=None)
     record_sha("a" * 40, root=tmp_path)
     run_update_check(st, root=tmp_path, fetch=lambda url, timeout: "b" * 40)
-    assert "Install-MCPackConverter.cmd" in st.to_dict()["update"]
+    assert "Install-MCPackConverter.cmd" in st.update_notice
 
-    st2 = GuiState(None, DEFAULT_TARGET, [])
+    st2 = SimpleNamespace(update_notice=None)
     def boom(url, timeout):
         raise OSError("no network")
     run_update_check(st2, root=tmp_path, fetch=boom)
-    assert not st2.to_dict().get("update")
+    assert not st2.update_notice
 
 
 def test_the_check_thread_is_a_daemon_and_never_raises(tmp_path):
     """A background thread that raises on a machine with no network would
-    print a traceback into a windowed app that has no console."""
-    from mc_pack_converter.gui import DEFAULT_TARGET, GuiState
+    print a traceback with nothing to show it: the check runs off to the side
+    of a conversion that has already started printing its own output."""
+    from types import SimpleNamespace
     from mc_pack_converter.webui.update import start_update_check
-    st = GuiState(None, DEFAULT_TARGET, [])
+    st = SimpleNamespace(update_notice=None)
     def boom(url, timeout):
         raise OSError("no network")
     t = start_update_check(st, root=tmp_path, fetch=boom)
     assert t.daemon
     t.join(timeout=5)
     assert not t.is_alive()
-    assert not st.to_dict().get("update")
+    assert not st.update_notice
 
 
 def _asset(name: str) -> str:

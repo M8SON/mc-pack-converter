@@ -17,7 +17,6 @@
   --btn-hi:     #8a8a8a;
   --warn:       #ffaa00;   /* Minecraft gold  */
   --err:        #ff5555;   /* Minecraft red   */
-  --ok:         #55ff55;   /* Minecraft green */
   --px: 2px;               /* one "pixel" of bevel */
 }
 
@@ -66,12 +65,6 @@ header {
 }
 h1 { margin: 0 0 6px; font-size: 20px; font-weight: normal; letter-spacing: .5px; }
 #details { color: var(--ink-dim); white-space: pre-line; font-size: 13px; }
-
-/* Vanilla's loading bar: a black-bordered trough with a flat green fill. */
-progress { width: 100%; height: 14px; margin-top: 12px; appearance: none;
-           border: var(--px) solid #000; background: #2b2b2b; }
-progress::-webkit-progress-bar { background: #2b2b2b; }
-progress::-webkit-progress-value { background: var(--ok); }
 
 /* A vanilla button: light on top and left, dark on bottom and right, and the
    bevel inverts while it is held down. */
@@ -142,12 +135,6 @@ h2 { font-size: 13px; font-weight: normal; letter-spacing: .12em;
   padding: 12px; background: var(--slot);
   box-shadow: inset var(--px) var(--px) 0 0 var(--panel-dark),
               inset calc(var(--px) * -1) calc(var(--px) * -1) 0 0 var(--panel-lit);
-}
-
-pre {
-  white-space: pre-wrap; background: rgba(0, 0, 0, .6); padding: 14px;
-  border: var(--px) solid #000; max-height: 46vh; overflow: auto;
-  font-size: 12px; text-shadow: none; color: #ff9d9d;
 }
 
 /* The update notice. Quiet on purpose: it is information, not an alert, and

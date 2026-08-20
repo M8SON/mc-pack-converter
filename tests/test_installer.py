@@ -30,9 +30,10 @@ def test_the_installer_does_not_serve_a_cached_archive():
     assert "--no-cache-dir" in _pip_line()
 
 
-def test_the_installer_still_asks_for_the_gui_extra():
-    """Without [gui] there is no pywebview, and no window."""
-    assert "[gui]" in _pip_line()
+def test_the_installer_no_longer_asks_for_a_gui_extra():
+    """pywebview is gone: the report is a file, not a window, so the plain
+    package is the whole install on both systems."""
+    assert "[gui]" not in _pip_line()
 
 
 def _lines() -> list[str]:
@@ -41,7 +42,7 @@ def _lines() -> list[str]:
 
 def test_the_installer_records_the_build_it_installed():
     """Without this nothing on disk says which build is installed, and the
-    window can never tell the user their copy is stale."""
+    report can never tell the user their copy is stale."""
     assert any("mc_pack_converter.webui.update" in l for l in _lines())
 
 

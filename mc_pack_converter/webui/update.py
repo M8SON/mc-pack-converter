@@ -7,9 +7,10 @@ master's commit SHA at install time, and this compares that against master now.
 Three rules hold this together, and each of them is a bug that already
 happened:
 
-  It never runs on the UI thread. pywebview builds its JS bridge by walking
-  this process's objects, and one blocking property there stalled startup for
-  sixty seconds. A network call reachable from poll() would be the same shape.
+  It never runs on the UI thread. The window this program used to open built
+  its JS bridge by walking this process's objects, and one blocking property
+  there stalled startup for sixty seconds. A network call reachable from that
+  bridge would be the same shape.
 
   Every failure is silence. Offline, DNS down, GitHub rate-limiting, a captive
   portal returning HTML with a 200 -- all produce no banner and no error. An

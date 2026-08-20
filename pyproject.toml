@@ -6,13 +6,9 @@ dependencies = ["Pillow>=10.0"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
-gui = ["pywebview>=5.0"]
 
 [project.scripts]
 mc-pack-converter = "mc_pack_converter.cli:main"
-
-[project.gui-scripts]
-mc-pack-converter-gui = "mc_pack_converter.gui:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

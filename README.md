@@ -16,30 +16,36 @@ as a Python package rather than a bundled `.exe`.
 3. Run `packaging/MCPackConverter.cmd` — double-click it, or **drag your
    pack's `.zip` onto it**.
 
-A window opens showing the conversion's findings and a scrollable sheet of the
-converted textures — GUI, blocks, items, particles, sky, animated textures, and
-armor rendered on a humanoid model. Pick the target version in the window. The
-converted pack lands in the same folder as the pack you dropped; the findings
-are shown in the window, not written to disk.
+The converted pack lands in the same folder as the pack you dropped, and a
+self-contained HTML report opens beside it in your browser — the conversion's
+findings, and a scrollable sheet of the converted textures: GUI, blocks,
+items, particles, sky, animated textures, and armor rendered on a humanoid
+model. The dropped pack always converts to the current default target
+version; to pick a different one, use `mc-pack-converter convert --target`
+from the command line instead (see [Quickstart](#quickstart) below).
 
 The launcher deliberately runs `python -m mc_pack_converter.gui` rather than the
 installed `mc-pack-converter-gui` command, because pip generates its entry
 points as unsigned `.exe` shims that Smart App Control blocks for the same
 reason a bundled exe would be.
 
+This program behaves the same on Windows and Linux: there is no native window
+and no platform-only dependency, just a Python process that writes an HTML
+report. The Windows steps above are the packaged install path; on Linux,
+[Install from source](#install-from-source) below is all there is. **The
+Windows leg of this has not been retested since the report replaced the
+window** — the claim rests on there being no more platform-specific code path
+between them, not on a fresh run.
+
 ## Install from source
 
-Requires Python 3.11+. This is the command-line converter; for the window, see
-[Run it on Windows](#run-it-on-windows) above.
+Requires Python 3.11+.
 
 ```
-pip install .          # command line only
-pip install ".[gui]"   # and the window
+pip install .
 ```
 
-The only runtime dependency is [Pillow](https://python-pillow.org/). The window
-additionally needs [pywebview](https://pywebview.flowrl.com/), which is why it
-is an optional extra rather than a hard dependency.
+The only runtime dependency is [Pillow](https://python-pillow.org/).
 
 ## Quickstart
 
