@@ -7,8 +7,13 @@ from mc_pack_converter.pipeline import ConversionContext, Severity
 def _result(tmp_path, findings=()):
     from mc_pack_converter.job import JobResult
     ctx = ConversionContext(root=tmp_path)
-    for stage, sev, msg in findings:
-        ctx.add(stage, sev, msg)
+    for finding in findings:
+        if len(finding) == 3:
+            stage, sev, msg = finding
+            ctx.add(stage, sev, msg)
+        else:
+            stage, sev, msg, path = finding
+            ctx.add(stage, sev, msg, path)
     out = tmp_path / "MyPack-26.1.2.zip"
     out.write_bytes(b"")
     return JobResult(ctx=ctx, out_path=out, reports={}, report_texts={},
@@ -58,5 +63,8 @@ def test_the_model_is_json_serialisable(tmp_path):
     reaching json.dumps is a crash at the last possible moment."""
     import json
     from mc_pack_converter.webui.report import build_model
-    r = _result(tmp_path, [("validate", Severity.ERROR, "boom")])
-    json.dumps(build_model(r, sheet={"sections": [], "total": 0}))
+    r = _result(tmp_path, [("validate", Severity.ERROR, "boom", "textures/block/stone.png")])
+    m = build_model(r, sheet={"sections": [], "total": 0})
+    serialised = json.dumps(m)
+    roundtripped = json.loads(serialised)
+    assert roundtripped["findings"][0]["path"] == "textures/block/stone.png"
