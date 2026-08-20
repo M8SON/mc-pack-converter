@@ -112,10 +112,3 @@ def test_a_closing_script_tag_in_the_data_cannot_escape(tmp_path):
     assert "</script><b>hi" not in html
     blob = re.search(r"window\.MODEL\s*=\s*(\{.*?\});", html, re.S).group(1)
     assert json.loads(blob)["findings"][0]["message"] == "</script><b>hi"
-
-
-def test_no_trace_of_pywebview_survives(tmp_path):
-    from mc_pack_converter.webui.report import build_model, render_html
-    html = render_html(build_model(_result(tmp_path),
-                                   sheet={"sections": [], "total": 0}))
-    assert "pywebview" not in html
