@@ -14,9 +14,7 @@ import zipfile
 from pathlib import Path
 
 from ..job import validate_source
-from .sheet import build_sheet
-
-EMPTY_SHEET = {"sections": [], "excluded": [], "total": 0}
+from .sheet import EMPTY_SHEET, build_sheet
 
 
 

@@ -90,6 +90,43 @@ def test_thumbnail_is_a_png_data_uri():
     assert thumb_data_uri(Image.new("RGBA", (8, 8))).startswith("data:image/png;base64,")
 
 
+def test_a_small_texture_needs_no_separate_full_image():
+    """thumb_data_uri never upscales, so for 893 of 1019 tiles on the
+    reference pack the thumbnail IS the original. Carrying a second copy
+    would be pure duplication."""
+    from mc_pack_converter.webui.sheet import full_data_uri
+    assert full_data_uri(Image.new("RGBA", (16, 16))) is None
+    assert full_data_uri(Image.new("RGBA", (64, 64))) is None
+
+
+def test_a_large_texture_is_inlined_at_the_cap():
+    """The three OptiFine sky textures are 6144px and 20.6MB of the 21.9MB
+    total. Inlining them whole would take the page from 5.58MB to ~35MB."""
+    from mc_pack_converter.webui.sheet import FULL, full_data_uri
+    uri = full_data_uri(Image.new("RGBA", (6144, 1024)))
+    assert uri.startswith("data:image/png;base64,")
+    raw = base64.b64decode(uri.split(",", 1)[1])
+    with Image.open(io.BytesIO(raw)) as im:
+        assert max(im.size) == FULL
+
+
+def test_a_texture_between_thumb_and_cap_is_inlined_untouched():
+    from mc_pack_converter.webui.sheet import full_data_uri
+    uri = full_data_uri(Image.new("RGBA", (256, 128)))
+    raw = base64.b64decode(uri.split(",", 1)[1])
+    with Image.open(io.BytesIO(raw)) as im:
+        assert im.size == (256, 128)
+
+
+def test_every_tile_carries_a_full_key(pack):
+    """Present on every tile, None on most: the page tests the value, and a
+    missing key would be an undefined rather than a falsy."""
+    sheet = build_sheet(pack)
+    tiles = [t for sec in sheet["sections"] for t in sec["tiles"]]
+    assert tiles
+    assert all("full" in t for t in tiles)
+
+
 def test_build_sheet_sections_are_in_scroll_order(pack):
     sheet = build_sheet(pack)
     assert [s["label"] for s in sheet["sections"]] == \
