@@ -320,3 +320,51 @@ def test_a_broken_log_never_breaks_a_launch(tmp_path, monkeypatch):
     monkeypatch.setenv("LOCALAPPDATA", str(blocker))
     monkeypatch.setattr(gui, "_diag_file", None)
     gui._diag("should not raise")          # no exception is the assertion
+
+
+# --- main(): converts, writes the report, opens it, prints its path -------
+#
+# LOCALAPPDATA is redirected to an empty tmp_path in every test that runs
+# main(): the update check reads installed-sha from the real cache dir
+# (~/.cache/MCPackConverter on this machine), and a machine that has one
+# installed would otherwise make main() reach out to GitHub in a test run.
+
+def test_the_report_path_is_printed_even_when_the_browser_fails(
+        tmp_path, capsys, monkeypatch, mini_pack):
+    """Unconditional, not a fallback. webbrowser.open returns True on some
+    platforms with nothing appearing -- under WSL, headless, or with an odd
+    default handler. The path on stdout is the guarantee."""
+    import webbrowser
+    from mc_pack_converter import gui
+
+    def boom(*a, **k):
+        raise OSError("no browser")
+
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "cache"))
+    monkeypatch.setattr(webbrowser, "open", boom)
+    pack = mini_pack()
+    rc = gui.main([str(pack)])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "-report.html" in out
+
+
+def test_the_report_lands_beside_the_output_zip(tmp_path, monkeypatch, mini_pack):
+    import webbrowser
+    from mc_pack_converter import gui
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "cache"))
+    monkeypatch.setattr(webbrowser, "open", lambda *a, **k: True)
+    pack = mini_pack()
+    gui.main([str(pack)])
+    reports = list(pack.parent.glob("*-report.html"))
+    assert len(reports) == 1
+    assert reports[0].read_text().startswith("<!doctype html>")
+
+
+def test_running_with_no_pack_explains_itself(capsys):
+    """Double-clicking the .cmd with nothing to convert must say what to do,
+    not open an empty page and not raise."""
+    from mc_pack_converter import gui
+    rc = gui.main([])
+    assert rc != 0
+    assert "drag" in capsys.readouterr().err.lower()
