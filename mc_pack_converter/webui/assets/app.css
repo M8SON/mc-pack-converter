@@ -1,6 +1,11 @@
 /* Minecraft's own GUI vocabulary: a dirt-panel ground, bevelled buttons, and
-   an inventory slot around every texture. Drawn entirely in CSS -- no font and
-   no image is downloaded, so the page still loads no external resource.
+   an inventory slot around every texture. Drawn entirely in CSS -- no font is
+   downloaded. The two images it does reference below (grass.png, wall.png --
+   8,837 bytes together) are inlined by report.py as data: URIs when this CSS
+   is rendered into the report, since the report is written beside the
+   converted pack, not beside these assets, and a bare filename reference
+   there would dangle. So the page still loads no external resource once it
+   is on disk.
 
    The only images used are wall.png and grass.png, which ship with the app
    and do not change: the terrain wall is the program's background, not a

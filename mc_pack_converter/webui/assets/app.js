@@ -107,6 +107,11 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
 function render() {
   $("headline").textContent = M.headline;
   $("out-name").textContent = M.out_path;
+  // The old window's summary line ("0 errors, 5 warnings, 466 notes"),
+  // reproduced from M.counts in the same words cli.py's summary_lines uses
+  // (cli.py:45) so both front ends read the same.
+  $("details").textContent =
+    `${M.counts.error} errors, ${M.counts.warning} warnings, ${M.counts.info} notes`;
   const up = $("update");
   up.textContent = M.update || "";
   up.hidden = !M.update;

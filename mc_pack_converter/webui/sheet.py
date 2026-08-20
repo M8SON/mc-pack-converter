@@ -225,10 +225,13 @@ def _animated_tile(name: str, im: Image.Image, anim: dict) -> dict | None:
 def build_sheet(zip_path: Path) -> dict:
     """The whole QA sheet model for one converted pack.
 
-    Eager: measured at 1.75s and 1.72MB of base64 for 1021 tiles on the
-    reference pack, against a conversion that takes far longer. Full-size
-    originals are 22.5MB and are NOT bundled -- api.texture() serves those on
-    demand.
+    Eager: measured on the reference pack (M8SON 1.8 PVP PACK, 26.2 target)
+    at 5.7s for 1019 tiles -- 6.36MB of base64 and JSON, comparable to the
+    pack's own 7.3s conversion rather than negligible next to it, but still
+    cheap enough to build up front. There is no bridge left to serve tiles
+    on demand from, so up-front is the only shape available: full-size
+    originals are inlined too, capped at FULL rather than left unbundled --
+    see FULL's own comment above.
     """
     buckets: dict[str, list] = {}
     excluded: dict[str, int] = {}

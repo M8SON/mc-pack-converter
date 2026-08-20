@@ -81,3 +81,65 @@ def test_running_with_no_pack_explains_itself(capsys):
     rc = gui.main([])
     assert rc != 0
     assert "drag" in capsys.readouterr().err.lower()
+
+
+def test_a_report_is_still_written_when_build_sheet_raises(
+        tmp_path, monkeypatch, mini_pack):
+    """The deleted _work wrapped build_sheet the same way: one broken
+    texture the per-tile try inside build_sheet does not catch must not take
+    the whole report down with it -- the findings are still worth showing."""
+    import webbrowser
+    from mc_pack_converter import gui
+    from mc_pack_converter.webui import sheet as sheet_mod
+
+    def boom(*a, **k):
+        raise RuntimeError("a texture build_sheet's own try did not catch")
+
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "cache"))
+    monkeypatch.setattr(webbrowser, "open", lambda *a, **k: True)
+    monkeypatch.setattr(sheet_mod, "build_sheet", boom)
+    pack = mini_pack()
+    rc = gui.main([str(pack)])
+    assert rc == 0
+    reports = list(pack.parent.glob("*-report.html"))
+    assert len(reports) == 1
+    assert reports[0].read_text().startswith("<!doctype html>")
+
+
+def test_extra_dropped_paths_are_announced_not_silently_dropped(
+        tmp_path, monkeypatch, capsys, mini_pack):
+    """Dropping several files onto the exe hands them all over at once; the
+    first is converted and the rest must be SAID to be ignored, not just
+    ignored -- the branch that used to say so left with the window."""
+    import webbrowser
+    from mc_pack_converter import gui
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "cache"))
+    monkeypatch.setattr(webbrowser, "open", lambda *a, **k: True)
+    pack = mini_pack()
+    extra = tmp_path / "other.zip"
+    extra.write_bytes(b"")
+    rc = gui.main([str(pack), str(extra)])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "ignoring" in out.lower()
+
+
+def test_the_report_path_is_printed_before_the_browser_opens(
+        tmp_path, monkeypatch, capsys, mini_pack):
+    """webbrowser.open BLOCKS for any handler Python registers as a
+    GenericBrowser (it waits on the child process) -- the one case where the
+    "path is always on stdout" guarantee actually has to hold, and printing
+    after the call would mean it does not."""
+    import webbrowser
+    from mc_pack_converter import gui
+    seen = {}
+
+    def fake_open(uri):
+        seen["out_so_far"] = capsys.readouterr().out
+        return True
+
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "cache"))
+    monkeypatch.setattr(webbrowser, "open", fake_open)
+    pack = mini_pack()
+    gui.main([str(pack)])
+    assert "-report.html" in seen["out_so_far"]

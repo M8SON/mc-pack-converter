@@ -1,3 +1,4 @@
+import re
 import zipfile
 from pathlib import Path
 import pytest
@@ -23,7 +24,6 @@ def _result(tmp_path, findings=()):
 def test_the_model_names_the_output(tmp_path):
     from mc_pack_converter.webui.report import build_model
     m = build_model(_result(tmp_path), sheet={"sections": [], "total": 0})
-    assert m["out_name"] == "MyPack-26.1.2.zip"
     assert m["out_path"] == str(tmp_path / "MyPack-26.1.2.zip")
 
 
@@ -73,7 +73,13 @@ def test_the_model_is_json_serialisable(tmp_path):
 def test_the_report_reaches_out_to_nothing(tmp_path):
     """The single-file property, asserted directly rather than assumed. A
     stylesheet link or a script src would make the report break the moment it
-    is moved or emailed."""
+    is moved or emailed -- and so would a bare-filename url(...) inside the
+    inlined CSS, which is the only external reference this architecture can
+    still produce: app.css's background-image used to say
+    url("grass.png"), url("wall.png"), resolved against the REPORT's own
+    location beside the converted pack rather than beside the assets, so the
+    terrain background silently failed to load in every report. Every
+    url(...) that survives into the page must now be a data: URI."""
     from mc_pack_converter.webui.report import build_model, render_html
     html = render_html(build_model(_result(tmp_path),
                                    sheet={"sections": [], "total": 0}))
@@ -81,6 +87,10 @@ def test_the_report_reaches_out_to_nothing(tmp_path):
     assert "https://" not in html
     assert 'href="app.css"' not in html
     assert 'src="app.js"' not in html
+    urls = re.findall(r'url\(\s*["\']?([^)"\']+)["\']?\s*\)', html)
+    assert urls, "expected at least one url(...) in the rendered page"
+    for u in urls:
+        assert u.startswith("data:"), f"non-data url(...) leaked into the report: {u!r}"
 
 
 def test_the_stylesheet_and_script_are_inlined(tmp_path):

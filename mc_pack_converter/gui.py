@@ -35,6 +35,9 @@ def main(argv: list[str] | None = None) -> int:
         print("Drag a 1.8.9 resource pack onto this file, or run:\n"
               "  mc-pack-converter convert <pack>", file=sys.stderr)
         return 2
+    if extras:
+        print(f"converting {source} only -- ignoring {len(extras)} other "
+              "dropped path(s)")
     problem = validate_source(source)
     if problem:
         print(problem, file=sys.stderr)
@@ -61,7 +64,13 @@ def main(argv: list[str] | None = None) -> int:
                      on_stage=lambda name, i, total: print(f"[{i}/{total}] {name}"))
 
     from .webui.sheet import EMPTY_SHEET, build_sheet
-    sheet = build_sheet(out) if result.wrote_zip else EMPTY_SHEET
+    try:
+        sheet = build_sheet(out) if result.wrote_zip else EMPTY_SHEET
+    except BaseException:
+        # One broken texture the per-tile try inside build_sheet does not
+        # catch must not take the whole report down with it -- the findings
+        # are still worth showing.
+        sheet = EMPTY_SHEET
 
     t.join(timeout=TIMEOUT_S)
     update = holder.update_notice
@@ -70,11 +79,15 @@ def main(argv: list[str] | None = None) -> int:
 
     report = write_report(result, sheet, update,
                           out.with_name(f"{out.stem}-report.html"))
+    # Before opening: webbrowser.open BLOCKS for any handler Python registers
+    # as a GenericBrowser (it waits on the child process), so a hanging
+    # handler is exactly the failure this print exists to survive -- printed
+    # after the call, the guarantee would not hold in the one case it matters.
+    print(f"report: {report}")
     try:
         webbrowser.open(report.as_uri())
     except Exception:
-        pass                      # the path below is the guarantee
-    print(f"report: {report}")
+        pass                      # the print above is the guarantee
     return 0
 
 
