@@ -24,10 +24,10 @@ model. The dropped pack always converts to the current default target
 version; to pick a different one, use `mc-pack-converter convert --target`
 from the command line instead (see [Quickstart](#quickstart) below).
 
-The launcher deliberately runs `python -m mc_pack_converter.gui` rather than the
-installed `mc-pack-converter-gui` command, because pip generates its entry
-points as unsigned `.exe` shims that Smart App Control blocks for the same
-reason a bundled exe would be.
+The launcher deliberately runs `python -m mc_pack_converter.gui` rather than
+an installed console-script command, because pip generates its entry points
+as unsigned `.exe` shims that Smart App Control blocks for the same reason a
+bundled exe would be.
 
 This program behaves the same on Windows and Linux: there is no native window
 and no platform-only dependency, just a Python process that writes an HTML
