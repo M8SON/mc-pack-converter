@@ -4,6 +4,7 @@ from . import repair_mcmeta as _repair_mcmeta
 from . import lowercase_paths as _lowercase_paths
 from . import restructure as _restructure
 from . import flatten_rename as _flatten_rename
+from . import glint as _glint
 from . import model_refs as _model_refs
 from . import atlas_remap as _atlas_remap
 from . import chest as _chest
@@ -25,6 +26,7 @@ STAGES = [
     ("lowercase_paths", _lowercase_paths.lowercase_paths),
     ("restructure", _restructure.restructure),
     ("flatten_rename", _flatten_rename.flatten_rename),
+    ("glint", _glint.glint),
     ("model_refs", _model_refs.model_refs), ("atlas_remap", _atlas_remap.atlas_remap),
     ("chest", _chest.chest_remap), ("gui_remap", _gui_remap.gui_remap),
     ("legacy", _legacy_textures.legacy_textures), ("drop", _drop.drop_textures),
