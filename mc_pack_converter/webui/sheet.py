@@ -9,6 +9,7 @@ import base64, io, json, zipfile
 from pathlib import Path
 from PIL import Image
 
+from .glint_preview import glint_frames
 from .armor import (crossed_spin_frames, cube_spin_frames, fire_spin_frames,
                     render_armor, spin_frames)
 
@@ -281,6 +282,10 @@ def build_sheet(zip_path: Path) -> dict:
                 continue
             buckets.setdefault(label, []).append(tile)
 
+        enchanted = _glint_tile(z)
+        if enchanted is not None:
+            buckets.setdefault("Items", []).append(enchanted)
+
     sections = []
     for label, _ in SECTIONS:
         tiles = buckets.get(label)
@@ -292,6 +297,42 @@ def build_sheet(zip_path: Path) -> dict:
         "excluded": [{"label": k, "count": v}
                      for k, v in sorted(excluded.items(), key=lambda kv: -kv[1])],
         "total": sum(len(s["tiles"]) for s in sections),
+    }
+
+
+# What the glint is shown on. A sword is the item people look at first, and
+# every 1.8.9 pack has one; the diamond one because it is the one pack authors
+# actually redraw.
+_GLINT_ON = A + "textures/item/diamond_sword.png"
+_GLINT_TEX = A + "textures/misc/enchanted_glint_item.png"
+
+
+def _glint_tile(z: zipfile.ZipFile) -> dict | None:
+    """The glint over the pack's own sword, moving, or None if either is absent.
+
+    Flat, a glint is diagonal streaks on a square: it says nothing about
+    whether an enchanted item will read in game, which is the only question
+    anyone has about it.
+    """
+    names = set(z.namelist())
+    if _GLINT_ON not in names or _GLINT_TEX not in names:
+        return None
+    try:
+        with Image.open(io.BytesIO(z.read(_GLINT_ON))) as item, \
+             Image.open(io.BytesIO(z.read(_GLINT_TEX))) as glint:
+            frames = glint_frames(item.convert("RGBA"), glint.convert("RGBA"))
+    except Exception:
+        # Same rule as the tile loop: a broken texture is a finding elsewhere,
+        # not a reason to withhold the whole sheet.
+        return None
+    return {
+        "name": "diamond_sword.png (enchanted)",
+        "path": _GLINT_ON + "#enchanted",
+        "size": "preview",
+        "thumb": thumb_data_uri(frames[0], box=128),
+        "frames": [thumb_data_uri(f, box=128) for f in frames],
+        "frametime": TURN_MS // len(frames),
+        "full": thumb_data_uri(frames[0], box=FULL),
     }
 
 
