@@ -5,11 +5,12 @@ that root in a finally block before any front end sees the result. The zip is
 also the honest subject — it is what the user loads into Minecraft.
 """
 from __future__ import annotations
-import base64, io, json, zipfile
+import base64, io, json, re, zipfile
 from pathlib import Path
 from PIL import Image
 
 from .glint_preview import glint_frames
+from .sky import render_sky
 from .armor import (crossed_spin_frames, cube_spin_frames, fire_spin_frames,
                     render_armor, spin_frames)
 
@@ -285,6 +286,8 @@ def build_sheet(zip_path: Path) -> dict:
         enchanted = _glint_tile(z)
         if enchanted is not None:
             buckets.setdefault("Items", []).append(enchanted)
+        for tile in _sky_tiles(z):
+            buckets.setdefault("Sky", []).append(tile)
 
     sections = []
     for label, _ in SECTIONS:
@@ -305,6 +308,93 @@ def build_sheet(zip_path: Path) -> dict:
 # actually redraw.
 _GLINT_ON = A + "textures/item/diamond_sword.png"
 _GLINT_TEX = A + "textures/misc/enchanted_glint_item.png"
+
+
+# How far round the ring the preview turns, and in how many steps. A sky is
+# judged by its horizon, and a horizon is 360 degrees of it.
+_SKY_YAWS = 12
+_SKY_VIEW = (320, 200)
+_SKY_DIR = re.compile(r"^" + A + r"optifine/sky/(world-?\d+)/sky(\d+)\.properties$")
+
+
+def _sky_layers(z: zipfile.ZipFile) -> list[tuple[str, int, str]]:
+    """(world, layer number, properties path), in load order."""
+    found = []
+    for name in z.namelist():
+        m = _SKY_DIR.match(name)
+        if m:
+            found.append((m.group(1), int(m.group(2)), name))
+    return sorted(found, key=lambda t: (t[0], t[1]))
+
+
+def _sky_props(raw: bytes) -> dict:
+    props = {}
+    for line in raw.decode("utf-8", "replace").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            props[k.strip()] = v.strip()
+    return props
+
+
+def _sky_tiles(z: zipfile.ZipFile) -> list[dict]:
+    """One ground-level preview per sky layer, labelled with what it does.
+
+    A sky layer flat is an unreadable 6144x4096 sheet of six cube faces. What
+    the author wants to know is what it looks like standing in the world, and
+    -- just as much -- WHETHER IT LOADS AT ALL. OptiFine reads sky1, sky2, ...
+    "until a .properties file is not found" (its own sky.properties doc), so a
+    gap in the numbering silently kills every higher layer. The converter
+    creates exactly such a gap whenever it removes a layer whose source image
+    is missing, so the tile says which layers are dead rather than rendering
+    six previews of which three never appear in game.
+    """
+    names = set(z.namelist())
+    tiles = []
+    seen: dict[str, int] = {}
+    # Layers share source textures -- M8SON's sky1 and sky2 are both cloud2,
+    # sky7 and sky8 both sky_sunflare -- and a source is a 6144x4096 PNG whose
+    # decode dominates the cost. Keyed by texture, so a shared source is
+    # decoded and rendered once: 6 layers, 4 renders.
+    rendered: dict[str, list] = {}
+    for world, number, path in _sky_layers(z):
+        # The first gap in a world's numbering ends its load order.
+        expected = seen.get(world, 0) + 1
+        dead = number != expected
+        if not dead:
+            seen[world] = number
+
+        props = _sky_props(z.read(path))
+        src = props.get("source", f"./sky{number}.png").lstrip("./")
+        tex = path.rsplit("/", 1)[0] + "/" + src.rsplit("/", 1)[-1]
+        if tex not in names:
+            continue
+        views = rendered.get(tex)
+        if views is None:
+            try:
+                with Image.open(io.BytesIO(z.read(tex))) as im:
+                    box = im.convert("RGB")
+                    views = [render_sky(box, yaw=i * 360 / _SKY_YAWS, size=_SKY_VIEW)
+                             for i in range(_SKY_YAWS)]
+            except Exception:
+                continue
+            rendered[tex] = views
+
+        window = ""
+        if "startFadeIn" in props and "endFadeOut" in props:
+            window = f", {props['startFadeIn']}-{props['endFadeOut']}"
+        label = (f"sky{number} ({props.get('blend', 'add')}{window})"
+                 + (" - never loads" if dead else ""))
+        tiles.append({
+            "name": label,
+            "path": path,
+            "size": "sky layer",
+            "thumb": thumb_data_uri(views[0], box=128),
+            "frames": [thumb_data_uri(v, box=max(_SKY_VIEW)) for v in views],
+            "frametime": TURN_MS * 2 // _SKY_YAWS,
+            "full": thumb_data_uri(views[0], box=FULL),
+        })
+    return tiles
 
 
 def _glint_tile(z: zipfile.ZipFile) -> dict | None:
