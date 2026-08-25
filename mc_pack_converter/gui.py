@@ -7,6 +7,7 @@ import webbrowser
 from pathlib import Path
 
 from .job import DEFAULT_TARGET, out_path_beside_source, run_job, validate_source
+from .pipeline import FatalConversionError
 
 
 def parse_drop(argv: list[str]) -> tuple[Path | None, list[Path]]:
@@ -60,8 +61,15 @@ def main(argv: list[str] | None = None) -> int:
     # beside the zip -- the same reason the windowed code passed this before
     # it. The HTML report does not carry the null-textures content either;
     # neither did the window, so nothing is lost that the window had.
-    result = run_job(source, out, DEFAULT_TARGET, write_reports=False,
-                     on_stage=lambda name, i, total: print(f"[{i}/{total}] {name}"))
+    try:
+        result = run_job(source, out, DEFAULT_TARGET, write_reports=False,
+                         on_stage=lambda name, i, total: print(f"[{i}/{total}] {name}"))
+    except FatalConversionError as exc:
+        # Same refusal as the CLI's, in the same words, at the same exit code
+        # validate_source uses -- and the audience that drags a file onto an
+        # icon is the one least able to read a traceback.
+        print(exc, file=sys.stderr)
+        return 2
 
     from .webui.sheet import EMPTY_SHEET, build_sheet
     try:

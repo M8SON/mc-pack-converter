@@ -1,7 +1,7 @@
 from __future__ import annotations
 import argparse, sys
 from pathlib import Path
-from .pipeline import Severity
+from .pipeline import FatalConversionError, Severity
 from .data import INPUT_FORMAT, load_table
 from .job import DEFAULT_TARGET, convert, run_job, validate_source
 
@@ -63,8 +63,15 @@ def main(argv=None) -> int:
     def on_stage(name, i, total):
         print(f"[{i}/{total}] {name}")
 
-    result = run_job(args.source, out, args.target, args.report_only,
-                     on_stage=on_stage)
+    try:
+        result = run_job(args.source, out, args.target, args.report_only,
+                         on_stage=on_stage)
+    except FatalConversionError as exc:
+        # pipeline.py re-raises this past the fail-soft handler on purpose, so
+        # it arrives here as the only way to say "this pack cannot be read".
+        # Uncaught, that reached the user as a stack trace.
+        print(exc, file=sys.stderr)
+        return 1
 
     if args.verbose:
         for text in result.report_texts.values():

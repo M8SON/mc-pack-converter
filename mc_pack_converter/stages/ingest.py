@@ -52,7 +52,21 @@ def prepare_working_copy(source: Path, workdir: Path) -> Path:
                 if (not member.filename.endswith("/")
                         and member.filename.rstrip("/") in shadowed):
                     continue
-                zf.extract(member, workdir)
+                try:
+                    zf.extract(member, workdir)
+                except NotImplementedError:
+                    # Deflate64 (method 9) is what Windows' own zip reaches for
+                    # on large archives; Python reads the directory but cannot
+                    # decompress it. Refusing the archive whole is deliberate:
+                    # such a zip is usually only PARTLY unreadable -- 10,834 of
+                    # 29,642 entries in the one that found this -- so carrying
+                    # on would convert a pack missing whatever it could not
+                    # extract, and say nothing louder than a warning about it.
+                    raise FatalConversionError(
+                        f"{source.name}: compression method "
+                        f"{member.compress_type} cannot be read "
+                        f"({member.filename}). Re-zip the pack and try again."
+                    ) from None
         return _find_pack_root(workdir)
     dest = workdir / source.name
     shutil.copytree(source, dest)
@@ -61,7 +75,10 @@ def prepare_working_copy(source: Path, workdir: Path) -> Path:
 def ingest(ctx: ConversionContext) -> None:
     meta = ctx.root / "pack.mcmeta"
     if not meta.exists():
-        raise FatalConversionError(f"no pack.mcmeta at {ctx.root}")
+        # Not ctx.root: that is the temp working copy, which convert() has
+        # already deleted by the time anyone reads this.
+        raise FatalConversionError(
+            "no pack.mcmeta inside this file -- it is not a resource pack")
     try:
         data = read_mcmeta(meta)
     except Exception as exc:
