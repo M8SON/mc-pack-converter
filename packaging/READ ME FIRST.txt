@@ -1,0 +1,56 @@
+MC Pack Converter
+=================
+
+Converts a Minecraft Java 1.8.9 resource pack so it works on modern
+Minecraft (26.1, 26.1.2 and 26.2).
+
+
+HOW TO USE IT
+-------------
+
+1. Drag your pack's .zip file onto MCPackConverter.cmd.
+
+That is the whole thing. The first time you run it, it spends about a
+minute installing itself and says so while it does.
+
+When it finishes you get two files next to the pack you dropped:
+
+  YourPack-26.2.zip           the converted pack -- put this in your
+                              .minecraft\resourcepacks folder
+  YourPack-26.2-report.html   opens in your browser by itself, and shows
+                              you every texture that was converted
+
+
+IF IT SAYS PYTHON IS NOT INSTALLED
+----------------------------------
+
+Get Python 3.12 from the Microsoft Store:
+
+  https://apps.microsoft.com/detail/9NCVDN91XZQP
+
+Use the Store version specifically. It is signed by Microsoft, so Windows
+allows it to run. Other versions can be blocked by Smart App Control.
+
+Then drag your pack onto MCPackConverter.cmd again.
+
+
+IF WINDOWS WARNS YOU ABOUT THE FILE
+-----------------------------------
+
+Windows shows a blue "Windows protected your PC" box for anything
+downloaded from the internet. Click "More info", then "Run anyway".
+
+
+WHAT IT CONVERTS, AND WHAT IT CANNOT
+------------------------------------
+
+It expects a 1.8.9-era pack. A pack made for a newer version may convert
+incorrectly rather than merely converting badly, so it is not supported.
+
+Some things cannot be recovered because the pack has no art for them --
+the report tells you which, per texture, rather than leaving you to find
+out in game.
+
+Full details, and the known issues:
+
+  https://github.com/M8SON/mc-pack-converter

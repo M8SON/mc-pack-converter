@@ -1,0 +1,6 @@
+# The launcher is a Windows batch file authored on Linux. cmd.exe is
+# unreliable with LF-only files -- labels and goto in particular, and it fails
+# silently by simply doing nothing. Keep it CRLF in the working tree on every
+# platform, and never let a checkout or a merge normalise it away.
+*.cmd text eol=crlf
+packaging/*.txt text eol=crlf
