@@ -29,13 +29,23 @@ an installed console-script command, because pip generates its entry points
 as unsigned `.exe` shims that Smart App Control blocks for the same reason a
 bundled exe would be.
 
-This program behaves the same on Windows and Linux: there is no native window
-and no platform-only dependency, just a Python process that writes an HTML
-report. The Windows steps above are the packaged install path; on Linux,
-[Install from source](#install-from-source) below is all there is. **The
-Windows leg of this has not been retested since the report replaced the
-window** — the claim rests on there being no more platform-specific code path
-between them, not on a fresh run.
+## Run it on Linux
+
+There is no packaged installer and no native window here — this is the same
+program the Windows steps install, driven from a terminal.
+
+1. [Install from source](#install-from-source) below: `pip install .`
+2. `mc-pack-converter convert MyPack.zip` — see [Quickstart](#quickstart).
+
+The converted pack and a self-contained HTML report land beside the pack you
+named. The report opens in your browser, and its path is printed either way.
+To update, `git pull && pip install .` — the command the update notice names.
+
+Verified on Linux (WSL2, Python 3.12): a real 1.8.9 pack through all 21 stages,
+producing the converted zip and a report with no external references. **The
+Windows leg has not been retested since the report replaced the window** — that
+claim rests on there being no platform-specific code path left between the two,
+not on a fresh run.
 
 ## Install from source
 
