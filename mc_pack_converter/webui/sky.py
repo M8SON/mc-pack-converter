@@ -37,8 +37,15 @@ FOV = 100.0
 
 
 def faces(im: Image.Image) -> dict:
-    """The six cube faces: the two poles and the horizon ring, in order."""
-    im = im.convert("RGB")
+    """The six cube faces: the two poles and the horizon ring, in order.
+
+    RGBA, not RGB. A sky texture may carry its transparency in a palette tRNS
+    chunk rather than an alpha band -- M8SON's sky_sunflare.png is mode P with
+    tRNS=0 and is 83.6% fully clear -- and converting such a file to RGB turns
+    every clear pixel into whatever colour the palette holds there. For that
+    sunflare it is white, so an `add` layer painted the entire sky white.
+    """
+    im = im.convert("RGBA")
     w, h = im.size
     cw, ch = w // 3, h // 2
 
@@ -79,7 +86,7 @@ def render_sky(im: Image.Image, yaw: float = 0.0, size=(320, 200),
     a = math.radians(yaw)
     dx, dz = dx * math.cos(a) + dz * math.sin(a), -dx * math.sin(a) + dz * math.cos(a)
 
-    out = np.zeros((h, w, 3))
+    out = np.zeros((h, w, 4))
     horiz = np.maximum(np.abs(dx), np.abs(dz))
     looking_up = dy > horiz
 
@@ -107,4 +114,4 @@ def render_sky(im: Image.Image, yaw: float = 0.0, size=(320, 200),
                 sel[side] = m
                 out[sel] = ring[q][iy[m], ix[m]]
 
-    return Image.fromarray(out.astype(np.uint8), "RGB")
+    return Image.fromarray(out.astype(np.uint8), "RGBA")

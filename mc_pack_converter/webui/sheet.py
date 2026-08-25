@@ -11,6 +11,7 @@ from PIL import Image
 
 from .glint_preview import glint_frames
 from .sky import render_sky
+from .sky_composite import TIMES, brightness, composite, parse_time
 from .armor import (crossed_spin_frames, cube_spin_frames, fire_spin_frames,
                     render_armor, spin_frames)
 
@@ -293,8 +294,15 @@ def build_sheet(zip_path: Path) -> dict:
     for label, _ in SECTIONS:
         tiles = buckets.get(label)
         if tiles:
+            # Path order within a section, except where a tile asks to lead:
+            # the sky composites are the summary of the layer tiles below them
+            # and read as a caption if they land underneath instead. They also
+            # carry their own order, because day order is not the order their
+            # clock strings sort in -- 0:00 would put midnight first.
             sections.append({"label": label,
-                             "tiles": sorted(tiles, key=lambda t: t["path"])})
+                             "tiles": sorted(tiles,
+                                             key=lambda t: (t.get("order", 99),
+                                                            t["path"]))})
     return {
         "sections": sections,
         "excluded": [{"label": k, "count": v}
@@ -361,6 +369,7 @@ def _sky_tiles(z: zipfile.ZipFile) -> list[dict]:
     # decode dominates the cost. Keyed by texture, so a shared source is
     # decoded and rendered once: 6 layers, 4 renders.
     rendered: dict[str, list] = {}
+    layers: list[tuple[str, int, dict, list]] = []
     for world, number, path in _sky_layers(z):
         props = _sky_props(z.read(path))
         src = props.get("source", f"./sky{number}.png").lstrip("./")
@@ -371,12 +380,18 @@ def _sky_tiles(z: zipfile.ZipFile) -> list[dict]:
         if views is None:
             try:
                 with Image.open(io.BytesIO(z.read(tex))) as im:
-                    box = im.convert("RGB")
+                    # RGBA explicitly. Converting to RGB here happens to keep
+                    # a palette tRNS alive -- Pillow carries info["transparency"]
+                    # across the conversion and faces() re-applies it -- but
+                    # relying on that leaves the sunflare one Pillow release
+                    # away from turning white again.
+                    box = im.convert("RGBA")
                     views = [render_sky(box, yaw=i * 360 / _SKY_YAWS, size=_SKY_VIEW)
                              for i in range(_SKY_YAWS)]
             except Exception:
                 continue
             rendered[tex] = views
+        layers.append((world, number, props, views))
 
         window = ""
         if "startFadeIn" in props and "endFadeOut" in props:
@@ -391,6 +406,47 @@ def _sky_tiles(z: zipfile.ZipFile) -> list[dict]:
             "frametime": TURN_MS * 2 // _SKY_YAWS,
             "full": thumb_data_uri(views[0], box=FULL),
         })
+    return _composite_tiles(layers) + tiles
+
+
+def _composite_tiles(layers: list[tuple[str, int, dict, list]]) -> list[dict]:
+    """The sky itself, at four times of day: every layer that is open, stacked.
+
+    Free, or near enough. The costly part -- decoding a 6144x4096 PNG and
+    ray-tracing the cube -- has already happened for the per-layer tiles above,
+    and this reuses the yaw-0 render each of them already holds. What is left
+    is four array blends per layer.
+
+    A time with nothing open gets no tile rather than a black square: a
+    daytime-only pack has nothing to show at midnight and should not imply it
+    does.
+    """
+    tiles = []
+    worlds = sorted({world for world, _, _, _ in layers})
+    for world in worlds:
+        here = sorted((n, p, v) for w, n, p, v in layers if w == world)
+        for order, (name, clock) in enumerate(TIMES):
+            ticks = parse_time(clock)
+            open_now = [(number, props, views) for number, props, views in here
+                        if brightness(props, ticks) > 0]
+            if not open_now:
+                continue
+            try:
+                view = composite([(views[0], props.get("blend", "add"),
+                                   brightness(props, ticks))
+                                  for _, props, views in open_now])
+            except Exception:
+                continue
+            which = ", ".join(f"sky{n}" for n, _, _ in open_now)
+            where = "" if world == "world0" or len(worlds) == 1 else f" [{world}]"
+            tiles.append({
+                "name": f"{name} {clock}{where} - {which}",
+                "path": f"{world} at {clock}",
+                "size": f"sky at {clock}",
+                "order": order,
+                "thumb": thumb_data_uri(view, box=128),
+                "full": thumb_data_uri(view, box=FULL),
+            })
     return tiles
 
 
