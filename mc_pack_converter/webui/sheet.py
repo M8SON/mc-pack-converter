@@ -341,29 +341,27 @@ def _sky_tiles(z: zipfile.ZipFile) -> list[dict]:
     """One ground-level preview per sky layer, labelled with what it does.
 
     A sky layer flat is an unreadable 6144x4096 sheet of six cube faces. What
-    the author wants to know is what it looks like standing in the world, and
-    -- just as much -- WHETHER IT LOADS AT ALL. OptiFine reads sky1, sky2, ...
-    "until a .properties file is not found" (its own sky.properties doc), so a
-    gap in the numbering silently kills every higher layer. The converter
-    creates exactly such a gap whenever it removes a layer whose source image
-    is missing, so the tile says which layers are dead rather than rendering
-    six previews of which three never appear in game.
+    the author wants to know is what it looks like standing in the world.
+
+    It used to also say "never loads" against any layer above a gap in the
+    numbering, on the strength of OptiFine's own documentation: reads sky<n>
+    "until a .properties file is not found". THE SHIPPED CODE DOES NOT DO
+    THAT. In CustomSky.readCustomSkies the `countMissing` counter is
+    initialised inside the loop body, so `if (countMissing > 10) break` can
+    never fire and the loop runs 0..999 whatever the gaps. Measured in game on
+    26.1.2_HD_U_K1_pre2 with a probe carrying sky1/sky3/sky15 as solid
+    red/green/magenta at blend=replace: the log read all three and the sky
+    rendered MAGENTA -- sky15, across an eleven-layer gap. The label was a
+    false warning on every pack it fired for, so it is gone.
     """
     names = set(z.namelist())
     tiles = []
-    seen: dict[str, int] = {}
     # Layers share source textures -- M8SON's sky1 and sky2 are both cloud2,
     # sky7 and sky8 both sky_sunflare -- and a source is a 6144x4096 PNG whose
     # decode dominates the cost. Keyed by texture, so a shared source is
     # decoded and rendered once: 6 layers, 4 renders.
     rendered: dict[str, list] = {}
     for world, number, path in _sky_layers(z):
-        # The first gap in a world's numbering ends its load order.
-        expected = seen.get(world, 0) + 1
-        dead = number != expected
-        if not dead:
-            seen[world] = number
-
         props = _sky_props(z.read(path))
         src = props.get("source", f"./sky{number}.png").lstrip("./")
         tex = path.rsplit("/", 1)[0] + "/" + src.rsplit("/", 1)[-1]
@@ -383,8 +381,7 @@ def _sky_tiles(z: zipfile.ZipFile) -> list[dict]:
         window = ""
         if "startFadeIn" in props and "endFadeOut" in props:
             window = f", {props['startFadeIn']}-{props['endFadeOut']}"
-        label = (f"sky{number} ({props.get('blend', 'add')}{window})"
-                 + (" - never loads" if dead else ""))
+        label = f"sky{number} ({props.get('blend', 'add')}{window})"
         tiles.append({
             "name": label,
             "path": path,

@@ -49,10 +49,20 @@ def test_each_sky_layer_is_previewed_from_the_ground(tmp_path):
     assert len(tile["frames"]) > 1, "the preview does not turn"
 
 
-def test_a_layer_after_a_numbering_gap_is_marked_dead(tmp_path):
-    """OptiFine loads sky<n> "until a .properties file is not found" -- its own
-    documentation. A gap silently kills every higher layer, and the converter
-    creates gaps when it removes a layer whose source image is missing.
+def test_a_layer_after_a_numbering_gap_still_loads(tmp_path):
+    """MEASURED, against the claim in OptiFine's own documentation.
+
+    The doc says OptiFine reads sky<n> "until a .properties file is not
+    found". The shipped code does not: in CustomSky.readCustomSkies the
+    `countMissing` counter is initialised INSIDE the loop body, so the
+    `if (countMissing > 10) break` can never fire, and the loop runs 0..999
+    regardless of gaps.
+
+    Confirmed in game on 26.1.2_HD_U_K1_pre2 with a probe pack carrying
+    sky1/sky3/sky15 as solid red/green/magenta at blend=replace: the log
+    reported reading all three, and the sky rendered MAGENTA -- sky15, across
+    an eleven-layer gap. So a gap strands nothing and the sheet must not claim
+    it does.
     """
     zip_path = _pack(tmp_path, {
         SKY + "sky1.properties": b"blend=add\nsource=./cloud1.png\n",
@@ -63,6 +73,7 @@ def test_a_layer_after_a_numbering_gap_is_marked_dead(tmp_path):
     tiles = _sky_tiles(build_sheet(zip_path))
     by_name = {t["name"]: t for t in tiles if t.get("size") == "sky layer"}
 
-    assert any("sky1" in n and "never loads" not in n for n in by_name)
-    assert any("sky3" in n and "never loads" in n for n in by_name), \
-        "a layer OptiFine will never load must say so"
+    assert any("sky1" in n for n in by_name)
+    assert any("sky3" in n for n in by_name)
+    assert not any("never loads" in n for n in by_name), \
+        "a layer above a gap loads fine; saying otherwise is a false warning"
