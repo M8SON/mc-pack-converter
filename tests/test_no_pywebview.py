@@ -14,7 +14,12 @@ def test_nothing_in_the_package_mentions_pywebview():
     assert hits == []
 
 
-def test_pyproject_declares_only_pillow():
+def test_pyproject_does_not_declare_pywebview():
+    """The point is that the window's dependency is gone, not that Pillow is
+    the only one there will ever be. Pinning the literal dependency line meant
+    declaring numpy -- which sky.py had imported all along -- broke this test
+    rather than the missing-dependency guard that should have caught it.
+    tests/test_dependencies.py is what checks the list is complete."""
     text = (ROOT / "pyproject.toml").read_text()
-    assert 'dependencies = ["Pillow>=10.0"]' in text
     assert "pywebview" not in text
+    assert "[gui]" not in text

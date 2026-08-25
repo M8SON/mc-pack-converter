@@ -46,6 +46,11 @@ jobs:
             exit 1
           }
           Write-Host "pywebview absent, as expected"
+          # pwsh ends a step with whatever $LASTEXITCODE happens to hold, and
+          # the python call above is MEANT to fail. Without this the step
+          # reports success in its own output and then exits 1 -- which is
+          # exactly what it did, unnoticed, from 2026-08-20 until today.
+          exit 0
       - name: The no-pack entry point must exit non-zero and explain itself
         shell: pwsh
         run: |
@@ -57,6 +62,7 @@ jobs:
             throw "expected the usage line; got: $output"
           }
           Write-Host "no-arg run exited $LASTEXITCODE and printed the usage line"
+          exit 0                       # same trap: gui.main exits 2 on purpose
       # The launcher is now the ONLY file a user downloads, so a break here is
       # the whole product failing to start. Run it exactly as a double-click
       # does -- no pack dropped -- and require the usage line.
