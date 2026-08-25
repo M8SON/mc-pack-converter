@@ -29,9 +29,24 @@ SHA_URL = "https://api.github.com/repos/M8SON/mc-pack-converter/commits/master"
 SHA_ACCEPT = "application/vnd.github.sha"
 TIMEOUT_S = 2.0
 INSTALL_CMD = "Install-MCPackConverter.cmd"
+SOURCE_CMD = "git pull && pip install ."
 FILENAME = "installed-sha"
 
 _SHA = re.compile(r"\A[0-9a-f]{40}\Z")
+
+
+def install_command(platform: str | None = None) -> str:
+    """The command that updates THIS copy.
+
+    Windows installs through the packaged .cmd. There is no packaged path
+    anywhere else, so on Linux the only honest thing to name is the
+    install-from-source the README documents -- naming the .cmd there sent the
+    reader after a batch file they never ran and do not have.
+    """
+    import sys
+    if platform is None:
+        platform = sys.platform
+    return INSTALL_CMD if platform.startswith("win") else SOURCE_CMD
 
 
 def _clean(raw) -> str | None:
@@ -101,7 +116,7 @@ def check(root=None, fetch=_http_get) -> str | None:
     there = latest_sha(fetch=fetch)
     if there is None or there == have:
         return None                      # unreachable, or already current
-    return f"An update is available — re-run {INSTALL_CMD}"
+    return f"An update is available — run {install_command()}"
 
 
 def record_latest(root=None, fetch=_http_get) -> int:
