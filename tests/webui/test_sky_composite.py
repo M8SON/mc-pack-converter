@@ -145,3 +145,105 @@ def test_a_half_transparent_layer_adds_half_of_itself():
     half = Image.new("RGBA", (2, 2), (200, 200, 200, 128))
     out = composite([(base, "replace", 1.0), (half, "add", 1.0)])
     assert _pixel(out)[0] == pytest.approx(100, abs=2)
+
+
+# --- picking the times, from the pack rather than from the clock -------------
+
+ALL_DAY = {"startFadeIn": "5:30", "endFadeIn": "6:00",
+           "startFadeOut": "17:30", "endFadeOut": "18:20", "blend": "replace"}
+DUSK_ONLY = {"startFadeIn": "17:30", "endFadeIn": "18:00",
+             "startFadeOut": "19:00", "endFadeOut": "19:10", "blend": "replace"}
+NIGHT = {"startFadeIn": "18:00", "endFadeIn": "19:00",
+         "endFadeOut": "5:25", "blend": "screen"}
+
+
+def test_a_single_all_day_layer_needs_only_one_sample():
+    from mc_pack_converter.webui.sky_composite import sample_times
+    assert len(sample_times([(1, ALL_DAY)])) == 1
+
+
+def test_every_layer_is_shown_at_least_once():
+    """The reference pack's failure: sky1 and sky2 carry the red sunrise and
+    sunset art (cloud2, mean RGB 85/10/0 against cloud1's 125/141/180) but are
+    only visible 18:20-19:10 and 4:45-5:25. Fixed samples at 6:00/12:00/18:00
+    all landed inside sky3's 5:30-18:20 replace, so all three tiles were the
+    same blue picture and the red sky was never shown at all.
+    """
+    from mc_pack_converter.webui.sky_composite import sample_times
+    layers = [(1, ALL_DAY), (2, DUSK_ONLY), (3, NIGHT)]
+    shown = {n for _, numbers in sample_times(layers) for n in numbers}
+    assert shown == {1, 2, 3}
+
+
+def test_a_layer_wiped_by_a_later_replace_is_not_claimed_as_visible():
+    """sky1 is drawn before sky3 and sky3 is a replace, so at 18:00 sky1 is
+    painted and immediately overwritten. Listing it would be a lie about what
+    the tile shows."""
+    from mc_pack_converter.webui.sky_composite import visible_at, parse_time
+    layers = [(1, NIGHT), (2, ALL_DAY)]
+    seen = [n for n, _, _ in visible_at(layers, parse_time("12:00"))]
+    assert seen == [2]
+
+
+def test_the_number_of_samples_is_capped():
+    from mc_pack_converter.webui.sky_composite import sample_times
+    many = [(i, {"startFadeIn": "%d:00" % i, "endFadeIn": "%d:10" % i,
+                 "endFadeOut": "%d:50" % i, "blend": "replace"})
+            for i in range(1, 13)]
+    assert len(sample_times(many, cap=4)) <= 4
+
+
+def test_samples_come_back_in_day_order():
+    from mc_pack_converter.webui.sky_composite import sample_times
+    ticks = [t for t, _ in sample_times([(1, ALL_DAY), (2, DUSK_ONLY), (3, NIGHT)])]
+    assert ticks == sorted(ticks)
+
+
+def test_the_sky_you_see_most_of_the_day_gets_its_own_tile():
+    """Covering every layer in the fewest tiles is not the goal on its own.
+    The reference pack's sky3 is up alone for twelve hours and sky6 for nine,
+    and a pure coverage pick showed neither -- it spent all its tiles on the
+    forty-minute transitions where several layers overlap, so the two skies
+    you actually spend the day looking at were the ones missing.
+    """
+    from mc_pack_converter.webui.sky_composite import sample_times
+    day = {"startFadeIn": "5:30", "endFadeIn": "6:00", "startFadeOut": "17:30",
+           "endFadeOut": "18:20", "blend": "replace"}
+    flare = {"startFadeIn": "17:50", "endFadeIn": "18:00",
+             "endFadeOut": "19:20", "blend": "add"}
+    night = {"startFadeIn": "18:00", "endFadeIn": "19:00",
+             "endFadeOut": "5:25", "blend": "screen"}
+    picked = sample_times([(3, day), (6, night), (7, flare)])
+    sets = [tuple(n) for _, n in picked]
+    assert (3,) in sets, "the twelve-hour daytime sky must be shown alone"
+    assert (6,) in sets, "so must the nine-hour night sky"
+
+
+def test_a_sample_time_shows_what_it_claims_to_show():
+    """The invariant that catches an off-by-a-day. A stretch of sky that runs
+    across tick 0 -- the reference pack's daytime sky is up 5:50 to 17:50, so
+    it wraps -- gets merged into one run, and merging it to the wrong end made
+    it 24150 ticks long, 100.6% of a day. Its midpoint then fell outside its
+    own window, so the tile was rendered and labelled at a moment when a
+    different set of layers was up.
+    """
+    from mc_pack_converter.webui.sky_composite import sample_times, visible_at
+    # The reference pack's own six layers, verbatim from its .properties.
+    layers = [
+        (1, {"startFadeIn": "17:30", "endFadeIn": "18:45",
+             "startFadeOut": "18:50", "endFadeOut": "19:10", "blend": "add"}),
+        (2, {"startFadeIn": "4:45", "endFadeIn": "5:10",
+             "startFadeOut": "5:40", "endFadeOut": "6:05", "blend": "add"}),
+        (3, {"startFadeIn": "5:30", "endFadeIn": "6:00",
+             "startFadeOut": "17:30", "endFadeOut": "18:20", "blend": "replace"}),
+        (6, {"startFadeIn": "18:00", "endFadeIn": "19:00",
+             "endFadeOut": "5:25", "blend": "screen"}),
+        (7, {"startFadeIn": "17:50", "endFadeIn": "18:10",
+             "endFadeOut": "19:20", "blend": "add"}),
+        (8, {"startFadeIn": "4:40", "endFadeIn": "5:00",
+             "endFadeOut": "5:50", "blend": "add"}),
+    ]
+    for ticks, numbers in sample_times(layers):
+        actual = [n for n, _, _ in visible_at(layers, ticks)]
+        assert actual == numbers, (
+            f"at {ticks} the tile claims {numbers} but {actual} is up")

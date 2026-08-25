@@ -11,7 +11,8 @@ from PIL import Image
 
 from .glint_preview import glint_frames
 from .sky import render_sky
-from .sky_composite import TIMES, brightness, composite, parse_time
+from .sky_composite import (clock, composite, phase, sample_times,
+                            visible_at)
 from .armor import (crossed_spin_frames, cube_spin_frames, fire_spin_frames,
                     render_armor, spin_frames)
 
@@ -410,39 +411,42 @@ def _sky_tiles(z: zipfile.ZipFile) -> list[dict]:
 
 
 def _composite_tiles(layers: list[tuple[str, int, dict, list]]) -> list[dict]:
-    """The sky itself, at four times of day: every layer that is open, stacked.
+    """The sky itself: every layer that reaches the eye at that moment, stacked.
+
+    THE TIMES COME FROM THE PACK. Fixed ones do not work, and the reference
+    pack is why: sampling at 6:00, 12:00 and 18:00 put all three inside sky3's
+    5:30-18:20 replace, so all three tiles were the same blue picture, and the
+    pack's red sunrise and sunset -- cloud2, mean RGB 85/10/0 against cloud1's
+    125/141/180 -- never appeared at all, being up for only 40 and 50 minutes.
+    sample_times walks the day instead and takes the fewest moments that show
+    every layer at least once.
 
     Free, or near enough. The costly part -- decoding a 6144x4096 PNG and
     ray-tracing the cube -- has already happened for the per-layer tiles above,
-    and this reuses the yaw-0 render each of them already holds. What is left
-    is four array blends per layer.
-
-    A time with nothing open gets no tile rather than a black square: a
-    daytime-only pack has nothing to show at midnight and should not imply it
-    does.
+    and this reuses the yaw-0 render each of them already holds.
     """
     tiles = []
     worlds = sorted({world for world, _, _, _ in layers})
     for world in worlds:
         here = sorted((n, p, v) for w, n, p, v in layers if w == world)
-        for order, (name, clock) in enumerate(TIMES):
-            ticks = parse_time(clock)
-            open_now = [(number, props, views) for number, props, views in here
-                        if brightness(props, ticks) > 0]
-            if not open_now:
+        views_by = {n: v for n, _, v in here}
+        spec = [(n, p) for n, p, _ in here]
+        for order, (ticks, _) in enumerate(sample_times(spec)):
+            stack = visible_at(spec, ticks)
+            if not stack:
                 continue
             try:
-                view = composite([(views[0], props.get("blend", "add"),
-                                   brightness(props, ticks))
-                                  for _, props, views in open_now])
+                view = composite([(views_by[n][0], props.get("blend", "add"), level)
+                                  for n, props, level in stack])
             except Exception:
                 continue
-            which = ", ".join(f"sky{n}" for n, _, _ in open_now)
+            at = clock(ticks)
+            which = ", ".join(f"sky{n}" for n, _, _ in stack)
             where = "" if world == "world0" or len(worlds) == 1 else f" [{world}]"
             tiles.append({
-                "name": f"{name} {clock}{where} - {which}",
-                "path": f"{world} at {clock}",
-                "size": f"sky at {clock}",
+                "name": f"{phase(ticks)} {at}{where} - {which}",
+                "path": f"{world} at {at}",
+                "size": f"sky at {at}",
                 "order": order,
                 "thumb": thumb_data_uri(view, box=128),
                 "full": thumb_data_uri(view, box=FULL),

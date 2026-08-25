@@ -32,11 +32,21 @@ DAY = 24000
 _DAWN_MINUTES = 6 * 60
 _TICKS_PER_MINUTE = DAY / (24 * 60)
 
-# The times the report shows. Not arbitrary: dawn and dusk are when fade
-# windows are actually opening and closing, which is where a mistake in the
-# pack's timings shows up, and midnight is the only one that shows a starfield.
-TIMES = (("Dawn", "6:00"), ("Noon", "12:00"),
-         ("Dusk", "18:00"), ("Midnight", "0:00"))
+# How many composites a pack gets at most. Six is enough to cover every layer
+# of every pack in the corpus and still read as a row rather than a gallery.
+MAX_SAMPLES = 6
+
+# How finely the day is walked when looking for moments worth showing. 10
+# ticks is 36 game-seconds -- finer than any fade window in the corpus, the
+# shortest of which is 5 minutes (300 ticks).
+SAMPLE_STEP = 10
+
+# A stretch of sky holding this much of the day is one the player actually
+# looks at, and gets shown whether or not its layers appear elsewhere. The
+# reference pack's daytime sky runs 12 hours and its night 9; a pick made on
+# coverage alone spent every tile on the 40-minute transitions and showed
+# neither.
+LONG_ENOUGH = DAY // 20          # 5% of the day, 1200 ticks, 72 game-minutes
 
 
 def parse_time(text: str) -> int:
@@ -162,3 +172,101 @@ def composite(layers: list[tuple[Image.Image, str, float]]) -> Image.Image:
             arr = arr * level
         out = np.clip(_blend(out, arr, mode), 0.0, 1.0)
     return Image.fromarray((out * 255.0 + 0.5).astype(np.uint8), "RGB")
+
+
+def phase(ticks: int) -> str:
+    """A word for roughly when this is, so a time reads at a glance."""
+    hour = ((ticks / DAY * 24) + 6) % 24
+    if 4 <= hour < 8:
+        return "Dawn"
+    if 8 <= hour < 16:
+        return "Day"
+    if 16 <= hour < 20:
+        return "Dusk"
+    return "Night"
+
+
+def clock(ticks: int) -> str:
+    """A tick as the "hh:mm" the pack would have written."""
+    minutes = round(ticks / DAY * 24 * 60 + _DAWN_MINUTES) % (24 * 60)
+    return "%d:%02d" % divmod(minutes, 60)
+
+
+def visible_at(layers: list[tuple[int, dict]], ticks: int) -> list:
+    """(number, props, brightness) for the layers that actually reach the eye.
+
+    Not merely the ones whose window is open. A `replace` layer takes the
+    whole pixel -- "There is no gradual fading with this method" -- so every
+    layer drawn before it is painted and then overwritten. The reference pack
+    does exactly this: sky1 carries the red sunset art and is drawn under
+    sky3, whose window runs to 18:20, so sky1 is invisible until then.
+
+    `layers` must be in numeric order, which is the order the game draws them.
+    """
+    out: list = []
+    for number, props in layers:
+        level = brightness(props, ticks)
+        if level <= 0:
+            continue
+        if props.get("blend", "add") == "replace":
+            out = []
+        out.append((number, props, level))
+    return out
+
+
+def sample_times(layers: list[tuple[int, dict]], cap: int = MAX_SAMPLES,
+                 step: int = SAMPLE_STEP) -> list[tuple[int, list[int]]]:
+    """Moments worth a composite, taken from the pack rather than the clock.
+
+    Fixed times do not work. Sampling the reference pack at 6:00, 12:00 and
+    18:00 put all three inside sky3's 5:30-18:20 replace, so all three tiles
+    were the same blue picture -- and its red sunrise and sunset, which are
+    only up for 40 and 50 minutes, never appeared at all.
+
+    So: walk the day, collect the distinct sets of visible layers, and take
+    the fewest moments that show every layer at least once. Ties go to the
+    longer-lived set, which is the more representative view of the sky.
+    """
+    layers = sorted(layers)
+    runs: list[tuple[int, int, tuple[int, ...]]] = []      # start, end, visible
+    for ticks in range(0, DAY, step):
+        seen = tuple(n for n, _, _ in visible_at(layers, ticks))
+        if runs and runs[-1][2] == seen:
+            runs[-1] = (runs[-1][0], ticks, seen)
+        else:
+            runs.append((ticks, ticks, seen))
+    # The day wraps: a night sky spanning midnight opens and closes the walk
+    # as two runs of the same set, and is one stretch.
+    if len(runs) > 1 and runs[0][2] == runs[-1][2]:
+        first = runs.pop(0)
+        # first[1], not runs[-1][1]: the joined stretch ends where the FIRST
+        # run ended, a day later. Ending it where the last run ended made the
+        # reference pack's daytime sky 24150 ticks long -- 100.6% of a day --
+        # and put its midpoint outside its own window, so the tile was drawn
+        # at a moment when different layers were up than the ones it named.
+        runs[-1] = (runs[-1][0], first[1] + DAY, first[2])
+
+    runs = [r for r in runs if r[2]]
+    picked: list[tuple[int, list[int]]] = []
+    covered: set[int] = set()
+
+    # First the skies that hold most of the day, longest first. These are what
+    # the pack looks like; the rest is what it does on the way between them.
+    for start, end, seen in sorted(runs, key=lambda r: r[0] - r[1]):
+        if len(picked) >= cap or end - start < LONG_ENOUGH:
+            break
+        runs.remove((start, end, seen))
+        covered |= set(seen)
+        picked.append(((start + (end - start) // 2) % DAY, list(seen)))
+
+    # Then the fewest extra moments that show whatever is still unseen.
+    while runs and len(picked) < cap:
+        best = max(runs, key=lambda r: (len(set(r[2]) - covered),
+                                        r[1] - r[0], -r[0]))
+        if not set(best[2]) - covered:
+            break
+        start, end, seen = best
+        runs.remove(best)
+        covered |= set(seen)
+        picked.append(((start + (end - start) // 2) % DAY, list(seen)))
+    return sorted(picked)

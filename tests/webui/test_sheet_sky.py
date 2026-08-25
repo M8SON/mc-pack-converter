@@ -1,4 +1,5 @@
 import io
+import re
 import zipfile
 
 from PIL import Image
@@ -91,17 +92,23 @@ def _composites(sheet):
     return [t for t in _sky_tiles(sheet) if t.get("size", "").startswith("sky at")]
 
 
-def test_the_sky_is_shown_composited_at_a_time_of_day(tmp_path):
-    """A layer is never seen alone in game -- the sky is every layer whose
-    fade window is open, stacked. The per-layer tiles answer "what is this
-    layer"; only the composite answers "what does my sky look like"."""
+def _shown(sheet):
+    """Every layer named by any composite."""
+    out = set()
+    for t in _composites(sheet):
+        out |= set(re.findall(r"sky\d+", t["name"].split(" - ", 1)[-1]))
+    return out
+
+
+def test_the_sky_is_shown_composited(tmp_path):
+    """A layer is never seen alone in game -- the sky is every layer whose fade
+    window is open, stacked. The per-layer tiles answer "what is this layer";
+    only the composite answers "what does my sky look like"."""
     zip_path = _pack(tmp_path, {
         SKY + "sky1.properties": DAY_LAYER,
         SKY + "cloud1.png": _skybox(),
     })
-    tiles = _composites(build_sheet(zip_path))
-    assert any("Noon" in t["name"] for t in tiles), \
-        "a daytime layer must appear in the noon composite"
+    assert _composites(build_sheet(zip_path))
 
 
 def test_a_composite_names_the_layers_it_contains(tmp_path):
@@ -109,33 +116,47 @@ def test_a_composite_names_the_layers_it_contains(tmp_path):
         SKY + "sky1.properties": DAY_LAYER,
         SKY + "cloud1.png": _skybox(),
     })
-    noon = [t for t in _composites(build_sheet(zip_path)) if "Noon" in t["name"]]
-    assert noon and "sky1" in noon[0]["name"]
+    assert _shown(build_sheet(zip_path)) == {"sky1"}
 
 
-def test_a_time_with_no_layer_open_gets_no_tile(tmp_path):
-    """Rather than a black square that says nothing. A daytime-only pack has
-    nothing to show at midnight, and should not pretend otherwise."""
-    zip_path = _pack(tmp_path, {
-        SKY + "sky1.properties": DAY_LAYER,
-        SKY + "cloud1.png": _skybox(),
-    })
-    assert not any("Midnight" in t["name"] for t in _composites(build_sheet(zip_path)))
-
-
-def test_a_night_layer_reaches_the_midnight_composite(tmp_path):
-    """Its window is written 18:00-5:25, which wraps past midnight -- the case
-    that reads as a nineteen-hour gap if the wrap is handled wrongly."""
+def test_every_layer_reaches_some_composite(tmp_path):
+    """The bug Mason caught: with fixed samples at 6:00/12:00/18:00, all three
+    fell inside sky1's 5:30-18:20 replace, so every tile was the same picture
+    and the night layer was never shown. The times are taken from the pack now,
+    so each layer gets a moment where it is actually visible."""
     zip_path = _pack(tmp_path, {
         SKY + "sky1.properties": DAY_LAYER,
         SKY + "sky2.properties": NIGHT_LAYER,
         SKY + "cloud1.png": _skybox(),
         SKY + "stars.png": _skybox(),
     })
+    assert _shown(build_sheet(zip_path)) == {"sky1", "sky2"}
+
+
+def test_no_two_composites_show_the_same_set_of_layers(tmp_path):
+    """Three identical blue tiles was the whole complaint."""
+    zip_path = _pack(tmp_path, {
+        SKY + "sky1.properties": DAY_LAYER,
+        SKY + "sky2.properties": NIGHT_LAYER,
+        SKY + "cloud1.png": _skybox(),
+        SKY + "stars.png": _skybox(),
+    })
+    sets = [t["name"].split(" - ", 1)[-1] for t in _composites(build_sheet(zip_path))]
+    assert len(sets) == len(set(sets))
+
+
+def test_the_composites_run_in_day_order(tmp_path):
+    zip_path = _pack(tmp_path, {
+        SKY + "sky1.properties": DAY_LAYER,
+        SKY + "sky2.properties": NIGHT_LAYER,
+        SKY + "cloud1.png": _skybox(),
+        SKY + "stars.png": _skybox(),
+    })
+    from mc_pack_converter.webui.sky_composite import parse_time
     tiles = _composites(build_sheet(zip_path))
-    midnight = [t for t in tiles if "Midnight" in t["name"]]
-    assert midnight and "sky2" in midnight[0]["name"]
-    assert "sky1" not in midnight[0]["name"], "the day layer is shut at midnight"
+    ticks = [parse_time(t["path"].split(" at ", 1)[1]) for t in tiles]
+    assert ticks == sorted(ticks), "day order, not the order clock strings sort in"
+    assert len(set(ticks)) == len(ticks), "one composite per moment"
 
 
 def test_the_composites_come_before_the_per_layer_tiles(tmp_path):
@@ -149,19 +170,6 @@ def test_the_composites_come_before_the_per_layer_tiles(tmp_path):
     first_composite = next(i for i, k in enumerate(kinds) if k.startswith("sky at"))
     first_layer = next(i for i, k in enumerate(kinds) if k == "sky layer")
     assert first_composite < first_layer
-
-
-def test_the_composites_run_in_day_order(tmp_path):
-    """Dawn, noon, dusk, midnight -- which is tick order, since Minecraft's day
-    starts at 6:00. Sorting the clock strings instead gives 0:00, 12:00, 18:00,
-    6:00, i.e. midnight first and dawn last."""
-    zip_path = _pack(tmp_path, {
-        SKY + "sky1.properties": b"startFadeIn=5:00\nendFadeIn=5:30\n"
-                                 b"endFadeOut=4:00\nblend=add\nsource=./cloud1.png\n",
-        SKY + "cloud1.png": _skybox(),
-    })
-    names = [t["name"].split()[0] for t in _composites(build_sheet(zip_path))]
-    assert names == ["Dawn", "Noon", "Dusk", "Midnight"]
 
 
 def _palette_skybox_with_clear_background(cell: int = 32) -> bytes:
@@ -183,6 +191,8 @@ def test_a_palette_transparent_sky_does_not_blow_the_composite_white(tmp_path):
     colour sitting at that index -- white, for the reference pack -- so an
     `add` layer painted the entire sky white instead of a flare over nothing.
     """
+    import base64
+    from PIL import Image
     zip_path = _pack(tmp_path, {
         SKY + "sky1.properties": DAY_LAYER,
         SKY + "cloud1.png": _skybox(),
@@ -191,12 +201,10 @@ def test_a_palette_transparent_sky_does_not_blow_the_composite_white(tmp_path):
                                   b"source=./flare.png\n"),
         SKY + "flare.png": _palette_skybox_with_clear_background(),
     })
-    noon = [t for t in _composites(build_sheet(zip_path)) if "Noon" in t["name"]]
-    assert noon and "sky2" in noon[0]["name"], "the add layer must be in it"
-
-    from PIL import Image
-    import base64
-    raw = base64.b64decode(noon[0]["full"].split(",", 1)[1])
+    with_flare = [t for t in _composites(build_sheet(zip_path))
+                  if "sky2" in t["name"]]
+    assert with_flare, "the add layer must reach a composite"
+    raw = base64.b64decode(with_flare[0]["full"].split(",", 1)[1])
     px = list(Image.open(io.BytesIO(raw)).convert("RGB").getdata())
     white = sum(1 for p in px if min(p) > 245)
     assert white < len(px) // 2, \
