@@ -143,3 +143,22 @@ def test_the_report_path_is_printed_before_the_browser_opens(
     pack = mini_pack()
     gui.main([str(pack)])
     assert "-report.html" in seen["out_so_far"]
+
+
+def test_a_zip_that_is_not_a_pack_is_refused_without_a_traceback(
+        tmp_path, capsys, monkeypatch):
+    """The drag-and-drop case for the same gap: dropping a zip that is not a
+    resource pack ended in a stack trace, which is the one audience that
+    cannot read one."""
+    import zipfile
+    from mc_pack_converter import gui
+
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "cache"))
+    src = tmp_path / "notapack.zip"
+    with zipfile.ZipFile(src, "w") as zf:
+        zf.writestr("readme.txt", "not a pack")
+
+    rc = gui.main([str(src)])
+
+    assert rc == 2
+    assert "pack.mcmeta" in capsys.readouterr().err

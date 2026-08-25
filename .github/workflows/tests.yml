@@ -21,8 +21,8 @@ jobs:
       - run: pytest -q
 
   # The Windows install IS how this is delivered, so a regression there is a
-  # shipping failure rather than a nuisance -- release.yml does not exist, so
-  # this is the only thing that proves it at the packaging level. What must
+  # shipping failure rather than a nuisance. release.yml builds the download;
+  # this proves the thing inside it actually runs. What must
   # hold flipped when the window (and its [gui] extra) was deleted: a plain
   # install must NOT pull in pywebview, and the entry point Windows users
   # actually hit -- `python -m mc_pack_converter.gui` with nothing dropped on
@@ -57,3 +57,15 @@ jobs:
             throw "expected the usage line; got: $output"
           }
           Write-Host "no-arg run exited $LASTEXITCODE and printed the usage line"
+      # The launcher is now the ONLY file a user downloads, so a break here is
+      # the whole product failing to start. Run it exactly as a double-click
+      # does -- no pack dropped -- and require the usage line.
+      # `< nul` feeds its `pause`: without stdin the CI runner would hang
+      # there rather than fail.
+      - name: The one downloaded file must run and explain itself
+        shell: cmd
+        run: |
+          packaging\MCPackConverter.cmd < nul > out.txt 2>&1
+          type out.txt
+          findstr /C:"Drag a 1.8.9 resource pack" out.txt >nul || exit /b 1
+          echo launcher ran and printed the usage line

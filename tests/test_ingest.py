@@ -119,3 +119,66 @@ def test_a_structurally_broken_mcmeta_is_still_fatal(tmp_path):
     root = _pack_with_mcmeta(tmp_path, '{"pack": ')
     with pytest.raises(FatalConversionError):
         _run_ingest(root)
+
+
+# --- an archive Python cannot decompress ------------------------------------
+#
+# Method 9 is Deflate64, which Windows' built-in zip uses for large archives
+# and which Python's zipfile can read the directory of but never decompress.
+# Measured on test-packs/"stimp PACK FOLDER 2022.zip": 10,834 of its 29,642
+# entries are Deflate64 and the other 18,808 are stored. Extracting what can
+# be extracted would therefore leave a pack missing a third of itself, so the
+# archive is refused whole rather than skipped member by member.
+
+DEFLATE64 = 9
+
+
+def _relabel_compression(raw: bytes, method: int) -> bytes:
+    """Rewrite a stored zip's compression-method field in both of its headers.
+
+    Python refuses to *write* a method it cannot read, so the only way to get
+    a real Deflate64 archive into a test is to write a stored one and relabel
+    it. What reaches the converter is then byte-for-byte what such an archive
+    looks like on the way in.
+    """
+    m = method.to_bytes(2, "little")
+    out = bytearray(raw)
+    for sig, off in ((b"PK\x03\x04", 8), (b"PK\x01\x02", 10)):
+        i = out.find(sig)
+        while i != -1:
+            out[i + off:i + off + 2] = m
+            i = out.find(sig, i + 1)
+    return bytes(out)
+
+
+def _deflate64_zip(path: Path) -> Path:
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_STORED) as zf:
+        zf.writestr("pack.mcmeta", '{"pack":{"pack_format":1}}')
+    path.write_bytes(_relabel_compression(path.read_bytes(), DEFLATE64))
+    return path
+
+
+def test_an_unreadable_compression_method_is_refused_not_a_traceback(tmp_path):
+    src = _deflate64_zip(tmp_path / "deflate64.zip")
+    with pytest.raises(FatalConversionError) as excinfo:
+        prepare_working_copy(src, tmp_path / "work")
+    assert "compression" in str(excinfo.value).lower()
+
+
+def test_the_refusal_names_the_method_that_could_not_be_read(tmp_path):
+    src = _deflate64_zip(tmp_path / "deflate64.zip")
+    with pytest.raises(FatalConversionError) as excinfo:
+        prepare_working_copy(src, tmp_path / "work")
+    assert "9" in str(excinfo.value)
+
+
+def test_a_missing_mcmeta_is_explained_without_a_vanished_temp_path(tmp_path):
+    """convert() deletes its working directory in a finally, so naming that
+    directory sent the reader to look at something that no longer exists.
+    Tolerable while it was one line of a traceback; it is now the whole
+    message the user gets."""
+    ctx = ConversionContext(root=tmp_path)
+    with pytest.raises(FatalConversionError) as excinfo:
+        ingest(ctx)
+    assert str(tmp_path) not in str(excinfo.value)
+    assert "resource pack" in str(excinfo.value)

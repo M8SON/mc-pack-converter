@@ -76,10 +76,10 @@ def test_matching_shas_say_nothing(tmp_path):
 
 
 def test_a_moved_master_is_reported(tmp_path):
-    from mc_pack_converter.webui.update import check, record_sha
+    from mc_pack_converter.webui.update import check, install_command, record_sha
     record_sha(SHA_A, root=tmp_path)
     out = check(root=tmp_path, fetch=lambda url, timeout: SHA_B)
-    assert out and "Install-MCPackConverter.cmd" in out
+    assert out and install_command() in out
 
 
 @pytest.mark.parametrize("recorded, fetched", [
@@ -106,11 +106,12 @@ def test_the_checker_stores_what_it_finds_and_swallows_what_it_cannot(tmp_path):
     actually passes it.
     """
     from types import SimpleNamespace
-    from mc_pack_converter.webui.update import record_sha, run_update_check
+    from mc_pack_converter.webui.update import (install_command, record_sha,
+                                                run_update_check)
     st = SimpleNamespace(update_notice=None)
     record_sha("a" * 40, root=tmp_path)
     run_update_check(st, root=tmp_path, fetch=lambda url, timeout: "b" * 40)
-    assert "Install-MCPackConverter.cmd" in st.update_notice
+    assert install_command() in st.update_notice
 
     st2 = SimpleNamespace(update_notice=None)
     def boom(url, timeout):
@@ -158,3 +159,68 @@ def test_the_notice_starts_hidden():
     html = _asset("index.html")
     line = next(l for l in html.splitlines() if 'id="update"' in l)
     assert "hidden" in line
+
+
+# --- the notice names the command the reader actually installed with --------
+
+
+def test_windows_is_told_to_re_run_the_one_file_it_has():
+    """There is no separate installer any more. Naming one would send the
+    reader after a file they never downloaded."""
+    from mc_pack_converter.webui.update import install_command
+    assert install_command("win32") == "MCPackConverter.cmd"
+
+
+@pytest.mark.parametrize("platform", ["linux", "darwin"])
+def test_a_non_windows_copy_is_not_told_to_run_a_windows_batch_file(platform):
+    """Observed on Linux: the notice read "re-run Install-MCPackConverter.cmd",
+    naming a Windows batch file that is not how that copy was installed. The
+    only Linux install path is from source, so that is what it must name."""
+    from mc_pack_converter.webui.update import install_command
+    cmd = install_command(platform)
+    assert ".cmd" not in cmd
+    assert "pip install" in cmd
+
+
+def test_the_notice_quotes_the_command_for_the_running_platform(tmp_path):
+    from mc_pack_converter.webui.update import check, install_command, record_sha
+    record_sha(SHA_A, root=tmp_path)
+    out = check(root=tmp_path, fetch=lambda url, timeout: SHA_B)
+    assert out and install_command() in out
+
+
+# --- the launcher asks whether it should reinstall before converting --------
+
+
+def test_a_current_copy_is_not_stale(tmp_path):
+    from mc_pack_converter.webui.update import is_stale, record_sha
+    record_sha(SHA_A, root=tmp_path)
+    assert is_stale(root=tmp_path, fetch=lambda url, timeout: SHA_A) is False
+
+
+def test_a_moved_master_makes_the_copy_stale(tmp_path):
+    from mc_pack_converter.webui.update import is_stale, record_sha
+    record_sha(SHA_A, root=tmp_path)
+    assert is_stale(root=tmp_path, fetch=lambda url, timeout: SHA_B) is True
+
+
+def test_an_unanswerable_question_is_not_stale(tmp_path):
+    """Offline, rate-limited, or never recorded. Reinstalling on a failed
+    check would make every launch without a network a one-minute wait."""
+    from mc_pack_converter.webui.update import is_stale, record_sha
+    record_sha(SHA_A, root=tmp_path)
+    assert is_stale(root=tmp_path, fetch=lambda url, timeout: None) is False
+    # Nothing recorded either: a copy installed before the SHA file existed
+    # has nothing to compare and must not be reinstalled on every launch.
+    assert is_stale(root=tmp_path / "nothing",
+                    fetch=lambda url, timeout: SHA_B) is False
+
+
+def test_check_exits_nonzero_only_when_an_update_is_waiting(tmp_path):
+    """The launcher branches on the exit code, so this IS the contract."""
+    from mc_pack_converter.webui.update import main, record_sha
+    record_sha(SHA_A, root=tmp_path)
+    assert main(["--check"], root=tmp_path,
+                fetch=lambda url, timeout: SHA_A) == 0
+    assert main(["--check"], root=tmp_path,
+                fetch=lambda url, timeout: SHA_B) == 1

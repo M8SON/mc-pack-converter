@@ -5,10 +5,14 @@ that root in a finally block before any front end sees the result. The zip is
 also the honest subject — it is what the user loads into Minecraft.
 """
 from __future__ import annotations
-import base64, io, json, zipfile
+import base64, io, json, re, zipfile
 from pathlib import Path
 from PIL import Image
 
+from .glint_preview import glint_frames
+from .sky import render_sky
+from .sky_composite import (clock, composite, phase, sample_times,
+                            visible_at)
 from .armor import (crossed_spin_frames, cube_spin_frames, fire_spin_frames,
                     render_armor, spin_frames)
 
@@ -281,17 +285,201 @@ def build_sheet(zip_path: Path) -> dict:
                 continue
             buckets.setdefault(label, []).append(tile)
 
+        enchanted = _glint_tile(z)
+        if enchanted is not None:
+            buckets.setdefault("Items", []).append(enchanted)
+        for tile in _sky_tiles(z):
+            buckets.setdefault("Sky", []).append(tile)
+
     sections = []
     for label, _ in SECTIONS:
         tiles = buckets.get(label)
         if tiles:
+            # Path order within a section, except where a tile asks to lead:
+            # the sky composites are the summary of the layer tiles below them
+            # and read as a caption if they land underneath instead. They also
+            # carry their own order, because day order is not the order their
+            # clock strings sort in -- 0:00 would put midnight first.
             sections.append({"label": label,
-                             "tiles": sorted(tiles, key=lambda t: t["path"])})
+                             "tiles": sorted(tiles,
+                                             key=lambda t: (t.get("order", 99),
+                                                            t["path"]))})
     return {
         "sections": sections,
         "excluded": [{"label": k, "count": v}
                      for k, v in sorted(excluded.items(), key=lambda kv: -kv[1])],
         "total": sum(len(s["tiles"]) for s in sections),
+    }
+
+
+# What the glint is shown on. A sword is the item people look at first, and
+# every 1.8.9 pack has one; the diamond one because it is the one pack authors
+# actually redraw.
+_GLINT_ON = A + "textures/item/diamond_sword.png"
+_GLINT_TEX = A + "textures/misc/enchanted_glint_item.png"
+
+
+# How far round the ring the preview turns, and in how many steps. A sky is
+# judged by its horizon, and a horizon is 360 degrees of it.
+_SKY_YAWS = 12
+_SKY_VIEW = (320, 200)
+_SKY_DIR = re.compile(r"^" + A + r"optifine/sky/(world-?\d+)/sky(\d+)\.properties$")
+
+
+def _sky_layers(z: zipfile.ZipFile) -> list[tuple[str, int, str]]:
+    """(world, layer number, properties path), in load order."""
+    found = []
+    for name in z.namelist():
+        m = _SKY_DIR.match(name)
+        if m:
+            found.append((m.group(1), int(m.group(2)), name))
+    return sorted(found, key=lambda t: (t[0], t[1]))
+
+
+def _sky_props(raw: bytes) -> dict:
+    props = {}
+    for line in raw.decode("utf-8", "replace").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            props[k.strip()] = v.strip()
+    return props
+
+
+def _sky_tiles(z: zipfile.ZipFile) -> list[dict]:
+    """One ground-level preview per sky layer, labelled with what it does.
+
+    A sky layer flat is an unreadable 6144x4096 sheet of six cube faces. What
+    the author wants to know is what it looks like standing in the world.
+
+    It used to also say "never loads" against any layer above a gap in the
+    numbering, on the strength of OptiFine's own documentation: reads sky<n>
+    "until a .properties file is not found". THE SHIPPED CODE DOES NOT DO
+    THAT. In CustomSky.readCustomSkies the `countMissing` counter is
+    initialised inside the loop body, so `if (countMissing > 10) break` can
+    never fire and the loop runs 0..999 whatever the gaps. Measured in game on
+    26.1.2_HD_U_K1_pre2 with a probe carrying sky1/sky3/sky15 as solid
+    red/green/magenta at blend=replace: the log read all three and the sky
+    rendered MAGENTA -- sky15, across an eleven-layer gap. The label was a
+    false warning on every pack it fired for, so it is gone.
+    """
+    names = set(z.namelist())
+    tiles = []
+    # Layers share source textures -- M8SON's sky1 and sky2 are both cloud2,
+    # sky7 and sky8 both sky_sunflare -- and a source is a 6144x4096 PNG whose
+    # decode dominates the cost. Keyed by texture, so a shared source is
+    # decoded and rendered once: 6 layers, 4 renders.
+    rendered: dict[str, list] = {}
+    layers: list[tuple[str, int, dict, list]] = []
+    for world, number, path in _sky_layers(z):
+        props = _sky_props(z.read(path))
+        src = props.get("source", f"./sky{number}.png").lstrip("./")
+        tex = path.rsplit("/", 1)[0] + "/" + src.rsplit("/", 1)[-1]
+        if tex not in names:
+            continue
+        views = rendered.get(tex)
+        if views is None:
+            try:
+                with Image.open(io.BytesIO(z.read(tex))) as im:
+                    # RGBA explicitly. Converting to RGB here happens to keep
+                    # a palette tRNS alive -- Pillow carries info["transparency"]
+                    # across the conversion and faces() re-applies it -- but
+                    # relying on that leaves the sunflare one Pillow release
+                    # away from turning white again.
+                    box = im.convert("RGBA")
+                    views = [render_sky(box, yaw=i * 360 / _SKY_YAWS, size=_SKY_VIEW)
+                             for i in range(_SKY_YAWS)]
+            except Exception:
+                continue
+            rendered[tex] = views
+        layers.append((world, number, props, views))
+
+        window = ""
+        if "startFadeIn" in props and "endFadeOut" in props:
+            window = f", {props['startFadeIn']}-{props['endFadeOut']}"
+        label = f"sky{number} ({props.get('blend', 'add')}{window})"
+        tiles.append({
+            "name": label,
+            "path": path,
+            "size": "sky layer",
+            "thumb": thumb_data_uri(views[0], box=128),
+            "frames": [thumb_data_uri(v, box=max(_SKY_VIEW)) for v in views],
+            "frametime": TURN_MS * 2 // _SKY_YAWS,
+            "full": thumb_data_uri(views[0], box=FULL),
+        })
+    return _composite_tiles(layers) + tiles
+
+
+def _composite_tiles(layers: list[tuple[str, int, dict, list]]) -> list[dict]:
+    """The sky itself: every layer that reaches the eye at that moment, stacked.
+
+    THE TIMES COME FROM THE PACK. Fixed ones do not work, and the reference
+    pack is why: sampling at 6:00, 12:00 and 18:00 put all three inside sky3's
+    5:30-18:20 replace, so all three tiles were the same blue picture, and the
+    pack's red sunrise and sunset -- cloud2, mean RGB 85/10/0 against cloud1's
+    125/141/180 -- never appeared at all, being up for only 40 and 50 minutes.
+    sample_times walks the day instead and takes the fewest moments that show
+    every layer at least once.
+
+    Free, or near enough. The costly part -- decoding a 6144x4096 PNG and
+    ray-tracing the cube -- has already happened for the per-layer tiles above,
+    and this reuses the yaw-0 render each of them already holds.
+    """
+    tiles = []
+    worlds = sorted({world for world, _, _, _ in layers})
+    for world in worlds:
+        here = sorted((n, p, v) for w, n, p, v in layers if w == world)
+        views_by = {n: v for n, _, v in here}
+        spec = [(n, p) for n, p, _ in here]
+        for order, (ticks, _) in enumerate(sample_times(spec)):
+            stack = visible_at(spec, ticks)
+            if not stack:
+                continue
+            try:
+                view = composite([(views_by[n][0], props.get("blend", "add"), level)
+                                  for n, props, level in stack])
+            except Exception:
+                continue
+            at = clock(ticks)
+            which = ", ".join(f"sky{n}" for n, _, _ in stack)
+            where = "" if world == "world0" or len(worlds) == 1 else f" [{world}]"
+            tiles.append({
+                "name": f"{phase(ticks)} {at}{where} - {which}",
+                "path": f"{world} at {at}",
+                "size": f"sky at {at}",
+                "order": order,
+                "thumb": thumb_data_uri(view, box=128),
+                "full": thumb_data_uri(view, box=FULL),
+            })
+    return tiles
+
+
+def _glint_tile(z: zipfile.ZipFile) -> dict | None:
+    """The glint over the pack's own sword, moving, or None if either is absent.
+
+    Flat, a glint is diagonal streaks on a square: it says nothing about
+    whether an enchanted item will read in game, which is the only question
+    anyone has about it.
+    """
+    names = set(z.namelist())
+    if _GLINT_ON not in names or _GLINT_TEX not in names:
+        return None
+    try:
+        with Image.open(io.BytesIO(z.read(_GLINT_ON))) as item, \
+             Image.open(io.BytesIO(z.read(_GLINT_TEX))) as glint:
+            frames = glint_frames(item.convert("RGBA"), glint.convert("RGBA"))
+    except Exception:
+        # Same rule as the tile loop: a broken texture is a finding elsewhere,
+        # not a reason to withhold the whole sheet.
+        return None
+    return {
+        "name": "diamond_sword.png (enchanted)",
+        "path": _GLINT_ON + "#enchanted",
+        "size": "preview",
+        "thumb": thumb_data_uri(frames[0], box=128),
+        "frames": [thumb_data_uri(f, box=128) for f in frames],
+        "frametime": TURN_MS // len(frames),
+        "full": thumb_data_uri(frames[0], box=FULL),
     }
 
 

@@ -4,38 +4,61 @@
 
 Converts Minecraft Java 1.8.9 resource packs to modern versions (26.1, 26.1.2, 26.2).
 
-## Run it on Windows
+## Download it
+
+**[Download MCPackConverter.zip](https://github.com/M8SON/mc-pack-converter/releases/latest/download/MCPackConverter.zip)**
+
+1. Extract the zip.
+2. **Drag your pack's `.zip` onto `MCPackConverter.cmd`.**
+
+That is the whole thing. The first run spends about a minute installing
+itself and says so while it does; after that it keeps itself up to date on
+its own.
+
+You get two files next to the pack you dropped: the converted
+`YourPack-26.2.zip`, and `YourPack-26.2-report.html`, which opens in your
+browser and shows every texture that was converted — GUI, blocks, items,
+particles, armor on a humanoid model, and the sky composited the way the game
+stacks it.
+
+**If it says Python is not installed**, get
+[Python 3.12 from the Microsoft Store](https://apps.microsoft.com/detail/9NCVDN91XZQP)
+and run the file again. The Store build specifically: it is Microsoft-signed,
+so Windows allows it.
+
+**If Windows shows "Windows protected your PC"**, click *More info* → *Run
+anyway*. Windows says that about anything downloaded from the internet.
+
+To pick a target version other than the default, use the command line:
+`mc-pack-converter convert --target 26.1.2 MyPack.zip` (see
+[Quickstart](#quickstart)).
+
+### Why a .cmd file and not an .exe
 
 Windows [Smart App Control](https://support.microsoft.com/en-us/topic/what-is-smart-app-control-285ea03d-fa88-4495-8b65-fe1f7c1ec763)
 blocks unsigned executables outright, with no way to allow one, so this ships
-as a Python package rather than a bundled `.exe`.
+as a Python package driven by a small launcher rather than a bundled `.exe`.
+The launcher runs `python -m mc_pack_converter.gui` rather than an installed
+console-script command for the same reason: pip generates those as unsigned
+`.exe` shims, which Smart App Control blocks just as it would a bundled exe.
 
-1. Install **Python 3.12 from the Microsoft Store** — it is Microsoft-signed,
-   so Smart App Control allows it.
-2. Run `packaging/Install-MCPackConverter.cmd`. Re-run it any time to update.
-3. Run `packaging/MCPackConverter.cmd` — double-click it, or **drag your
-   pack's `.zip` onto it**.
+## Run it on Linux
 
-The converted pack lands in the same folder as the pack you dropped, and a
-self-contained HTML report opens beside it in your browser — the conversion's
-findings, and a scrollable sheet of the converted textures: GUI, blocks,
-items, particles, sky, animated textures, and armor rendered on a humanoid
-model. The dropped pack always converts to the current default target
-version; to pick a different one, use `mc-pack-converter convert --target`
-from the command line instead (see [Quickstart](#quickstart) below).
+There is no packaged download and no native window here — this is the same
+program the Windows launcher installs, driven from a terminal.
 
-The launcher deliberately runs `python -m mc_pack_converter.gui` rather than
-an installed console-script command, because pip generates its entry points
-as unsigned `.exe` shims that Smart App Control blocks for the same reason a
-bundled exe would be.
+1. [Install from source](#install-from-source) below: `pip install .`
+2. `mc-pack-converter convert MyPack.zip` — see [Quickstart](#quickstart).
 
-This program behaves the same on Windows and Linux: there is no native window
-and no platform-only dependency, just a Python process that writes an HTML
-report. The Windows steps above are the packaged install path; on Linux,
-[Install from source](#install-from-source) below is all there is. **The
-Windows leg of this has not been retested since the report replaced the
-window** — the claim rests on there being no more platform-specific code path
-between them, not on a fresh run.
+The converted pack and a self-contained HTML report land beside the pack you
+named. The report opens in your browser, and its path is printed either way.
+To update, `git pull && pip install .` — the command the update notice names.
+
+Verified on Linux (WSL2, Python 3.12): a real 1.8.9 pack through all 21 stages,
+producing the converted zip and a report with no external references. **The
+Windows leg has not been retested since the report replaced the window** — that
+claim rests on there being no platform-specific code path left between the two,
+not on a fresh run.
 
 ## Install from source
 

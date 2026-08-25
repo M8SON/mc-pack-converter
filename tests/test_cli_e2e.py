@@ -262,3 +262,20 @@ def test_unreadable_zip_is_one_line_not_a_traceback(tmp_path, capsys, monkeypatc
     assert "Traceback" not in message
     assert len(message.strip().splitlines()) == 1
     assert not (tmp_path / "broken-26.2.zip").exists()
+
+
+# --- a pack that cannot be read reaches the user as a sentence ---------------
+#
+# pipeline.py:42 deliberately re-raises FatalConversionError past the
+# fail-soft handler, and nothing between there and main() caught it, so the
+# ordinary "you dropped the wrong file" case ended in a stack trace.
+
+def test_a_zip_that_is_not_a_pack_is_refused_without_a_traceback(tmp_path, capsys):
+    src = tmp_path / "notapack.zip"
+    with zipfile.ZipFile(src, "w") as zf:
+        zf.writestr("readme.txt", "not a pack")
+
+    rc = main(["convert", str(src), "-o", str(tmp_path / "out.zip")])
+
+    assert rc == 1
+    assert "pack.mcmeta" in capsys.readouterr().err

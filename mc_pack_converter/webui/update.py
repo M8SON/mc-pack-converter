@@ -28,10 +28,32 @@ from pathlib import Path
 SHA_URL = "https://api.github.com/repos/M8SON/mc-pack-converter/commits/master"
 SHA_ACCEPT = "application/vnd.github.sha"
 TIMEOUT_S = 2.0
-INSTALL_CMD = "Install-MCPackConverter.cmd"
+INSTALL_CMD = "MCPackConverter.cmd"
+SOURCE_CMD = "git pull && pip install ."
 FILENAME = "installed-sha"
 
 _SHA = re.compile(r"\A[0-9a-f]{40}\Z")
+
+
+def install_command(platform: str | None = None) -> str:
+    """The command that updates THIS copy.
+
+    Windows installs through the packaged .cmd, which is also the only file a
+    Windows user has -- it installs and updates itself, so running it again is
+    the whole instruction. There is no packaged path anywhere else, so on
+    Linux the only honest thing to name is the install-from-source the README
+    documents; naming the .cmd there sent the reader after a batch file they
+    never ran and do not have.
+
+    On Windows this notice should rarely fire at all: the launcher runs
+    `update --check` and reinstalls before converting, so by the time a report
+    is written the copy is current. It stays for the case where that check
+    could not reach GitHub at launch but the report's own could.
+    """
+    import sys
+    if platform is None:
+        platform = sys.platform
+    return INSTALL_CMD if platform.startswith("win") else SOURCE_CMD
 
 
 def _clean(raw) -> str | None:
@@ -101,7 +123,18 @@ def check(root=None, fetch=_http_get) -> str | None:
     there = latest_sha(fetch=fetch)
     if there is None or there == have:
         return None                      # unreachable, or already current
-    return f"An update is available — re-run {INSTALL_CMD}"
+    return f"An update is available — run {install_command()}"
+
+
+def is_stale(root=None, fetch=_http_get) -> bool:
+    """Whether a newer build exists AND we can prove it.
+
+    False whenever the question cannot be answered -- offline, rate-limited,
+    or nothing recorded. The launcher reinstalls on a True, and a launch with
+    no network must not become a one-minute wait for an update that may not
+    exist.
+    """
+    return check(root=root, fetch=fetch) is not None
 
 
 def record_latest(root=None, fetch=_http_get) -> int:
@@ -143,5 +176,19 @@ def start_update_check(state, root=None, fetch=_http_get):
     return t
 
 
+def main(argv=None, root=None, fetch=_http_get) -> int:
+    """python -m mc_pack_converter.webui.update [--check]
+
+    With no argument, record master's SHA -- what the launcher runs straight
+    after installing. With --check, exit 1 if a newer build is waiting, which
+    is how the launcher decides whether to reinstall before converting.
+    """
+    import sys
+    args = sys.argv[1:] if argv is None else argv
+    if args and args[0] == "--check":
+        return 1 if is_stale(root=root, fetch=fetch) else 0
+    return record_latest(root=root, fetch=fetch)
+
+
 if __name__ == "__main__":       # python -m mc_pack_converter.webui.update
-    raise SystemExit(record_latest())
+    raise SystemExit(main())

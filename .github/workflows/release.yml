@@ -1,0 +1,74 @@
+name: release
+
+# The download a user actually gets. Without this the Releases page -- which
+# is where anyone looks first -- had no assets at all, and its notes told
+# people to `pip install git+...`, which is not something the audience for
+# this tool is going to do.
+#
+# Run it from the Actions tab, or:
+#   gh workflow run release.yml -f tag=v0.2.0
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to publish, e.g. v0.2.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # A ZIP rather than the bare .cmd. Chrome and Edge block or warn on
+      # downloading a .cmd outright -- "this file isn't commonly downloaded
+      # and may be dangerous" -- which is a hard stop for a non-technical
+      # user. A zip downloads without argument.
+      - name: Build the download
+        run: |
+          mkdir -p dist/MCPackConverter
+          cp "packaging/MCPackConverter.cmd" dist/MCPackConverter/
+          cp "packaging/READ ME FIRST.txt" dist/MCPackConverter/
+          cd dist && zip -r MCPackConverter.zip MCPackConverter
+
+      # Proves the asset holds what the README promises before anyone
+      # downloads it. A release whose zip is missing the launcher is worse
+      # than no release.
+      - name: The zip must contain the launcher and nothing stale
+        run: |
+          unzip -l dist/MCPackConverter.zip
+          unzip -l dist/MCPackConverter.zip | grep -q "MCPackConverter.cmd"
+          unzip -l dist/MCPackConverter.zip | grep -q "READ ME FIRST.txt"
+          if unzip -l dist/MCPackConverter.zip | grep -q "Install-MCPackConverter"; then
+            echo "the second launcher came back -- see tests/test_launcher.py"
+            exit 1
+          fi
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ inputs.tag }}" dist/MCPackConverter.zip \
+            --title "${{ inputs.tag }}" \
+            --notes "$(cat <<'NOTES'
+          Converts a Minecraft Java 1.8.9 resource pack to modern Minecraft
+          (26.1, 26.1.2, 26.2).
+
+          **Download `MCPackConverter.zip` below**, extract it, and drag your
+          pack's `.zip` onto `MCPackConverter.cmd`. That is the whole thing --
+          it installs itself the first time it runs.
+
+          You get the converted pack and a self-contained HTML report showing
+          every texture that was converted, including the sky composited the
+          way the game stacks it.
+
+          Needs Python 3.12 from the Microsoft Store, which the launcher links
+          you to if it is missing. Known behaviour worth reading before you
+          convert: [docs/known-issues.md](https://github.com/M8SON/mc-pack-converter/blob/master/docs/known-issues.md)
+          NOTES
+          )" || gh release upload "${{ inputs.tag }}" dist/MCPackConverter.zip --clobber
