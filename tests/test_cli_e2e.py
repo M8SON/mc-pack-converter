@@ -78,7 +78,7 @@ def test_main_uses_derived_name_when_no_dash_o(mini_pack, monkeypatch, tmp_path)
     root = mini_pack()
     monkeypatch.chdir(tmp_path)
     assert main(["convert", str(root)]) == 0
-    assert (tmp_path / "pack-26.2.zip").exists()
+    assert (tmp_path / "pack-26.3.zip").exists()
 
 
 def test_main_explicit_out_wins(mini_pack, tmp_path):
@@ -106,7 +106,7 @@ def test_help_lists_the_valid_targets(capsys):
 
     "1.8.9" does appear in the help — in the `source` positional's prose ("the
     1.8.9 pack to convert"). Searching the whole text therefore passed even
-    though --target renders `{26.1,26.1.2,26.2}`, and would still pass if
+    though --target renders `{26.1,26.1.2,26.2,26.3}`, and would still pass if
     --target listed no choices at all. 1.8.9 was excluded from the targets on
     purpose (9a82697) because it produces a broken pack, so the test must also
     say it is not offered as one.
@@ -118,7 +118,7 @@ def test_help_lists_the_valid_targets(capsys):
     rendered = re.search(r"--target \{([^}]*)\}", out)
     assert rendered, "--target does not render its choices in the help"
     targets = rendered.group(1).split(",")
-    assert targets == ["26.1", "26.1.2", "26.2"]
+    assert targets == ["26.1", "26.1.2", "26.2", "26.3"]
     assert "1.8.9" not in targets
 
 
@@ -174,7 +174,7 @@ def test_default_run_prints_summary_not_reports(mini_pack, tmp_path, capsys, mon
     monkeypatch.chdir(tmp_path)
     assert main(["convert", str(root)]) == 0
     out = capsys.readouterr().out
-    assert "pack-26.2.zip" in out
+    assert "pack-26.3.zip" in out
     assert "# Conversion Report" not in out
     assert "# Null-Texture Safety Report" not in out
 
@@ -194,9 +194,9 @@ def test_report_only_summary_does_not_claim_zip_written(mini_pack, tmp_path, cap
     assert main(["convert", str(root), "--report-only"]) == 0
     out = capsys.readouterr().out
     assert "wrote" not in out
-    assert not (tmp_path / "pack-26.2.zip").exists()
-    assert (tmp_path / "pack-26.2-report.md").exists()
-    assert (tmp_path / "pack-26.2-null-textures.md").exists()
+    assert not (tmp_path / "pack-26.3.zip").exists()
+    assert (tmp_path / "pack-26.3-report.md").exists()
+    assert (tmp_path / "pack-26.3-null-textures.md").exists()
 
 
 def test_report_only_does_not_claim_a_stale_zip_was_written(
@@ -205,11 +205,11 @@ def test_report_only_does_not_claim_a_stale_zip_was_written(
 
     The summary used to test `out_path.exists()` — a fact about the filesystem
     rather than about this run — so --report-only in a directory holding an
-    earlier pack-26.2.zip printed "wrote pack-26.2.zip" over an untouched file.
+    earlier pack-26.3.zip printed "wrote pack-26.3.zip" over an untouched file.
     """
     root = mini_pack()
     monkeypatch.chdir(tmp_path)
-    stale = tmp_path / "pack-26.2.zip"
+    stale = tmp_path / "pack-26.3.zip"
     stale.write_bytes(b"STALE FROM A PREVIOUS RUN")
     assert main(["convert", str(root), "--report-only"]) == 0
     out = capsys.readouterr().out
@@ -221,8 +221,8 @@ def test_reports_written_beside_the_zip(mini_pack, tmp_path, monkeypatch):
     root = mini_pack()
     monkeypatch.chdir(tmp_path)
     assert main(["convert", str(root)]) == 0
-    assert (tmp_path / "pack-26.2-report.md").read_text().startswith("# Conversion Report")
-    assert (tmp_path / "pack-26.2-null-textures.md").read_text().startswith(
+    assert (tmp_path / "pack-26.3-report.md").read_text().startswith("# Conversion Report")
+    assert (tmp_path / "pack-26.3-null-textures.md").read_text().startswith(
         "# Null-Texture Safety Report")
 
 
@@ -230,8 +230,8 @@ def test_report_only_writes_reports_but_no_zip(mini_pack, tmp_path, monkeypatch)
     root = mini_pack()
     monkeypatch.chdir(tmp_path)
     assert main(["convert", str(root), "--report-only"]) == 0
-    assert (tmp_path / "pack-26.2-report.md").exists()
-    assert not (tmp_path / "pack-26.2.zip").exists()
+    assert (tmp_path / "pack-26.3-report.md").exists()
+    assert not (tmp_path / "pack-26.3.zip").exists()
 
 
 def test_missing_source_is_one_line_not_a_traceback(tmp_path, capsys, monkeypatch):

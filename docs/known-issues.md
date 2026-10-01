@@ -11,7 +11,7 @@ Verified findings only — each entry says how it was measured.
 
 **Supported input is a 1.8.9-era pack (`pack_format: 1`).** Output targets are the
 modern versions in `mc_pack_converter/data/pack_format.json` (26.1.2 = 84,
-26.2 = 88). Converting a *later-version* source pack is **future work**, to be
+26.2 = 88, 26.3 = 97). Converting a *later-version* source pack is **future work**, to be
 scoped when it is actually wanted. Scope and features expand incrementally.
 
 Every version-specific coordinate table in this project is derived from the

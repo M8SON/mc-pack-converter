@@ -22,7 +22,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         prog="mc-pack-converter",
         description="Convert a Minecraft Java 1.8.9 resource pack to a modern version.",
-        epilog="example:  mc-pack-converter convert MyPack.zip --target 26.2",
+        epilog="example:  mc-pack-converter convert MyPack.zip --target 26.3",
     )
     sub = ap.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("convert", help="convert a pack")

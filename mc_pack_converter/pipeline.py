@@ -24,7 +24,7 @@ class Finding:
 class ConversionContext:
     root: Path
     findings: list[Finding] = field(default_factory=list)
-    target: str = "26.2"
+    target: str = "26.3"
     sliced: list[tuple[str, str]] = field(default_factory=list)
     """(input atlas, output sprite) for every sprite the slice stage wrote."""
 

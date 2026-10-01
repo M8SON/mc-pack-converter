@@ -14,7 +14,7 @@ from .report import render_conversion_report, render_null_texture_report
 # by lexical order, not version order — with a future 26.9 and 26.10 both
 # present it returns 26.9, the older one. Bump this by hand whenever a newer
 # target is added to data/pack_format.json.
-DEFAULT_TARGET = "26.2"
+DEFAULT_TARGET = "26.3"
 
 
 def validate_source(source: Path) -> str | None:

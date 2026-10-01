@@ -29,7 +29,7 @@ def test_declared_range_spans_every_target_the_converter_supports():
     Nothing but pack_meta reads ctx.target — no stage produces different
     textures for 26.1 than for 26.2 — so a pack converted to 26.2 is
     genuinely byte-identical to one converted to 26.1 apart from this file.
-    Declaring min_format 84 / max_format 88 is therefore the truth, not a
+    Declaring min_format 84 / max_format 97 is therefore the truth, not a
     fudge, and it stops Minecraft 26.1.2 flagging a 26.2 pack as
     incompatible (red) when it loads and renders it perfectly.
     """
@@ -37,16 +37,32 @@ def test_declared_range_spans_every_target_the_converter_supports():
     table = load_table("pack_format")
     targets = {k: v for k, v in table.items() if k != INPUT_FORMAT}
     assert min(targets.values()) == 84
-    assert max(targets.values()) == 88
+    assert max(targets.values()) == 97
 
 
 def test_pack_meta_declares_the_oldest_target_as_min(mini_pack):
     root = mini_pack()
-    ctx = ConversionContext(root=root, target="26.2")
+    ctx = ConversionContext(root=root, target="26.3")
     pack_meta(ctx)
     data = json.loads((root / "pack.mcmeta").read_text())
     assert data["pack"]["min_format"] == 84   # 26.1 / 26.1.2
-    assert data["pack"]["max_format"] == 88   # 26.2
+    assert data["pack"]["max_format"] == 97   # 26.3
+
+
+def test_26_3_is_format_97_written_as_a_bare_major():
+    """26.3 is resource pack format 97.1 (minecraft.wiki, Pack format).
+    A bare integer max_format means "any minor version" -- the minor is read
+    as 0x7fffffff (minecraft.wiki, pack.mcmeta) -- so 97 covers 97.1 without
+    the [major, minor] array form."""
+    assert load_table("pack_format")["26.3"] == 97
+
+
+def test_the_default_target_is_the_newest_one():
+    from mc_pack_converter.data import INPUT_FORMAT
+    from mc_pack_converter.job import DEFAULT_TARGET
+    table = load_table("pack_format")
+    newest = max((v, k) for k, v in table.items() if k != INPUT_FORMAT)
+    assert table[DEFAULT_TARGET] == newest[0]
 
 
 def test_pack_meta_never_declares_a_max_below_its_min(mini_pack):
