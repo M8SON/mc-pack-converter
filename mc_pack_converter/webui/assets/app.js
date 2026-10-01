@@ -55,7 +55,7 @@ function tile(t, label, flagged) {
   const src = t.frames ? t.frames[0] : t.thumb;
   return `<div class="${cls}" data-path="${esc(t.path)}"${frames}>
     <img src="${src}" alt=""><span class="cap">${esc(t.name)}</span>
-    <span class="cap">${t.w}×${t.h}</span></div>`;
+    <span class="cap">${t.size ? esc(t.size) : `${t.w}×${t.h}`}</span></div>`;
 }
 
 function animate(el) {

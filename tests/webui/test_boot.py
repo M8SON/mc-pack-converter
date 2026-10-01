@@ -50,8 +50,14 @@ def test_the_page_boots_and_renders_tiles_without_throwing(tmp_path):
     with zipfile.ZipFile(zpath, "w") as z:
         z.writestr(A + "textures/block/stone.png", _png())
         z.writestr(A + "textures/item/apple.png", _png((0, 255, 0, 255)))
+        # an item and a glint give the sheet its generated glint-preview
+        # tile, which has a `size` caption instead of w/h
+        z.writestr(A + "textures/item/diamond_sword.png", _png((0, 200, 255, 255)))
+        z.writestr(A + "textures/misc/enchanted_glint_item.png", _png((128, 0, 255, 255)))
         z.writestr("pack.mcmeta", b"{}")
     sheet = build_sheet(zpath)
+    assert any(t.get("size") for s in sheet["sections"] for t in s["tiles"]), \
+        "fixture no longer produces a tile with a size caption"
 
     ctx = ConversionContext(root=tmp_path)
     ctx.add("validate", Severity.WARNING, "a finding for the page to show")
