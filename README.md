@@ -2,7 +2,7 @@
 
 [![tests](https://github.com/M8SON/mc-pack-converter/actions/workflows/tests.yml/badge.svg)](https://github.com/M8SON/mc-pack-converter/actions/workflows/tests.yml)
 
-Converts Minecraft Java **1.8.9** resource packs to **26.1, 26.1.2 and 26.2**,
+Converts Minecraft Java **1.8.9** resource packs to **26.1, 26.1.2, 26.2 and 26.3**,
 keeping the pack's own art wherever the modern game can still use it.
 
 ![The report's texture view: every converted texture, grouped](docs/images/hero.png)
@@ -16,8 +16,8 @@ You get two files next to your pack:
 
 | File | What it is |
 |---|---|
-| `YourPack-26.2.zip` | the converted pack |
-| `YourPack-26.2-report.html` | opens in your browser and shows everything that was converted |
+| `YourPack-26.3.zip` | the converted pack |
+| `YourPack-26.3-report.html` | opens in your browser and shows everything that was converted |
 
 The first run takes about a minute to install itself. After that it keeps
 itself up to date.
