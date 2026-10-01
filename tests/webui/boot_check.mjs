@@ -34,6 +34,11 @@ if (!headline) fail("headline was not rendered");
 if (!/^\d+ errors, \d+ warnings, \d+ notes$/.test(details))
   fail(`#details did not render the severity summary, got: ${JSON.stringify(details)}`);
 if (tileCount === 0) fail("no tiles rendered onto the page");
+// Generated tiles (sky layers, sky composites, the glint preview) carry a
+// `size` caption and no w/h; reading w/h printed "undefined×undefined".
+const badCaps = [...doc.querySelectorAll(".tile .cap")]
+  .map((c) => c.textContent).filter((t) => t.includes("undefined"));
+if (badCaps.length) fail("captions rendered undefined: " + JSON.stringify(badCaps));
 
 if (!process.exitCode)
   console.log(`boot ok: headline=${JSON.stringify(headline)} details=${JSON.stringify(details)} tiles=${tileCount}`);
