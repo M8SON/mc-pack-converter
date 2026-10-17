@@ -1,86 +1,110 @@
+/* The look of the old desktop window, which the report still has: the pack
+   world's grass and ore as the ground, darkened the way vanilla darkens its
+   menu background, with bevelled buttons and a dashed drop sign. grass.png
+   and wall.png are the report's own (mc_pack_converter/webui/assets), copied
+   in by tools/build_web.py. Always dark, like the game's menus. */
+
 :root {
-  --bg: #f6f6f4;
-  --panel: #ffffff;
-  --text: #1d1d1b;
-  --muted: #66665f;
-  --line: #d9d9d3;
-  --accent: #3f7a2a;
-  --accent-text: #ffffff;
-  --warn: #9a6200;
-  --error: #b3261e;
+  color-scheme: dark;
+  --ink:        #ffffff;
+  --ink-dim:    #a0a0a0;
+  --ink-shadow: #3f3f3f;
+  --btn:        #6f6f6f;
+  --btn-hi:     #8a8a8a;
+  --ok:         #55ff55;   /* Minecraft green */
+  --warn:       #ffaa00;   /* Minecraft gold  */
+  --err:        #ff5555;   /* Minecraft red   */
+  --px: 2px;               /* one "pixel" of bevel */
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #161615;
-    --panel: #20201e;
-    --text: #ebebe6;
-    --muted: #a3a39b;
-    --line: #3a3a36;
-    --accent: #6fbf4a;
-    --accent-text: #10200a;
-    --warn: #e0a440;
-    --error: #f2867e;
-  }
-}
+
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  min-height: 100vh;
+  color: var(--ink);
+  font: 15px/1.5 "Consolas", "DejaVu Sans Mono", monospace;
+  text-shadow: var(--px) var(--px) 0 var(--ink-shadow);
+  background-color: #2b2622;
+  background-image: url("grass.png"), url("wall.png");
+  background-size: 64px 64px, 1024px 1024px;
+  background-repeat: repeat-x, repeat;
+  background-position: top left, top left;
+  background-attachment: fixed;
+  image-rendering: pixelated;
 }
-main { max-width: 760px; margin: 0 auto; padding: 32px 16px 24px; }
-h1 { margin: 0 0 4px; font-size: 1.8rem; }
-h2 { font-size: 1.15rem; margin: 0 0 12px; }
-header p, footer { color: var(--muted); }
-section {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 20px;
-  margin-top: 20px;
+body::before {   /* the darkening vanilla lays over its background panel */
+  content: ""; position: fixed; inset: 0; pointer-events: none;
+  background: rgba(0, 0, 0, .55);
 }
-.target { display: block; margin-bottom: 16px; }
-select { font: inherit; margin-left: 8px; padding: 4px 8px; }
-.drop {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 150px;
-  padding: 20px;
-  border: 2px dashed var(--line);
-  border-radius: 10px;
-  text-align: center;
-  cursor: pointer;
-  color: var(--muted);
+body > * { position: relative; }
+
+header {
+  padding: 18px 20px 14px;
+  background: rgba(0, 0, 0, .55);
+  border-bottom: var(--px) solid #000;
 }
-.drop.over, .drop:focus-within { border-color: var(--accent); color: var(--text); }
-.drop[aria-disabled="true"] { cursor: progress; }
-.drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-ol { margin: 0; padding-left: 0; list-style: none; columns: 2 220px; }
-ol li { padding: 2px 0; color: var(--muted); font-family: ui-monospace, monospace; font-size: 0.9rem; }
-ol li::before { content: "○ "; }
-ol li.running { color: var(--text); font-weight: 600; }
-ol li.running::before { content: "◐ "; }
-ol li.done { color: var(--text); }
-ol li.done::before { content: "● "; color: var(--accent); }
-.button {
+h1 { margin: 0 0 6px; font-size: 20px; font-weight: normal; letter-spacing: .5px; }
+h2 { margin: 0 0 12px; font-size: 18px; font-weight: normal; }
+.muted { color: var(--ink-dim); font-size: 13px; }
+
+main { max-width: 760px; margin: 0 auto; padding: 40px 16px 24px; }
+
+/* A vanilla button: light on top and left, dark on bottom and right, and the
+   bevel inverts while it is held down. */
+button, .button {
   display: inline-block;
-  padding: 10px 18px;
-  border-radius: 8px;
-  background: var(--accent);
-  color: var(--accent-text);
-  text-decoration: none;
-  font-weight: 600;
+  font: inherit; color: var(--ink); text-shadow: inherit; text-decoration: none;
+  background: var(--btn); border: var(--px) solid #000;
+  padding: 8px 16px; cursor: pointer;
+  box-shadow: inset var(--px) var(--px) 0 0 var(--btn-hi),
+              inset calc(var(--px) * -1) calc(var(--px) * -1) 0 0 #3a3a3a;
 }
-.button.secondary {
-  background: transparent;
-  color: var(--text);
-  border: 1px solid var(--line);
-  font-weight: 500;
+button:hover:not(:disabled), .button:hover { background: var(--btn-hi); color: #ffffa0; }
+button:active:not(:disabled), .button:active {
+  box-shadow: inset var(--px) var(--px) 0 0 #3a3a3a,
+              inset calc(var(--px) * -1) calc(var(--px) * -1) 0 0 var(--btn-hi);
 }
-.actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; }
-.problem { color: var(--error); font-weight: 600; }
+button[aria-pressed="true"] { background: var(--btn-hi); color: #ffffa0; }
+button:disabled { color: var(--ink-dim); cursor: progress; }
+button:focus-visible, .button:focus-visible { outline: var(--px) solid #ffffa0; outline-offset: 2px; }
+.button.primary { background: #3f7a2a; box-shadow: inset var(--px) var(--px) 0 0 #6fae55,
+                  inset calc(var(--px) * -1) calc(var(--px) * -1) 0 0 #24481a; }
+
+/* The drop target: the whole window accepts a pack, so this is a sign rather
+   than a small button to hunt for. */
+#dropzone {
+  padding: 44px 24px;
+  text-align: center;
+  border: calc(var(--px) * 2) dashed #6f6f6f;
+  background: rgba(0, 0, 0, .35);
+}
+#dropzone h2 { font-size: 20px; margin-bottom: 10px; }
+#dropzone p { margin: 0 0 20px; color: var(--ink-dim); font-size: 13px; }
+body.dragging #dropzone { border-color: var(--ok); background: rgba(85, 255, 85, .10); }
+#targets { display: flex; gap: 8px; justify-content: center; align-items: center;
+           flex-wrap: wrap; margin-bottom: 18px; }
+#targets .label { color: var(--ink-dim); font-size: 13px; margin-right: 4px; }
+#targets button { padding: 6px 14px; font-size: 14px; }
+
+.panel {
+  margin-top: 20px;
+  padding: 18px 20px;
+  background: rgba(0, 0, 0, .45);
+  border: var(--px) solid #000;
+}
+ol { margin: 0; padding-left: 0; list-style: none; columns: 2 220px; }
+ol li { padding: 2px 0; color: var(--ink-dim); font-size: 14px; }
+ol li::before { content: "□ "; }
+ol li.running { color: #ffffa0; }
+ol li.running::before { content: "▣ "; }
+ol li.done { color: var(--ink); }
+ol li.done::before { content: "■ "; color: var(--ok); }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 0; }
+#counts { margin: 0; }
+.problem { color: var(--err); margin: 16px 0 0; text-align: center; }
+
 /* The report is a wide page of its own, so it gets the window's width
    rather than the 760px column. */
 #report-view { padding: 0 16px; }
@@ -88,9 +112,8 @@ ol li.done::before { content: "● "; color: var(--accent); }
   display: block;
   width: 100%;
   height: 85vh;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--panel);
+  border: var(--px) solid #000;
+  background: #2b2622;
 }
-footer { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; font-size: 0.9rem; }
-footer a { color: inherit; }
+footer { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; font-size: 13px; }
+footer a { color: var(--ink-dim); }

@@ -8,39 +8,38 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main>
-  <header>
-    <h1>MC Pack Converter</h1>
-    <p>Converts a Minecraft Java 1.8.9 resource pack to a modern version.
-       It runs entirely in this browser tab: <strong>your pack is never uploaded</strong>.</p>
-  </header>
+<header>
+  <h1>MC Pack Converter</h1>
+  <div class="muted">Converts a Minecraft Java 1.8.9 resource pack to a modern version.
+    It runs entirely in this browser tab: your pack is never uploaded.</div>
+</header>
 
-  <section id="pick">
-    <label class="target">Convert to
-      <select id="target" disabled></select>
-    </label>
-    <label id="drop" class="drop" aria-disabled="true">
-      <input id="file" type="file" accept=".zip,application/zip" disabled>
-      <span id="drop-text">Loading the converter…</span>
-    </label>
+<main>
+  <!-- The whole window accepts a dropped pack (app.js); this is the sign. -->
+  <section id="dropzone">
+    <h2 id="drop-text">Loading the converter…</h2>
+    <p>as a .zip file</p>
+    <div id="targets" role="group" aria-label="Convert to"><span class="label">Convert to</span></div>
+    <button id="choose" disabled>Choose a pack…</button>
+    <input id="file" type="file" accept=".zip,application/zip" hidden>
   </section>
 
-  <section id="progress" hidden>
+  <p id="problem" class="problem" hidden></p>
+
+  <section id="progress" class="panel" hidden>
     <h2 id="progress-title"></h2>
     <ol id="stages"></ol>
   </section>
 
-  <section id="result" hidden>
+  <section id="result" class="panel" hidden>
     <h2 id="result-title"></h2>
-    <p id="counts"></p>
+    <p id="counts" class="muted"></p>
     <p class="actions">
-      <a id="download" class="button" href="#" download>Download converted pack</a>
-      <a id="report-tab" class="button secondary" href="#" target="_blank">Open report in a new tab</a>
-      <a id="report-save" class="button secondary" href="#" download>Save report</a>
+      <a id="download" class="button primary" href="#" download>Download converted pack</a>
+      <a id="report-tab" class="button" href="#" target="_blank">Open report in a new tab</a>
+      <a id="report-save" class="button" href="#" download>Save report</a>
     </p>
   </section>
-
-  <p id="problem" class="problem" hidden></p>
 </main>
 
 <!-- The desktop's own HTML report: every converted texture, the skies and
