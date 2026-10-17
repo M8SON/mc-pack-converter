@@ -7,8 +7,8 @@ from a master that predated the sky renderer. The moment that renderer
 reached master, a clean install of this package could not build a QA sheet at
 all. CI on a bare runner is what found it.
 
-A missing dependency does not fail at install time. It fails the first time a
-user drags a pack onto the launcher, which is the worst possible moment.
+A missing dependency does not fail at install time. It fails the first time
+someone converts a pack, which is the worst possible moment.
 """
 import ast
 import sys

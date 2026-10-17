@@ -122,15 +122,6 @@ def build_grass(zip_path: Path) -> bytes | None:
         return None
 
 
-def cache_dir() -> Path:
-    """Per-user, not beside the exe: the exe may sit somewhere unwritable, and
-    a tool should not scribble next to itself."""
-    import os
-    base = (os.environ.get("LOCALAPPDATA") or os.environ.get("XDG_CACHE_HOME")
-            or os.path.expanduser("~/.cache"))
-    return Path(base) / "MCPackConverter"
-
-
 def main(argv: list[str] | None = None) -> int:
     """Rebuild the wall the app ships, from a converted pack.
 

@@ -142,6 +142,3 @@ h2 { font-size: 13px; font-weight: normal; letter-spacing: .12em;
               inset calc(var(--px) * -1) calc(var(--px) * -1) 0 0 var(--panel-lit);
 }
 
-/* The update notice. Quiet on purpose: it is information, not an alert, and
-   it must never compete with the drop target for attention. */
-#update { margin-top: 1.25rem; font-size: 0.85rem; text-align: center; }

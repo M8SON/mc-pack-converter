@@ -38,19 +38,6 @@ def test_findings_lead_with_the_loud_ones(tmp_path):
     assert m["counts"]["info"] == 1
 
 
-def test_the_update_notice_is_absent_by_default(tmp_path):
-    from mc_pack_converter.webui.report import build_model
-    m = build_model(_result(tmp_path), sheet={"sections": [], "total": 0})
-    assert m["update"] is None
-
-
-def test_the_update_notice_is_carried_when_given(tmp_path):
-    from mc_pack_converter.webui.report import build_model
-    m = build_model(_result(tmp_path), sheet={"sections": [], "total": 0},
-                    update="An update is available")
-    assert m["update"] == "An update is available"
-
-
 def test_the_sheet_is_carried_verbatim(tmp_path):
     from mc_pack_converter.webui.report import build_model
     sheet = {"sections": [{"label": "Blocks", "tiles": []}], "total": 1}

@@ -4,7 +4,7 @@ import { loadPyodide } from "./pyodide/pyodide.mjs";
 
 // The desktop CLI's job seam, unchanged: validate_source, then run_job with
 // on_stage and write_reports=False, then the same HTML report, exactly as
-// gui.py does it. There is no update check: the page is always the latest.
+// gui.py does it.
 const GLUE = `
 import json
 from pathlib import Path
