@@ -12,7 +12,7 @@ every file against a published SHA-256 before using it.
 
 Output:
     index.html, app.js, worker.js, style.css   from web/
-    pyodide/                                   the runtime + the Pillow wheel
+    pyodide/                                   the runtime + Pillow and numpy wheels
     py/<this package>.whl, py/manifest.json    the converter itself
 """
 from __future__ import annotations
@@ -36,7 +36,7 @@ CORE_URL = (f"https://github.com/pyodide/pyodide/releases/download/"
 # Wheels outside the core tarball; each is checked against the sha256 in the
 # (already verified) pyodide-lock.json.
 FULL_URL = f"https://cdn.jsdelivr.net/pyodide/v{PYODIDE_VERSION}/full/"
-PACKAGES = ["pillow"]
+PACKAGES = ["pillow", "numpy"]
 # What the page loads from the core tarball. The .d.ts files, package.json
 # and the Node CLI entry points are not needed in a browser.
 RUNTIME = ["pyodide.mjs", "pyodide.asm.mjs", "pyodide.asm.wasm",

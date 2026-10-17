@@ -10,10 +10,11 @@ keeping the pack's own art wherever the modern game can still use it.
 ## Convert in your browser
 
 **[Open the converter](https://m8son.github.io/mc-pack-converter/)**, choose
-a target version, and drop your pack's `.zip` on the page. Nothing to
-install, and nothing for Windows to block. The conversion runs inside the
-browser tab, using the same Python code as the download, so your pack is
-never uploaded anywhere.
+a target version, and drop your pack's `.zip` on the page. You get the
+converted pack and the same report as the download, with every converted
+texture. Nothing to install, and nothing for Windows to block. The
+conversion runs inside the browser tab, using the same Python code as the
+download, so your pack is never uploaded anywhere.
 
 ## Download it
 

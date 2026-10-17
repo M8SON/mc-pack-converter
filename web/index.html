@@ -33,24 +33,25 @@
   <section id="result" hidden>
     <h2 id="result-title"></h2>
     <p id="counts"></p>
-    <p><a id="download" class="button" href="#" download>Download converted pack</a></p>
-    <ul id="findings"></ul>
-    <details>
-      <summary>Full conversion report</summary>
-      <pre id="report"></pre>
-    </details>
-    <details>
-      <summary>Null-texture report</summary>
-      <pre id="null-report"></pre>
-    </details>
+    <p class="actions">
+      <a id="download" class="button" href="#" download>Download converted pack</a>
+      <a id="report-tab" class="button secondary" href="#" target="_blank">Open report in a new tab</a>
+      <a id="report-save" class="button secondary" href="#" download>Save report</a>
+    </p>
   </section>
 
   <p id="problem" class="problem" hidden></p>
-
-  <footer>
-    <a href="https://github.com/M8SON/mc-pack-converter">Source on GitHub</a>
-  </footer>
 </main>
+
+<!-- The desktop's own HTML report: every converted texture, the skies and
+     the findings. Sandboxed: it is our page, but it shows pack-made text. -->
+<div id="report-view" hidden>
+  <iframe id="report-frame" title="Conversion report" sandbox="allow-scripts"></iframe>
+</div>
+
+<footer>
+  <a href="https://github.com/M8SON/mc-pack-converter">Source on GitHub</a>
+</footer>
 <script type="module" src="app.js"></script>
 </body>
 </html>

@@ -41,18 +41,40 @@ def test_convert_reports_every_stage_and_writes_the_zip(glue, mini_pack, tmp_pat
     shutil.make_archive(str(pack.with_suffix("")), "zip", root)
     seen = []
     res = json.loads(glue["convert"](str(pack), "26.3",
-                                     lambda name, i, total: seen.append((name, i, total))))
+                                     lambda name, i, total: seen.append((name, i, total)),
+                                     lambda: seen.append("report")))
     assert "problem" not in res, res
+    assert seen.pop() == "report"
     assert [i for _, i, _ in seen] == list(range(1, len(seen) + 1))
     assert seen[-1][1] == seen[-1][2]
     assert Path(res["out"]).name == "MyPack-26.3.zip"
     assert zipfile.is_zipfile(res["out"])
     assert set(res["counts"]) == {"info", "warning", "error"}
-    assert set(res["reports"]) == {"report", "null-textures"}
+
+
+def test_convert_returns_the_desktop_s_html_report(glue, mini_pack, tmp_path):
+    """The same report gui.py writes, naming the download, not a path."""
+    root = mini_pack({"assets/minecraft/textures/blocks/stone.png": _png()})
+    pack = tmp_path / "in" / "MyPack.zip"
+    pack.parent.mkdir()
+    shutil.make_archive(str(pack.with_suffix("")), "zip", root)
+    res = json.loads(glue["convert"](str(pack), "26.3", lambda *a: None, lambda: None))
+    model = json.loads(re.search(r"window.MODEL = (.*?);</script>", res["html"]).group(1))
+    assert model["out_path"] == "MyPack-26.3.zip"
+    assert model["sheet"]["total"] >= 1
+    assert "stone" in res["html"]
+
+
+def _png() -> bytes:
+    import io
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGBA", (16, 16), (120, 120, 120, 255)).save(buf, format="PNG")
+    return buf.getvalue()
 
 
 def test_convert_refuses_a_non_zip_in_the_desktop_s_words(glue, tmp_path):
     bad = tmp_path / "notes.zip"
     bad.write_text("not a zip")
-    res = json.loads(glue["convert"](str(bad), "26.3", lambda *a: None))
+    res = json.loads(glue["convert"](str(bad), "26.3", lambda *a: None, lambda: None))
     assert res == {"problem": f"not a readable zip: {bad}"}

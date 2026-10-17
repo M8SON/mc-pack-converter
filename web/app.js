@@ -1,9 +1,10 @@
 // The page: pick a pack, hand its bytes to the worker, show stages as they
-// run, then offer the converted zip as a download. Nothing is sent anywhere.
+// run, then offer the converted zip as a download and show the report.
+// Nothing is sent anywhere.
 const $ = (id) => document.getElementById(id);
 const worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
 let busy = true;
-let lastUrl = null;
+let urls = [];
 
 function setReady(on, text) {
   busy = !on;
@@ -31,6 +32,7 @@ function start(file) {
   if (busy || !file) return;
   showProblem("");
   $("result").hidden = true;
+  $("report-view").hidden = true;
   for (const li of $("stages").children) li.className = "";
   $("progress-title").textContent = `Converting ${file.name}`;
   $("progress").hidden = false;
@@ -45,24 +47,21 @@ function showResult(r) {
   const c = r.counts;
   $("result-title").textContent = c.error ? "Converted, with errors" : "Converted";
   $("counts").textContent = `${c.error} errors, ${c.warning} warnings, ${c.info} notes`;
-  if (lastUrl) URL.revokeObjectURL(lastUrl);
-  lastUrl = URL.createObjectURL(new Blob([r.zip], { type: "application/zip" }));
+  urls.forEach(URL.revokeObjectURL);
+  const zip = URL.createObjectURL(new Blob([r.zip], { type: "application/zip" }));
+  const report = URL.createObjectURL(new Blob([r.html], { type: "text/html" }));
+  urls = [zip, report];
   const a = $("download");
-  a.href = lastUrl;
+  a.href = zip;
   a.download = r.name;
   a.textContent = `Download ${r.name}`;
-  $("findings").replaceChildren(...r.findings.filter((f) => f.severity !== "info").map((f) => {
-    const li = document.createElement("li");
-    li.className = f.severity;
-    li.textContent = f.message + " ";
-    const where = document.createElement("code");
-    where.textContent = f.path ? `${f.stage} · ${f.path}` : f.stage;
-    li.append(where);
-    return li;
-  }));
-  $("report").textContent = r.reports.report;
-  $("null-report").textContent = r.reports["null-textures"];
+  $("report-tab").href = report;
+  $("report-save").href = report;
+  $("report-save").download = r.name.replace(/\.zip$/i, "") + "-report.html";
+  $("report-frame").src = report;
   $("result").hidden = false;
+  $("report-view").hidden = false;
+  $("result").scrollIntoView({ behavior: "smooth" });
   a.click();
 }
 
@@ -78,6 +77,10 @@ worker.onmessage = ({ data }) => {
         li.className = k + 1 < data.i ? "done" : k + 1 === data.i ? "running" : "";
       });
       $("progress-title").textContent = `Stage ${data.i} of ${data.total}: ${data.stage}`;
+      break;
+    case "report":
+      for (const li of $("stages").children) li.className = "done";
+      $("progress-title").textContent = "Building the texture report…";
       break;
     case "done":
       for (const li of $("stages").children) li.className = "done";
