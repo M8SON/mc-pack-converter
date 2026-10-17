@@ -7,6 +7,14 @@ keeping the pack's own art wherever the modern game can still use it.
 
 ![The report's texture view: every converted texture, grouped](docs/images/hero.png)
 
+## Convert in your browser
+
+**[Open the converter](https://m8son.github.io/mc-pack-converter/)**, choose
+a target version, and drop your pack's `.zip` on the page. Nothing to
+install, and nothing for Windows to block. The conversion runs inside the
+browser tab, using the same Python code as the download, so your pack is
+never uploaded anywhere.
+
 ## Download it
 
 **[Download MCPackConverter.zip](https://github.com/M8SON/mc-pack-converter/releases/latest/download/MCPackConverter.zip)**,
@@ -115,6 +123,9 @@ mc-pack-converter convert --report-only MyPack.zip       # analyse only, write n
 `MyPack` can be a `.zip` or an unpacked folder. The `gui` form writes beside
 the pack. `convert` writes to the current directory, or wherever `-o OUT`
 says. To update, run `git pull && pip install .`
+
+To build the browser version: `python tools/build_web.py`, then serve
+`build/web/` with any static file server.
 
 Verified on Linux with a real 1.8.9 pack. The Windows launcher has not been
 retested since the HTML report replaced the window. It runs the same code
