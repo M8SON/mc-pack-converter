@@ -12,6 +12,7 @@ every file against a published SHA-256 before using it.
 
 Output:
     index.html, app.js, worker.js, style.css   from web/
+    grass.png, wall.png                        the report's background
     pyodide/                                   the runtime + Pillow and numpy wheels
     py/<this package>.whl, py/manifest.json    the converter itself
 """
@@ -90,6 +91,9 @@ def main(argv=None) -> int:
 
     for f in (REPO / "web").iterdir():
         shutil.copy(f, out / f.name)
+    # The page's background is the report's own, so the two always match.
+    for name in ("grass.png", "wall.png"):
+        shutil.copy(REPO / "mc_pack_converter" / "webui" / "assets" / name, out / name)
 
     total = sum(f.stat().st_size for f in out.rglob("*") if f.is_file())
     print(f"wrote {out} ({total / 1e6:.1f} MB)")

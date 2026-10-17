@@ -5,18 +5,33 @@ const $ = (id) => document.getElementById(id);
 const worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
 let busy = true;
 let urls = [];
+let target = null;
 
 function setReady(on, text) {
   busy = !on;
-  $("file").disabled = !on;
-  $("target").disabled = !on;
-  $("drop").setAttribute("aria-disabled", String(!on));
+  $("choose").disabled = !on;
+  for (const b of $("targets").querySelectorAll("button")) b.disabled = !on;
   $("drop-text").textContent = text;
 }
 
 function showProblem(text) {
   $("problem").textContent = text;
   $("problem").hidden = !text;
+}
+
+function renderTargets(targets, current) {
+  target = current;
+  $("targets").append(...targets.map((t) => {
+    const b = document.createElement("button");
+    b.textContent = t;
+    b.setAttribute("aria-pressed", String(t === current));
+    b.onclick = () => {
+      target = t;
+      for (const o of $("targets").querySelectorAll("button"))
+        o.setAttribute("aria-pressed", String(o === b));
+    };
+    return b;
+  }));
 }
 
 function renderStages(names) {
@@ -38,7 +53,7 @@ function start(file) {
   $("progress").hidden = false;
   setReady(false, "Converting…");
   file.arrayBuffer().then((bytes) => {
-    worker.postMessage({ type: "convert", name: file.name, bytes, target: $("target").value },
+    worker.postMessage({ type: "convert", name: file.name, bytes, target },
                        [bytes]);
   });
 }
@@ -68,9 +83,9 @@ function showResult(r) {
 worker.onmessage = ({ data }) => {
   switch (data.type) {
     case "ready":
-      $("target").replaceChildren(...data.targets.map((t) => new Option(t, t, false, t === data.default)));
+      renderTargets(data.targets, data.default);
       renderStages(data.stages);
-      setReady(true, "Drop a 1.8.9 pack .zip here, or click to choose one");
+      setReady(true, "Drop a 1.8.9 resource pack here");
       break;
     case "stage":
       [...$("stages").children].forEach((li, k) => {
@@ -91,7 +106,7 @@ worker.onmessage = ({ data }) => {
     case "problem":
       $("progress").hidden = true;
       showProblem(data.message);
-      setReady(true, "Drop a 1.8.9 pack .zip here, or click to choose one");
+      setReady(true, "Drop a 1.8.9 resource pack here");
       break;
     case "crash":
       showProblem(`The converter stopped unexpectedly: ${data.message}`);
@@ -104,13 +119,18 @@ worker.onerror = (e) => {
   setReady(false, "Unavailable");
 };
 
+$("choose").onclick = () => $("file").click();
 $("file").addEventListener("change", (e) => { start(e.target.files[0]); e.target.value = ""; });
-const drop = $("drop");
-drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
-drop.addEventListener("dragleave", () => drop.classList.remove("over"));
-drop.addEventListener("drop", (e) => {
+// The whole window is the drop target, as in the old desktop window. Without
+// preventDefault on dragover the browser would open the zip itself instead.
+let depth = 0;
+addEventListener("dragenter", () => { depth++; document.body.classList.add("dragging"); });
+addEventListener("dragleave", () => { if (--depth <= 0) { depth = 0; document.body.classList.remove("dragging"); } });
+addEventListener("dragover", (e) => e.preventDefault());
+addEventListener("drop", (e) => {
   e.preventDefault();
-  drop.classList.remove("over");
+  depth = 0;
+  document.body.classList.remove("dragging");
   start(e.dataTransfer.files[0]);
 });
 
