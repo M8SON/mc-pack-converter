@@ -48,4 +48,4 @@ def glint(ctx: ConversionContext) -> None:
         ctx.add("glint", Severity.INFO,
                 f"{name} tiled 2x2 -> {w * 2}x{h * 2} "
                 "(modern tiles the glint half as far as 1.8.9)",
-                path=str(path))
+                path=str(path.relative_to(ctx.root)))

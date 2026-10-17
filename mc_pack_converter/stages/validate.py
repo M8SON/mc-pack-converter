@@ -182,7 +182,7 @@ def _check_optifine(ctx, mc):
     of = mc / "optifine"
     if not of.is_dir():
         return
-    for prop in iter_properties(of):
+    for prop in sorted(iter_properties(of)):
         props = parse_properties(read_properties_text(prop))
         src = props.get("source")
         if src and not (prop.parent / src).resolve().exists():
