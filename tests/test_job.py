@@ -118,3 +118,53 @@ def test_write_reports_false_writes_no_files_but_keeps_the_text(mini_pack, tmp_p
     assert set(result.report_texts) == {"report", "null-textures"}
     assert result.report_texts["report"].strip()
     assert not list(out.parent.glob("*.md"))
+
+
+def test_run_job_writes_the_same_report_whatever_the_walk_order(
+        mini_pack, tmp_path, monkeypatch):
+    """Two conversions of one pack give the same report, bar the build tag.
+
+    Pyodide's in-memory filesystem lists directories in a different order
+    from the disk's, and every run works in a fresh temp folder, so neither
+    may show up in the report. The second run here walks every directory
+    backwards to stand in for the other filesystem.
+    """
+    import io
+    import re
+    from PIL import Image
+    from mc_pack_converter.job import run_job
+
+    def png(colour):
+        buf = io.BytesIO()
+        Image.new("RGBA", (16, 16), colour).save(buf, format="PNG")
+        return buf.getvalue()
+
+    sky = "assets/minecraft/optifine/sky/world0"
+    root = mini_pack({
+        f"{sky}/sky1.properties": b"source=./cloud.png\nblend=replace\n",
+        f"{sky}/sky2.properties": b"source=./cloud.png\nblend=replace\n",
+        f"{sky}/sky4.properties": b"source=./starfield01.png\nblend=add\n",
+        f"{sky}/sky5.properties": b"source=./starfield02.png\nblend=add\n",
+        f"{sky}/cloud.png": png((0, 0, 0, 255)),
+        "assets/minecraft/optifine/ctm/glass/glass.properties":
+            b"method=ctm\ntiles=0-46\nmatchBlocks=20\n",
+        "assets/minecraft/textures/misc/enchanted_glint_item.png":
+            png((128, 0, 255, 255)),
+    })
+
+    def report(name):
+        out = tmp_path / name / "MyPack-26.3.zip"
+        out.parent.mkdir()
+        text = run_job(root, out, "26.3", write_reports=False).report_texts["report"]
+        return re.sub(r"build tag (\S+) \d{4}-\d{4}", r"build tag \1 TAG", text)
+
+    first = report("a")
+    forward = Path.rglob
+    monkeypatch.setattr(Path, "rglob",
+                        lambda self, pattern: reversed(list(forward(self, pattern))))
+    second = report("b")
+
+    assert "starfield01" in first and "blend replace->add" in first
+    assert "enchanted_glint_item" in first and "ctm matchBlocks" in first
+    assert "mcpc_" not in first
+    assert first == second

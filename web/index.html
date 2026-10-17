@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MC Pack Converter</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 fill=%22%233f7a2a%22/%3E%3Crect y=%2210%22 width=%2216%22 height=%226%22 fill=%22%236b4a2b%22/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>MC Pack Converter</h1>
+    <p>Converts a Minecraft Java 1.8.9 resource pack to a modern version.
+       It runs entirely in this browser tab: <strong>your pack is never uploaded</strong>.</p>
+  </header>
+
+  <section id="pick">
+    <label class="target">Convert to
+      <select id="target" disabled></select>
+    </label>
+    <label id="drop" class="drop" aria-disabled="true">
+      <input id="file" type="file" accept=".zip,application/zip" disabled>
+      <span id="drop-text">Loading the converter…</span>
+    </label>
+  </section>
+
+  <section id="progress" hidden>
+    <h2 id="progress-title"></h2>
+    <ol id="stages"></ol>
+  </section>
+
+  <section id="result" hidden>
+    <h2 id="result-title"></h2>
+    <p id="counts"></p>
+    <p><a id="download" class="button" href="#" download>Download converted pack</a></p>
+    <ul id="findings"></ul>
+    <details>
+      <summary>Full conversion report</summary>
+      <pre id="report"></pre>
+    </details>
+    <details>
+      <summary>Null-texture report</summary>
+      <pre id="null-report"></pre>
+    </details>
+  </section>
+
+  <p id="problem" class="problem" hidden></p>
+
+  <footer>
+    <a href="https://github.com/M8SON/mc-pack-converter">Source on GitHub</a>
+  </footer>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>

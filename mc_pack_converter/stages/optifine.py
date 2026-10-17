@@ -58,7 +58,8 @@ def _opaque_black_fraction(path: Path) -> float:
 
 
 def _check_sky(ctx: ConversionContext, sky_dir: Path) -> None:
-    for prop in iter_properties(sky_dir):
+    for prop in sorted(iter_properties(sky_dir)):
+        where = str(prop.relative_to(ctx.root))
         text = read_properties_text(prop)
         props = parse_properties(text)
         src = props.get("source")
@@ -71,7 +72,7 @@ def _check_sky(ctx: ConversionContext, sky_dir: Path) -> None:
             # still shows (the source file is absent from the pack itself).
             prop.unlink()
             ctx.add("optifine", Severity.INFO,
-                    f"removed sky layer with missing source {src}", str(prop))
+                    f"removed sky layer with missing source {src}", where)
             continue
         # blend=replace with a fully-opaque texture that has large black regions
         # paints a black square over the sky. Switch to blend=add so black
@@ -79,7 +80,7 @@ def _check_sky(ctx: ConversionContext, sky_dir: Path) -> None:
         if props.get("blend") == "replace" and _opaque_black_fraction(target) > 0.10:
             prop.write_text(re.sub(r"(?m)^\s*blend\s*=\s*replace\s*$", "blend=add", text))
             ctx.add("optifine", Severity.INFO,
-                    f"sky {prop.name}: blend replace->add (opaque-black {src})", str(prop))
+                    f"sky {prop.name}: blend replace->add (opaque-black {src})", where)
 
 def _replace_match_line(text: str, key: str, value: str) -> str:
     lines = text.splitlines(keepends=True)
@@ -175,10 +176,11 @@ def _fix_ctm(ctx: ConversionContext, ctm_dir: Path) -> None:
     taken_by_inferred: dict[str, str] = {}
 
     for prop, text, props, folder, block, match_key in entries:
+        where = str(prop.relative_to(ctx.root))
         if match_key is None:
             if not block:
                 ctx.add("optifine", Severity.WARNING,
-                        f"no matchBlocks mapping for ctm folder '{folder}'", str(prop))
+                        f"no matchBlocks mapping for ctm folder '{folder}'", where)
                 continue
             clash = [b for b in block.split()
                      if explicit.get(b) not in (None, folder)]
@@ -186,19 +188,19 @@ def _fix_ctm(ctx: ConversionContext, ctm_dir: Path) -> None:
                 ctx.add("optifine", Severity.INFO,
                         f"ctm folder '{folder}' left alone; {' '.join(clash)} "
                         "already claimed by a folder that names it explicitly",
-                        str(prop))
+                        where)
                 continue
             dup = [b for b in block.split()
                    if taken_by_inferred.get(b) not in (None, folder)]
             if dup:
                 ctx.add("optifine", Severity.WARNING,
                         f"ctm folder '{folder}' left alone; {' '.join(dup)} already "
-                        f"claimed by '{taken_by_inferred[dup[0]]}'", str(prop))
+                        f"claimed by '{taken_by_inferred[dup[0]]}'", where)
                 continue
             prop.write_text(text.rstrip() + f"\nmatchBlocks={block}\n")
             for b in block.split():
                 taken_by_inferred[b] = folder
-            ctx.add("optifine", Severity.INFO, f"ctm matchBlocks={block}", str(prop))
+            ctx.add("optifine", Severity.INFO, f"ctm matchBlocks={block}", where)
             continue
 
         value = props[match_key]
@@ -208,12 +210,12 @@ def _fix_ctm(ctx: ConversionContext, ctm_dir: Path) -> None:
         if not block:
             ctx.add("optifine", Severity.WARNING,
                     f"legacy numeric {match_key}='{value}' in ctm folder '{folder}' "
-                    "has no modern mapping; left unchanged", str(prop))
+                    "has no modern mapping; left unchanged", where)
             continue
 
         prop.write_text(_replace_match_line(text, match_key, block))
         ctx.add("optifine", Severity.INFO,
-                f"ctm {match_key} translated from legacy numeric ids to {block}", str(prop))
+                f"ctm {match_key} translated from legacy numeric ids to {block}", where)
 
 
 def optifine_translate(ctx: ConversionContext) -> None:
