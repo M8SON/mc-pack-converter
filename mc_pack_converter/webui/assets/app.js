@@ -112,9 +112,6 @@ function render() {
   // (cli.py:45) so both front ends read the same.
   $("details").textContent =
     `${M.counts.error} errors, ${M.counts.warning} warnings, ${M.counts.info} notes`;
-  const up = $("update");
-  up.textContent = M.update || "";
-  up.hidden = !M.update;
 
   window._flagged = M.findings.filter((f) => f.path).map((f) => norm(f.path));
   renderFindings(M);

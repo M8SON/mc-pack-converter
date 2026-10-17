@@ -20,11 +20,6 @@ def test_parse_drop_reports_extra_files_rather_than_hiding_them():
 
 
 # --- main(): converts, writes the report, opens it, prints its path -------
-#
-# LOCALAPPDATA is redirected to an empty tmp_path in every test that runs
-# main(): the update check reads installed-sha from the real cache dir
-# (~/.cache/MCPackConverter on this machine), and a machine that has one
-# installed would otherwise make main() reach out to GitHub in a test run.
 
 def test_the_report_path_is_printed_even_when_the_browser_fails(
         tmp_path, capsys, monkeypatch, mini_pack):
@@ -37,7 +32,6 @@ def test_the_report_path_is_printed_even_when_the_browser_fails(
     def boom(*a, **k):
         raise OSError("no browser")
 
-    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "cache"))
     monkeypatch.setattr(webbrowser, "open", boom)
     pack = mini_pack()
     rc = gui.main([str(pack)])
@@ -49,7 +43,6 @@ def test_the_report_path_is_printed_even_when_the_browser_fails(
 def test_the_report_lands_beside_the_output_zip(tmp_path, monkeypatch, mini_pack):
     import webbrowser
     from mc_pack_converter import gui
-    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "cache"))
     monkeypatch.setattr(webbrowser, "open", lambda *a, **k: True)
     pack = mini_pack()
     gui.main([str(pack)])
@@ -65,7 +58,6 @@ def test_a_run_writes_no_markdown_litter_beside_the_report(tmp_path, monkeypatch
     though (like the window before it) it carries no null-textures content."""
     import webbrowser
     from mc_pack_converter import gui
-    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "cache"))
     monkeypatch.setattr(webbrowser, "open", lambda *a, **k: True)
     pack = mini_pack()
     gui.main([str(pack)])
@@ -95,7 +87,6 @@ def test_a_report_is_still_written_when_build_sheet_raises(
     def boom(*a, **k):
         raise RuntimeError("a texture build_sheet's own try did not catch")
 
-    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "cache"))
     monkeypatch.setattr(webbrowser, "open", lambda *a, **k: True)
     monkeypatch.setattr(sheet_mod, "build_sheet", boom)
     pack = mini_pack()
@@ -113,7 +104,6 @@ def test_extra_dropped_paths_are_announced_not_silently_dropped(
     ignored -- the branch that used to say so left with the window."""
     import webbrowser
     from mc_pack_converter import gui
-    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "cache"))
     monkeypatch.setattr(webbrowser, "open", lambda *a, **k: True)
     pack = mini_pack()
     extra = tmp_path / "other.zip"
@@ -138,7 +128,6 @@ def test_the_report_path_is_printed_before_the_browser_opens(
         seen["out_so_far"] = capsys.readouterr().out
         return True
 
-    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "cache"))
     monkeypatch.setattr(webbrowser, "open", fake_open)
     pack = mini_pack()
     gui.main([str(pack)])
@@ -153,7 +142,6 @@ def test_a_zip_that_is_not_a_pack_is_refused_without_a_traceback(
     import zipfile
     from mc_pack_converter import gui
 
-    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "cache"))
     src = tmp_path / "notapack.zip"
     with zipfile.ZipFile(src, "w") as zf:
         zf.writestr("readme.txt", "not a pack")

@@ -10,39 +10,11 @@ keeping the pack's own art wherever the modern game can still use it.
 ## Convert in your browser
 
 **[Open the converter](https://m8son.github.io/mc-pack-converter/)**, choose
-a target version, and drop your pack's `.zip` on the page. Nothing to
-install, and nothing for Windows to block. The conversion runs inside the
-browser tab, using the same Python code as the download, so your pack is
-never uploaded anywhere.
+a target version, and drop your pack's `.zip` on the page.
 
-## Download it
-
-**[Download MCPackConverter.zip](https://github.com/M8SON/mc-pack-converter/releases/latest/download/MCPackConverter.zip)**,
-extract it, and **drag your pack's `.zip` onto `MCPackConverter.cmd`.**
-
-You get two files next to your pack:
-
-| File | What it is |
-|---|---|
-| `YourPack-26.3.zip` | the converted pack |
-| `YourPack-26.3-report.html` | opens in your browser and shows everything that was converted |
-
-The first run takes about a minute to install itself. After that it keeps
-itself up to date.
-
-<details>
-<summary>If Windows complains</summary>
-
-- **"Python is not installed"**: get
-  [Python 3.12 from the Microsoft Store](https://apps.microsoft.com/detail/9NCVDN91XZQP)
-  (the Store build specifically, since Windows trusts it) and run the file again.
-- **"Windows protected your PC"**: click *More info* → *Run anyway*.
-- **Why a `.cmd` and not an `.exe`?**
-  [Smart App Control](https://support.microsoft.com/en-us/topic/what-is-smart-app-control-285ea03d-fa88-4495-8b65-fe1f7c1ec763)
-  blocks unsigned executables outright. So this ships as a Python package
-  with a small launcher, which runs `python -m mc_pack_converter.gui` rather
-  than a pip-generated `.exe` shim that would be blocked the same way.
-</details>
+You get the converted pack, plus a report showing every texture that was
+converted. There is nothing to install. The conversion runs inside the
+browser tab, so your pack is never uploaded anywhere.
 
 ## How it works
 
@@ -107,9 +79,9 @@ with the number it measured to make the decision:
 
 ![Findings: each dropped texture with its measured score](docs/images/findings.png)
 
-## Run it on Linux, or from source
+## Run it from source
 
-Requires Python 3.11+. Dependencies are [Pillow](https://python-pillow.org/)
+For development, or to convert without a browser. Requires Python 3.11+. Dependencies are [Pillow](https://python-pillow.org/)
 and numpy.
 
 ```
@@ -125,11 +97,8 @@ the pack. `convert` writes to the current directory, or wherever `-o OUT`
 says. To update, run `git pull && pip install .`
 
 To build the browser version: `python tools/build_web.py`, then serve
-`build/web/` with any static file server.
-
-Verified on Linux with a real 1.8.9 pack. The Windows launcher has not been
-retested since the HTML report replaced the window. It runs the same code
-path, but that is not a fresh test run.
+`build/web/` with any static file server. Every push to `master` publishes
+it to GitHub Pages.
 
 ## Limitations
 

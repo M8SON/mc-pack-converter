@@ -22,10 +22,10 @@ def parse_drop(argv: list[str]) -> tuple[Path | None, list[Path]]:
     return paths[0], paths[1:]
 
 
-def write_report(result, sheet: dict, update: str | None, path: Path) -> Path:
+def write_report(result, sheet: dict, path: Path) -> Path:
     """The report, beside the output zip and named after it."""
     from .webui.report import build_model, render_html
-    path.write_text(render_html(build_model(result, sheet, update)),
+    path.write_text(render_html(build_model(result, sheet)),
                     encoding="utf-8")
     return path
 
@@ -43,15 +43,6 @@ def main(argv: list[str] | None = None) -> int:
     if problem:
         print(problem, file=sys.stderr)
         return 2
-
-    # There is no UI thread to keep free any more, but the check still must
-    # not delay the conversion and still must never raise -- both guaranteed
-    # by start_update_check/run_update_check (tests/webui/test_update.py:145).
-    # Duck-typed: it only ever assigns .update_notice, so a bare holder does.
-    from types import SimpleNamespace
-    from .webui.update import TIMEOUT_S, start_update_check
-    holder = SimpleNamespace(update_notice=None)
-    t = start_update_check(holder)
 
     out = out_path_beside_source(source, DEFAULT_TARGET)
     # on_stage is (name, i, total) -- the same callback cli.py uses, printed
@@ -80,13 +71,7 @@ def main(argv: list[str] | None = None) -> int:
         # are still worth showing.
         sheet = EMPTY_SHEET
 
-    t.join(timeout=TIMEOUT_S)
-    update = holder.update_notice
-    if update:
-        print(update)
-
-    report = write_report(result, sheet, update,
-                          out.with_name(f"{out.stem}-report.html"))
+    report = write_report(result, sheet, out.with_name(f"{out.stem}-report.html"))
     # Before opening: webbrowser.open BLOCKS for any handler Python registers
     # as a GenericBrowser (it waits on the child process), so a hanging
     # handler is exactly the failure this print exists to survive -- printed
