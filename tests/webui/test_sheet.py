@@ -746,3 +746,24 @@ def test_an_overlay_with_no_leather_keeps_its_own_tile(tmp_path):
         z.writestr(A + "textures/entity/equipment/humanoid/leather_overlay.png", _png(64, 32))
     (tile,) = build_sheet(path)["sections"][0]["tiles"]
     assert tile["name"] == "leather_overlay.png"
+
+
+def test_the_leather_tile_turns_once_in_each_dye(tmp_path):
+    """Leather is one greyscale texture the game colours by dye, so the tile
+    shows it undyed and then in each of the 16 dyes, a full turn apiece."""
+    from mc_pack_converter.webui.sheet import LEATHER_DYES, SPIN
+    white = Image.new("RGBA", (64, 32), (255, 255, 255, 255))
+    buf = io.BytesIO(); white.save(buf, "PNG")
+    path = tmp_path / "p.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr(A + "textures/entity/equipment/humanoid/leather.png", buf.getvalue())
+        z.writestr(A + "textures/entity/equipment/humanoid/iron.png", _png(64, 32))
+    leather, iron = sorted(build_sheet(path)["sections"][0]["tiles"],
+                           key=lambda t: t["name"] != "leather.png")
+    assert len(LEATHER_DYES) == 17
+    assert len(leather["frames"]) == 17 * SPIN
+    assert len(iron["frames"]) == SPIN
+    for turn, dye in enumerate(LEATHER_DYES):
+        f = leather["frames"][turn * SPIN]
+        im = Image.open(io.BytesIO(base64.b64decode(f.split(",", 1)[1]))).convert("RGBA")
+        assert dye in {c[:3] for c in im.getdata() if c[3]}, turn

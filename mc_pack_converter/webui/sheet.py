@@ -294,10 +294,13 @@ def build_sheet(zip_path: Path) -> dict:
                 continue
             buckets.setdefault(label, []).append(tile)
 
-        _dress_leather(armor_sets)
+        overlay = _take_leather_overlay(armor_sets)
         for leaf in sorted(armor_sets):
+            layers = armor_sets[leaf]
+            turns = ([_dyed(layers, overlay, dye) for dye in LEATHER_DYES]
+                     if leaf == "leather.png" else [layers])
             try:
-                tile = _armor_set_tile(armor_sets[leaf])
+                tile = _armor_set_tile(turns)
             except Exception:
                 continue
             buckets.setdefault("Armor", []).append(tile)
@@ -506,43 +509,64 @@ def _glint_tile(z: zipfile.ZipFile) -> dict | None:
 SET_LAYERS = ("humanoid", "humanoid_leggings")
 
 
-# Undyed leather armor's colour in game. leather.png is greyscale and the
-# game multiplies it by the dye, this one when there is none.
+# Leather armor's colours in game. leather.png is greyscale and the game
+# multiplies it by the dye: undyed is LEATHER_TINT, and one dye gives that
+# dye's own colour. The leather tile turns once in each, undyed first, in the
+# game's dye order.
 LEATHER_TINT = (0xA0, 0x65, 0x40)
+LEATHER_DYES = [LEATHER_TINT] + [
+    (0xF9, 0xFF, 0xFE), (0xF9, 0x80, 0x1D), (0xC7, 0x4E, 0xBD), (0x3A, 0xB3, 0xDA),
+    (0xFE, 0xD8, 0x3D), (0x80, 0xC7, 0x1F), (0xF3, 0x8B, 0xAA), (0x47, 0x4F, 0x52),
+    (0x9D, 0x9D, 0x97), (0x16, 0x9C, 0x9C), (0x89, 0x32, 0xB8), (0x3C, 0x44, 0xAA),
+    (0x83, 0x54, 0x32), (0x5E, 0x7C, 0x16), (0xB0, 0x2E, 0x26), (0x1D, 0x1D, 0x21),
+]
 
 
-def _dress_leather(armor_sets: dict) -> None:
-    """Fold leather_overlay into leather, as the game draws it: the tinted
-    leather first, the overlay's buckles and trim untinted on top. An
+def _take_leather_overlay(armor_sets: dict) -> dict:
+    """leather_overlay's layers, taken out to be drawn on the leather. An
     overlay with no leather to sit on keeps its own tile."""
-    overlay = armor_sets.get("leather_overlay.png")
-    leather = armor_sets.get("leather.png")
-    if not overlay or not leather:
-        return
+    if "leather.png" not in armor_sets:
+        return {}
+    return armor_sets.pop("leather_overlay.png", {})
+
+
+def _dyed(leather: dict, overlay: dict, tint: tuple[int, int, int]) -> dict:
+    """The leather set as the game draws it in one colour: the leather
+    tinted, the overlay's buckles and trim untinted on top."""
+    dyed = {}
     for layer, (name, im) in leather.items():
         base = im.convert("RGBA")
         r, g, b, a = base.split()
         base = Image.merge("RGBA", [ch.point(lambda v, t=t: v * t // 255)
-                                    for ch, t in zip((r, g, b), LEATHER_TINT)] + [a])
+                                    for ch, t in zip((r, g, b), tint)] + [a])
         if layer in overlay:
             top = overlay[layer][1].convert("RGBA")
             if top.size != base.size:
                 top = top.resize(base.size, Image.NEAREST)
             base.alpha_composite(top)
-        leather[layer] = (name, base)
-    del armor_sets["leather_overlay.png"]
+        dyed[layer] = (name, base)
+    return dyed
 
 
-def _armor_set_tile(layers: dict[str, tuple[str, Image.Image]]) -> dict:
-    """One tile for a material's whole set, keyed on its first layer's path."""
-    name, im = layers.get("humanoid") or layers["humanoid_leggings"]
-    outer = layers.get("humanoid", (None, None))[1]
-    leggings = layers.get("humanoid_leggings", (None, None))[1]
+def _armor_set_tile(turns: list[dict[str, tuple[str, Image.Image]]]) -> dict:
+    """One tile for a material's whole set, keyed on its first layer's path.
+
+    `turns` is the set once per full turn of the model -- one entry for most
+    materials, one per colour for leather. The still and the lightbox's
+    still show the first.
+    """
+    first = turns[0]
+    name, im = first.get("humanoid") or first["humanoid_leggings"]
     tile = _tile(name, im)
-    rendered = render_armor_set(outer, leggings)
+    frames = []
+    for layers in turns:
+        outer = layers.get("humanoid", (None, None))[1]
+        leggings = layers.get("humanoid_leggings", (None, None))[1]
+        frames += armor_set_spin_frames(outer, leggings, SPIN)
+    rendered = render_armor_set(first.get("humanoid", (None, None))[1],
+                                first.get("humanoid_leggings", (None, None))[1])
     tile["thumb"] = thumb_data_uri(rendered, box=128)
-    tile["frames"] = [thumb_data_uri(f, box=max(f.size))
-                      for f in armor_set_spin_frames(outer, leggings, SPIN)]
+    tile["frames"] = [thumb_data_uri(f, box=max(f.size)) for f in frames]
     tile["frametime"] = TURN_MS // SPIN
     # The lightbox's model view, as for a single armor texture below.
     tile["full"] = thumb_data_uri(rendered, box=max(rendered.size))
