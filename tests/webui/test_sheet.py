@@ -691,3 +691,28 @@ def test_the_nether_portal_stays_a_plane_when_fire_moves_to_the_faces(tmp_path):
     assert expected(render_fire) != expected(render_crossed)
     assert tiles["fire_0.png"]["frames"][0] == expected(render_fire)
     assert tiles["nether_portal.png"]["frames"][0] == expected(render_crossed)
+
+
+def test_a_material_s_armor_and_leggings_are_one_tile(tmp_path):
+    """humanoid/ and humanoid_leggings/ are one set. A tile each left the
+    leggings standing apart from the helmet, chestplate and boots."""
+    path = tmp_path / "p.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        for mat in ("diamond", "iron"):
+            z.writestr(A + f"textures/entity/equipment/humanoid/{mat}.png", _png(64, 32))
+            z.writestr(A + f"textures/entity/equipment/humanoid_leggings/{mat}.png", _png(64, 32))
+    (armor,) = build_sheet(path)["sections"]
+    assert armor["label"] == "Armor"
+    assert [t["path"] for t in armor["tiles"]] == [
+        A + "textures/entity/equipment/humanoid/diamond.png",
+        A + "textures/entity/equipment/humanoid/iron.png"]
+    assert all(t["frames"] and t["full"] for t in armor["tiles"])
+
+
+def test_leggings_with_no_rest_of_set_still_get_a_tile(tmp_path):
+    path = tmp_path / "p.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr(A + "textures/entity/equipment/humanoid_leggings/gold.png", _png(64, 32))
+    (tile,) = build_sheet(path)["sections"][0]["tiles"]
+    assert tile["path"].endswith("humanoid_leggings/gold.png")
+    assert tile["frames"]
