@@ -13,8 +13,9 @@ from .glint_preview import glint_frames
 from .sky import render_sky
 from .sky_composite import (clock, composite, phase, sample_times,
                             visible_at)
-from .armor import (crossed_spin_frames, cube_spin_frames, fire_spin_frames,
-                    render_armor, spin_frames)
+from .armor import (armor_set_spin_frames, crossed_spin_frames,
+                    cube_spin_frames, fire_spin_frames, render_armor,
+                    render_armor_set, spin_frames)
 
 A = "assets/minecraft/"
 
@@ -239,6 +240,9 @@ def build_sheet(zip_path: Path) -> dict:
     """
     buckets: dict[str, list] = {}
     excluded: dict[str, int] = {}
+    # material -> {layer dir: (zip name, image)}; drawn after the loop, once
+    # both of a material's layers have been read.
+    armor_sets: dict[str, dict[str, tuple[str, Image.Image]]] = {}
     with zipfile.ZipFile(zip_path) as z:
         for name in z.namelist():
             if name.endswith("/"):
@@ -260,6 +264,11 @@ def build_sheet(zip_path: Path) -> dict:
                         label = "Animated"
                     else:
                         tile = _tile(name, im)
+                    layer = name.rsplit("/", 2)[-2]
+                    if label == "Armor" and layer in SET_LAYERS:
+                        im.load()
+                        armor_sets.setdefault(name.rsplit("/", 1)[-1], {})[layer] = (name, im.copy())
+                        continue
                     if label == "Armor":
                         # The flat UV sheet means nothing to a human eye.
                         rendered = render_armor(im)
@@ -284,6 +293,13 @@ def build_sheet(zip_path: Path) -> dict:
                 # reason to show the user no sheet at all.
                 continue
             buckets.setdefault(label, []).append(tile)
+
+        for leaf in sorted(armor_sets):
+            try:
+                tile = _armor_set_tile(armor_sets[leaf])
+            except Exception:
+                continue
+            buckets.setdefault("Armor", []).append(tile)
 
         enchanted = _glint_tile(z)
         if enchanted is not None:
@@ -481,6 +497,28 @@ def _glint_tile(z: zipfile.ZipFile) -> dict | None:
         "frametime": TURN_MS // len(frames),
         "full": thumb_data_uri(frames[0], box=FULL),
     }
+
+
+# The two textures one armor material is split across. Shown as one set on
+# one body, not as a tile each: alone, the leggings tile was the only piece
+# standing apart from the rest of its set.
+SET_LAYERS = ("humanoid", "humanoid_leggings")
+
+
+def _armor_set_tile(layers: dict[str, tuple[str, Image.Image]]) -> dict:
+    """One tile for a material's whole set, keyed on its first layer's path."""
+    name, im = layers.get("humanoid") or layers["humanoid_leggings"]
+    outer = layers.get("humanoid", (None, None))[1]
+    leggings = layers.get("humanoid_leggings", (None, None))[1]
+    tile = _tile(name, im)
+    rendered = render_armor_set(outer, leggings)
+    tile["thumb"] = thumb_data_uri(rendered, box=128)
+    tile["frames"] = [thumb_data_uri(f, box=max(f.size))
+                      for f in armor_set_spin_frames(outer, leggings, SPIN)]
+    tile["frametime"] = TURN_MS // SPIN
+    # The lightbox's model view, as for a single armor texture below.
+    tile["full"] = thumb_data_uri(rendered, box=max(rendered.size))
+    return tile
 
 
 def _tile(name: str, im: Image.Image) -> dict:

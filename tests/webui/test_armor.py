@@ -242,3 +242,34 @@ def test_crossed_planes_are_narrower_than_fire_on_the_faces():
     tex = Image.new("RGBA", (16, 16), (140, 60, 220, 255))
     flat, fire = render_crossed(tex).getbbox(), render_fire(tex).getbbox()
     assert (flat[2] - flat[0]) < (fire[2] - fire[0])
+
+
+def test_an_armor_set_shows_the_leggings_and_the_rest_together():
+    """Red leggings under a blue set with see-through legs: both colours must
+    land on the one body."""
+    from mc_pack_converter.webui.armor import render_armor_set
+    outer = Image.new("RGBA", (64, 32), (0, 0, 0, 0))
+    outer.paste((0, 0, 255, 255), (0, 0, 64, 16))   # head and the tops only
+    outer.paste((0, 0, 255, 255), (16, 16, 56, 32))  # body and arms
+    out = render_armor_set(outer, _armor(colour=(255, 0, 0, 255)))
+    colours = {c[:3] for c in out.getdata() if c[3]}
+    assert (255, 0, 0) in colours and (0, 0, 255) in colours
+
+
+def test_the_outer_layer_closes_over_the_leggings():
+    """The game draws the leggings a size smaller, so where both cover the
+    body the chestplate is what shows."""
+    from mc_pack_converter.webui.armor import render_armor_set
+    blue, red = _armor(colour=(0, 0, 255, 255)), _armor(colour=(255, 0, 0, 255))
+    out = render_armor_set(blue, red)
+    assert all(c[:3] != (255, 0, 0) for c in out.getdata() if c[3])
+
+
+def test_a_whole_set_stays_inside_the_canvas_as_it_turns():
+    """The set is drawn a size larger than the bare body; it must not clip."""
+    import math
+    from mc_pack_converter.webui.armor import render_armor_set
+    for i in range(24):
+        out = render_armor_set(_armor(), _armor(), 2 * math.pi * i / 24)
+        l, t, r, b = out.getbbox()
+        assert l > 0 and t > 0 and r < CANVAS[0] and b < CANVAS[1], i

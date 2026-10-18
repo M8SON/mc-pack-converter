@@ -15,7 +15,7 @@ resampled. Three constants define the whole view.
 """
 from __future__ import annotations
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from PIL import Image
 
 # The whole projection. Adjust the view by changing these three numbers.
@@ -164,25 +164,38 @@ def render_boxes(texture: Image.Image, boxes, yaw: float = 0.0,
     swinging out of sight is simply overpainted, so there is no cull to get
     wrong and no flicker as a face passes edge-on.
     """
-    tex = texture.convert("RGBA")
-    scale = max(1, tex.width // base)  # chainmail is 128x64; the rest are 64x32
+    return render_layers([(texture, boxes)], yaw, base, canvas_size, origin)
+
+
+def render_layers(layers, yaw: float = 0.0, base: int = 64,
+                  canvas_size: tuple[int, int] = CANVAS,
+                  origin: tuple[float, float] = ORIGIN) -> Image.Image:
+    """render_boxes for several (texture, boxes) layers at once.
+
+    Every face of every layer goes through ONE depth sort, so an outer layer's
+    near face covers an inner layer's and never the other way about. On a tie
+    the later layer paints last, which is why the outermost comes last.
+    """
     canvas = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
 
     ordered = []
-    for box in boxes:
-        for face in FACES:
-            uv = getattr(box, face, None)
-            if uv is None:
-                continue
-            corners = face_corners(box, face)
-            # depth at the face centre; the 4th corner is TR + BL - TL
-            cx = (corners[1][0] + corners[2][0]) / 2
-            cy = (corners[1][1] + corners[2][1]) / 2
-            cz = (corners[1][2] + corners[2][2]) / 2
-            ordered.append((depth_of(cx, cy, cz, yaw), box, face, uv))
+    for texture, boxes in layers:
+        tex = texture.convert("RGBA")
+        scale = max(1, tex.width // base)  # chainmail is 128x64; the rest are 64x32
+        for box in boxes:
+            for face in FACES:
+                uv = getattr(box, face, None)
+                if uv is None:
+                    continue
+                corners = face_corners(box, face)
+                # depth at the face centre; the 4th corner is TR + BL - TL
+                cx = (corners[1][0] + corners[2][0]) / 2
+                cy = (corners[1][1] + corners[2][1]) / 2
+                cz = (corners[1][2] + corners[2][2]) / 2
+                ordered.append((depth_of(cx, cy, cz, yaw), tex, scale, box, face, uv))
     ordered.sort(key=lambda t: t[0])
 
-    for _, box, face, (u, v, w, h) in ordered:
+    for _, tex, scale, box, face, (u, v, w, h) in ordered:
         patch = tex.crop((u * scale, v * scale,
                           (u + w) * scale, (v + h) * scale))
         try:
@@ -203,6 +216,47 @@ def render_armor(texture: Image.Image, yaw: float = 0.0) -> Image.Image:
 def spin_frames(texture: Image.Image, count: int = 24) -> list[Image.Image]:
     """One full turn of the model, as `count` evenly spaced frames."""
     return [render_armor(texture, 2 * math.pi * i / count) for i in range(count)]
+
+
+# --- a whole armor set on one body -------------------------------------------
+#
+# A material's armor is two textures: humanoid/ (helmet, chestplate, boots)
+# and humanoid_leggings/ (the leggings). Drawn one per tile, the leggings stood
+# apart from the rest of their own set. The game draws both on one body, the
+# leggings a size smaller so the chestplate and boots close over them; these
+# are its inflations, in model units.
+OUTER_GROW = 1.0
+LEGGINGS_GROW = 0.5
+LEGGINGS_BOXES = ("left_leg", "right_leg", "body")
+
+
+def grown(box: Box, by: float) -> Box:
+    """The same box with `by` added on every side. UVs are unchanged: the
+    texture stretches over the bigger box, as the game's does."""
+    w, h, d = box.size
+    x, y, z = box.origin
+    return replace(box, size=(w + 2 * by, h + 2 * by, d + 2 * by),
+                   origin=(x - by, y - by, z - by))
+
+
+def render_armor_set(outer: Image.Image | None, leggings: Image.Image | None,
+                     yaw: float = 0.0) -> Image.Image:
+    """A material's whole set on one body; either layer may be missing."""
+    layers = []
+    if leggings is not None:
+        layers.append((leggings, [grown(b, LEGGINGS_GROW) for b in HUMANOID
+                                  if b.name in LEGGINGS_BOXES]))
+    if outer is not None:
+        layers.append((outer, [grown(b, OUTER_GROW) for b in HUMANOID]))
+    return render_layers(layers, yaw)
+
+
+def armor_set_spin_frames(outer: Image.Image | None,
+                          leggings: Image.Image | None,
+                          count: int = 24) -> list[Image.Image]:
+    """One full turn of a whole set."""
+    return [render_armor_set(outer, leggings, 2 * math.pi * i / count)
+            for i in range(count)]
 
 
 # --- a single block texture on a turning cube --------------------------------
