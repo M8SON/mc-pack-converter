@@ -716,3 +716,33 @@ def test_leggings_with_no_rest_of_set_still_get_a_tile(tmp_path):
     (tile,) = build_sheet(path)["sections"][0]["tiles"]
     assert tile["path"].endswith("humanoid_leggings/gold.png")
     assert tile["frames"]
+
+
+def test_the_leather_overlay_is_drawn_on_the_leather_not_on_its_own(tmp_path):
+    """The game draws leather tinted, with the overlay's trim on top. A tile
+    of its own showed the trim floating on an empty body."""
+    from mc_pack_converter.webui.sheet import LEATHER_TINT
+    E = A + "textures/entity/equipment/"
+    trim = Image.new("RGBA", (64, 32), (0, 0, 0, 0))
+    trim.paste((0, 255, 0, 255), (20, 20, 28, 22))   # a band across the chest
+    buf = io.BytesIO(); trim.save(buf, "PNG")
+    white = Image.new("RGBA", (64, 32), (255, 255, 255, 255))
+    wbuf = io.BytesIO(); white.save(wbuf, "PNG")
+    path = tmp_path / "p.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr(E + "humanoid/leather.png", wbuf.getvalue())
+        z.writestr(E + "humanoid/leather_overlay.png", buf.getvalue())
+    (tile,) = build_sheet(path)["sections"][0]["tiles"]
+    assert tile["name"] == "leather.png"
+    full = Image.open(io.BytesIO(base64.b64decode(tile["full"].split(",", 1)[1])))
+    colours = {c[:3] for c in full.convert("RGBA").getdata() if c[3]}
+    assert LEATHER_TINT in colours and (0, 255, 0) in colours
+    assert (255, 255, 255) not in colours
+
+
+def test_an_overlay_with_no_leather_keeps_its_own_tile(tmp_path):
+    path = tmp_path / "p.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr(A + "textures/entity/equipment/humanoid/leather_overlay.png", _png(64, 32))
+    (tile,) = build_sheet(path)["sections"][0]["tiles"]
+    assert tile["name"] == "leather_overlay.png"
