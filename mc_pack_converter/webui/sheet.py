@@ -294,6 +294,7 @@ def build_sheet(zip_path: Path) -> dict:
                 continue
             buckets.setdefault(label, []).append(tile)
 
+        _dress_leather(armor_sets)
         for leaf in sorted(armor_sets):
             try:
                 tile = _armor_set_tile(armor_sets[leaf])
@@ -503,6 +504,33 @@ def _glint_tile(z: zipfile.ZipFile) -> dict | None:
 # one body, not as a tile each: alone, the leggings tile was the only piece
 # standing apart from the rest of its set.
 SET_LAYERS = ("humanoid", "humanoid_leggings")
+
+
+# Undyed leather armor's colour in game. leather.png is greyscale and the
+# game multiplies it by the dye, this one when there is none.
+LEATHER_TINT = (0xA0, 0x65, 0x40)
+
+
+def _dress_leather(armor_sets: dict) -> None:
+    """Fold leather_overlay into leather, as the game draws it: the tinted
+    leather first, the overlay's buckles and trim untinted on top. An
+    overlay with no leather to sit on keeps its own tile."""
+    overlay = armor_sets.get("leather_overlay.png")
+    leather = armor_sets.get("leather.png")
+    if not overlay or not leather:
+        return
+    for layer, (name, im) in leather.items():
+        base = im.convert("RGBA")
+        r, g, b, a = base.split()
+        base = Image.merge("RGBA", [ch.point(lambda v, t=t: v * t // 255)
+                                    for ch, t in zip((r, g, b), LEATHER_TINT)] + [a])
+        if layer in overlay:
+            top = overlay[layer][1].convert("RGBA")
+            if top.size != base.size:
+                top = top.resize(base.size, Image.NEAREST)
+            base.alpha_composite(top)
+        leather[layer] = (name, base)
+    del armor_sets["leather_overlay.png"]
 
 
 def _armor_set_tile(layers: dict[str, tuple[str, Image.Image]]) -> dict:
