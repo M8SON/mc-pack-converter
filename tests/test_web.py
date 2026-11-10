@@ -18,7 +18,7 @@ WORKER = Path(__file__).resolve().parent.parent / "web" / "worker.js"
 
 @pytest.fixture
 def glue():
-    src = re.search(r"const GLUE = `(.*?)`;", WORKER.read_text(), re.S).group(1)
+    src = re.search(r"const GLUE = `(.*?)`;", WORKER.read_text(encoding="utf-8"), re.S).group(1)
     ns: dict = {}
     exec(src, ns)
     return ns
@@ -81,8 +81,8 @@ def test_page_takes_several_packs_and_drops_old_blob_urls():
     download (browsers block that), and blob URLs are revoked.
     """
     web = WORKER.parent
-    html = (web / "index.html").read_text()
-    js = (web / "app.js").read_text()
+    html = (web / "index.html").read_text(encoding="utf-8")
+    js = (web / "app.js").read_text(encoding="utf-8")
     tag = re.search(r"<input id=\"file\"[^>]*>", html).group(0)
     assert "multiple" in tag
     assert 'id="queue"' in html and 'id="packs"' in html
@@ -99,8 +99,8 @@ def test_page_names_several_packs_and_hides_stages_after_a_batch():
     stage list. The list is one pack's progress; leaving it up after the
     last pack looked like the batch was still that pack."""
     web = WORKER.parent
-    html = (web / "index.html").read_text()
-    js = (web / "app.js").read_text()
+    html = (web / "index.html").read_text(encoding="utf-8")
+    js = (web / "app.js").read_text(encoding="utf-8")
     assert "Choose packs…" in html
     assert "Choose a pack" not in html
     assert 'id="meter"' in html
