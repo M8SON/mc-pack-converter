@@ -105,9 +105,10 @@ it to GitHub Pages.
 - **1.8.9 packs only** (`pack_format: 1`). Every coordinate table here is
   derived from the 1.8.9 layout, so a newer pack can be mis-mapped rather than
   just converted badly.
-- **The enchanting table** is kept only when the pack draws both of 1.8.9's
-  slots where the game expects them. In a 173-pack test corpus, **13 of 142
-  keep theirs and 91% fall back to vanilla**. Creative-tab art that is mostly
+- **The enchanting table** is kept when the pack draws both of 1.8.9's slots
+  where the game expects them, and redrawn with two slots when it is 1.7-era
+  art with one. In a 173-pack test corpus, **81 of 142 keep theirs (68 of
+  them redrawn) and 61 fall back to vanilla**. Creative-tab art that is mostly
   transparent placeholders is dropped the same way.
 - **8 mob-effect icons** have no 1.8.9 art and use vanilla's.
 - **The villager trading GUI** always uses vanilla's: 1.14 redesigned it with
