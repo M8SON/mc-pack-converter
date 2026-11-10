@@ -15,16 +15,24 @@
 </header>
 
 <main>
-  <!-- The whole window accepts a dropped pack (app.js); this is the sign. -->
+  <!-- The whole window accepts dropped packs (app.js); this is the sign. -->
   <section id="dropzone">
     <h2 id="drop-text">Loading the converter…</h2>
-    <p>as a .zip file</p>
+    <p>one or more .zip files</p>
     <div id="targets" role="group" aria-label="Convert to"><span class="label">Convert to</span></div>
     <button id="choose" disabled>Choose a pack…</button>
-    <input id="file" type="file" accept=".zip,application/zip" hidden>
+    <input id="file" type="file" accept=".zip,application/zip" multiple hidden>
   </section>
 
   <p id="problem" class="problem" hidden></p>
+
+  <!-- Several packs: one row each, so a failure stays next to its pack.
+       Hidden for a single pack, which keeps the progress and result panels. -->
+  <section id="queue" class="panel" hidden>
+    <h2>Packs</h2>
+    <p class="muted">Each pack is converted in turn. A finished pack downloads when you click it.</p>
+    <ul id="packs"></ul>
+  </section>
 
   <section id="progress" class="panel" hidden>
     <h2 id="progress-title"></h2>
@@ -45,6 +53,13 @@
 <!-- The desktop's own HTML report: every converted texture, the skies and
      the findings. Sandboxed: it is our page, but it shows pack-made text. -->
 <div id="report-view" hidden>
+  <!-- Shown only while switching between several packs' reports. A single
+       pack uses the links in #result instead, as before. -->
+  <p id="report-tools" class="actions" hidden>
+    <span id="report-for"></span>
+    <a id="report-open" class="button" href="#" target="_blank">Open report in a new tab</a>
+    <a id="report-save-multi" class="button" href="#" download>Save report</a>
+  </p>
   <iframe id="report-frame" title="Conversion report" sandbox="allow-scripts"></iframe>
 </div>
 
