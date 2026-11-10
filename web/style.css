@@ -191,6 +191,9 @@ body.booting #targets { display: none; }
   --pct: 0%;
   --tile: 32px;
   height: calc(var(--tile) + var(--px) * 2);
+  /* A whole number of blocks wide, so the last one is never cut in half. */
+  width: calc(round(down, 100% - var(--px) * 2, var(--tile)) + var(--px) * 2);
+  margin-inline: auto;
   background: linear-gradient(rgba(0, 0, 0, .6), rgba(0, 0, 0, .6)),
               url("bar-stone.png") 0 0 / var(--tile) var(--tile) repeat-x;
   border: var(--px) solid #000;
@@ -206,7 +209,7 @@ body.booting #targets { display: none; }
   background: url("bar-ore.png") 0 0 / auto 100% repeat-x;
   transition: width 180ms steps(1, end);
 }
-#boot-bar { --tile: 16px; max-width: 240px; margin: 16px auto 0; }
+#boot-bar { --tile: 16px; max-width: 228px; margin: 16px auto 0; }   /* 14 blocks */
 body:not(.booting) #boot-bar { display: none !important; }
 /* A full bar that blinks, so the loading state is a bar even between frames.
    A sliding chunk spends half its time off the ends and looks empty. */
