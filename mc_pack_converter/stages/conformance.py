@@ -111,10 +111,17 @@ def _single_slot_layout(im: Image.Image, spec: dict) -> bool:
 
 
 def _redraw_two_slots(im: Image.Image, spec: dict) -> Image.Image:
-    """The pack's own slot at both 1.8.9 positions, its own panel over the old."""
+    """The pack's own slot at both 1.8.9 positions, its own panel over the old.
+
+    Each box carries one ref pixel of margin: some packs (#T-Zone) frame the
+    slot one pixel outside the 18x18, and without the margin that frame was
+    left behind as a line between the two new slots. 1.8.9's slots are 20
+    apart, so two framed copies meet edge to edge rather than overlap.
+    """
     rw, _ = spec["ref"]
     s = im.width / rw
-    box = lambda x, y: (round(x * s), round(y * s), round((x + 18) * s), round((y + 18) * s))
+    box = lambda x, y: (round((x - 1) * s), round((y - 1) * s),
+                        round((x + 19) * s), round((y + 19) * s))
     slot = im.crop(box(*spec["old_slot"]))
     out = im.copy()
     out.paste(im.crop(box(*spec["heal_from"])), box(*spec["old_slot"])[:2])

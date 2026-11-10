@@ -172,3 +172,19 @@ def test_a_1_7_slot_with_other_art_beside_it_is_still_dropped(mini_pack):
     p = _one_slot(root, extra=[(16, 52)])
     conformance(ConversionContext(root=root))
     assert not p.exists()
+
+
+def test_a_slot_framed_outside_its_box_leaves_no_line_behind(mini_pack):
+    """#T-Zone frames its slot one pixel outside the 18x18. Copying only the
+    box left the old frame's top edge as a line above the two new slots."""
+    root = mini_pack()
+    p = _one_slot(root)
+    with Image.open(p) as im:
+        im = im.convert("RGBA")
+        ImageDraw.Draw(im).rectangle([23, 45, 42, 64], outline=(60, 60, 60, 255))
+        im.save(p)
+    conformance(ConversionContext(root=root))
+    with Image.open(p) as im:
+        im = im.convert("RGBA")
+        assert im.getpixel((13, 50)) == (60, 60, 60, 255)    # the left slot's own frame
+        assert im.getpixel((52, 50)) == (60, 60, 60, 255)    # the right slot's own frame
