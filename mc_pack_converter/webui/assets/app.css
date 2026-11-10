@@ -142,3 +142,27 @@ h2 { font-size: 13px; font-weight: normal; letter-spacing: .12em;
               inset calc(var(--px) * -1) calc(var(--px) * -1) 0 0 var(--panel-lit);
 }
 
+
+/* Size controls affect the flat textures; models keep their own proportions. */
+#textures { --texture: 104px; --column: 128px; }
+#textures[data-size="S"] { --texture: 72px; --column: 96px; }
+#textures[data-size="L"] { --texture: 152px; --column: 176px; }
+.texture-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.texture-tools button { padding: 6px 12px; }
+.texture-tools button[aria-pressed="true"] { color: #ffffa0; background: var(--btn-hi); }
+.grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--column)), 1fr)); }
+.tile { min-width: 0; }
+.tile img { width: var(--texture); height: var(--texture); max-width: 100%; box-sizing: border-box; }
+/* Keep the complete canvas: GUI files can be atlases with useful art outside
+   the main panel. No guessed per-screen crop can safely discard those pixels. */
+.gui-grid { margin-bottom: 20px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 480px), 1fr)); gap: 20px; }
+.gui-grid .tile img { width: 512px; height: auto; aspect-ratio: 1; }
+nav { flex-wrap: wrap; }
+#out-name { min-width: 0; overflow-wrap: anywhere; font-size: 12px; }
+h1 { overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  header, nav { padding-left: 12px; padding-right: 12px; }
+  main { padding-left: 12px; padding-right: 12px; }
+  #out-name { flex-basis: 100%; }
+  .tile.armor, .tile.animated { grid-column: span 1; }
+}
