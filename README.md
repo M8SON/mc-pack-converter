@@ -16,6 +16,10 @@ You get the converted pack, plus a report showing every texture that was
 converted. There is nothing to install. The conversion runs inside the
 browser tab, so your pack is never uploaded anywhere.
 
+After the first load finishes, the page keeps the converter in this browser
+for faster repeat visits and offline use. Online visits check for updates
+before starting the converter.
+
 ## How it works
 
 1.8.9 packed many sprites into a few big atlases. Modern Minecraft wants one
