@@ -11,7 +11,8 @@ binary is committed -- this script fetches the pinned release and checks
 every file against a published SHA-256 before using it.
 
 Output:
-    index.html, app.js, worker.js, style.css   from web/
+    index.html, boot.js, app.js, worker.js, style.css   from web/
+    service-worker.js                         content-verified offline cache
     grass.png, wall.png                        the report's background
     pyodide/                                   the runtime + Pillow and numpy wheels
     py/<this package>.whl, py/manifest.json    the converter itself
@@ -56,6 +57,16 @@ def fetch(url: str, sha256: str, cache: Path) -> Path:
     return dest
 
 
+def write_service_worker(out: Path) -> None:
+    files = {f.relative_to(out).as_posix(): hashlib.sha256(f.read_bytes()).hexdigest()
+             for f in sorted(out.rglob("*"))
+             if f.is_file() and f.name != "service-worker.js"}
+    source = (REPO / "web" / "service-worker.js").read_text()
+    version = hashlib.sha256((json.dumps(files, sort_keys=True) + source).encode()).hexdigest()
+    (out / "service-worker.js").write_text(
+        f"const VERSION = {json.dumps(version)};\nconst FILES = {json.dumps(files)};\n" + source)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="build_web")
     ap.add_argument("--out", type=Path, default=REPO / "build" / "web")
@@ -94,6 +105,8 @@ def main(argv=None) -> int:
     # The page's background is the report's own, so the two always match.
     for name in ("grass.png", "wall.png"):
         shutil.copy(REPO / "mc_pack_converter" / "webui" / "assets" / name, out / name)
+
+    write_service_worker(out)
 
     total = sum(f.stat().st_size for f in out.rglob("*") if f.is_file())
     print(f"wrote {out} ({total / 1e6:.1f} MB)")
