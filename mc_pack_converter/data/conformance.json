@@ -22,7 +22,18 @@
       ],
       "min_score": 8.0,
       "why": "1.8.9 enchanting has two slots (lapis was added in 1.8); art with one, or with slots offset from that layout, renders misaligned on modern Minecraft",
-      "max_lift": 30.0
+      "max_lift": 30.0,
+      "repair": {
+        "old_slot": [
+          24,
+          46
+        ],
+        "heal_from": [
+          24,
+          28
+        ],
+        "why": "1.7-era single slot moved to 1.8.9's two positions, using the pack's own slot and panel art"
+      }
     },
     {
       "path": "textures/gui/container/creative_inventory/tabs.png",

@@ -115,3 +115,60 @@ def test_single_slot_between_the_two_positions_is_dropped(mini_pack):
     im.save(p)
     conformance(ConversionContext(root=root))
     assert not p.exists(), "a single centred slot must not pass as two"
+
+
+def _one_slot(root, size=256, bg=(110, 110, 110, 255), border=(20, 20, 20, 255),
+              inside=(200, 200, 200, 255), extra=()):
+    """A 1.7-era panel: one slot at (24,46), between 1.8.9's two."""
+    p = root / ENCH
+    p.parent.mkdir(parents=True, exist_ok=True)
+    s = size // 256
+    im = Image.new("RGBA", (size, size), bg)
+    d = ImageDraw.Draw(im)
+    d.rectangle([24 * s, 46 * s, 42 * s - 1, 64 * s - 1], fill=border)
+    d.rectangle([26 * s, 48 * s, 40 * s - 1, 62 * s - 1], fill=inside)
+    for x, y in extra:
+        d.rectangle([x * s, y * s, (x + 4) * s, (y + 4) * s], fill=border)
+    im.save(p)
+    return p
+
+
+def test_a_1_7_single_slot_is_redrawn_as_two_not_dropped(mini_pack):
+    """Most of the 91% that lost their enchanting table were 1.7 layouts:
+    good art, one slot in the old place. The pack's own slot now goes to both
+    1.8.9 positions, which then pass the same slot test any panel must."""
+    from mc_pack_converter.stages.conformance import _slot_presence
+    root = mini_pack()
+    p = _one_slot(root)
+    ctx = ConversionContext(root=root)
+    conformance(ctx)
+    assert p.exists()
+    with Image.open(p) as im:
+        assert _slot_presence(im.convert("RGBA"), {
+            "ref": [256, 256], "slots": [[14, 46], [34, 46]], "max_lift": 30.0}) >= 8.0
+        assert im.getpixel((33, 55)) == (110, 110, 110, 255)  # old slot's middle: bare panel
+    assert any(f.severity is Severity.WARNING and "redrawn" in f.message
+               for f in ctx.findings)
+
+
+def test_a_see_through_1_7_panel_is_redrawn(mini_pack):
+    """M8SON: a transparent panel with the slot drawn as an outline. Brightness
+    alone reads the transparent panel and the slot's inside as one colour."""
+    root = mini_pack()
+    p = _one_slot(root, size=512, bg=(0, 0, 0, 0), border=(30, 30, 30, 255),
+                  inside=(0, 0, 0, 0))
+    conformance(ConversionContext(root=root))
+    assert p.exists()
+    with Image.open(p) as im:
+        assert im.getpixel((14 * 2, 50 * 2))[3] == 255    # left slot's border
+        assert im.getpixel((51 * 2, 50 * 2))[3] == 255    # right slot's border
+        assert im.getpixel((24 * 2, 50 * 2))[3] == 0      # old border gone
+
+
+def test_a_1_7_slot_with_other_art_beside_it_is_still_dropped(mini_pack):
+    """Only the plain 1.7 layout is redrawn. Anything already drawn where the
+    new slots would go means the guess is wrong; vanilla is the safe answer."""
+    root = mini_pack()
+    p = _one_slot(root, extra=[(16, 52)])
+    conformance(ConversionContext(root=root))
+    assert not p.exists()
