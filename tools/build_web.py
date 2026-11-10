@@ -14,6 +14,7 @@ Output:
     index.html, boot.js, app.js, worker.js, style.css   from web/
     service-worker.js                         content-verified offline cache
     grass.png, wall.png                        the report's background
+    bar-stone.png, bar-ore.png                 the progress bar, cut from wall.png
     pyodide/                                   the runtime + Pillow and numpy wheels
     py/<this package>.whl, py/manifest.json    the converter itself
 """
@@ -103,7 +104,7 @@ def main(argv=None) -> int:
     for f in (REPO / "web").iterdir():
         shutil.copy(f, out / f.name)
     # The page's background is the report's own, so the two always match.
-    for name in ("grass.png", "wall.png"):
+    for name in ("grass.png", "wall.png", "bar-stone.png", "bar-ore.png"):
         shutil.copy(REPO / "mc_pack_converter" / "webui" / "assets" / name, out / name)
 
     write_service_worker(out)

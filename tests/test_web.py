@@ -94,6 +94,21 @@ def test_page_takes_several_packs_and_drops_old_blob_urls():
     assert js.count("a.click()") == 1
 
 
+def test_page_names_several_packs_and_hides_stages_after_a_batch():
+    """The chooser takes more than one pack, and a finished batch drops the
+    stage list. The list is one pack's progress; leaving it up after the
+    last pack looked like the batch was still that pack."""
+    web = WORKER.parent
+    html = (web / "index.html").read_text()
+    js = (web / "app.js").read_text()
+    assert "Choose packs…" in html
+    assert "Choose a pack" not in html
+    assert 'id="meter"' in html
+    finish = js.split("function finishBatch()", 1)[1].split("\nfunction ", 1)[0]
+    assert '$("progress").hidden = true' in finish
+    assert "setMeter" in js
+
+
 def test_convert_refuses_a_non_zip_in_the_desktop_s_words(glue, tmp_path):
     bad = tmp_path / "notes.zip"
     bad.write_text("not a zip")

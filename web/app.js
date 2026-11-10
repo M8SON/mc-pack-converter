@@ -17,9 +17,33 @@ let selected = -1;
 
 function setReady(on, text) {
   busy = !on;
+  // booting is only the first load. After that, busy means a conversion is
+  // running, and a drop during it is ignored (start bails while busy).
+  document.body.classList.remove("booting");
+  document.body.classList.toggle("busy", !on);
   $("choose").disabled = !on;
   for (const b of $("targets").querySelectorAll("button")) b.disabled = !on;
   $("drop-text").textContent = text;
+}
+
+function stageLabel(name) {
+  return String(name).replace(/_/g, " ");
+}
+
+// --pct is the experience bar's fill. `done` is how far the run has reached:
+// the stage that just started counts, so the bar moves when the title does.
+function setMeter(done, total) {
+  const meter = $("meter");
+  if (!meter) return;
+  const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((done / total) * 100))) : 0;
+  meter.style.setProperty("--pct", pct + "%");
+  meter.setAttribute("aria-valuenow", String(pct));
+  meter.setAttribute("aria-valuetext", total ? `${Math.min(done, total)} of ${total} stages` : "");
+}
+
+function reveal(el) {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  el.scrollIntoView({ behavior: reduce ? "auto" : "smooth" });
 }
 
 function showProblem(text) {
@@ -52,7 +76,7 @@ function renderTargets(targets, current) {
 function renderStages(names) {
   $("stages").replaceChildren(...names.map((n) => {
     const li = document.createElement("li");
-    li.textContent = n;
+    li.textContent = stageLabel(n);
     li.dataset.stage = n;
     return li;
   }));
@@ -98,7 +122,10 @@ function renderQueue() {
       report.textContent = "Report";
       report.setAttribute("aria-pressed", String(i === selected));
       report.onclick = () => selectReport(i, true);
-      li.append(counts, a, report);
+      const actions = document.createElement("div");
+      actions.className = "row-actions";
+      actions.append(a, report);
+      li.append(counts, actions);
     }
     if (item.error) {
       const err = document.createElement("p");
@@ -123,7 +150,7 @@ function selectReport(i, scroll) {
   $("report-tools").hidden = false;
   $("report-view").hidden = false;
   renderQueue();
-  if (scroll) $("report-view").scrollIntoView({ behavior: "smooth" });
+  if (scroll) reveal($("report-view"));
 }
 
 function remember(i, r) {
@@ -140,11 +167,16 @@ function remember(i, r) {
 
 function finishBatch() {
   current = -1;
+  // The stage list belongs to the pack that just ran. Left up, it looks like
+  // the whole batch is still that one pack. The rows hold the outcome.
+  $("progress").hidden = true;
   const ok = batch.filter((p) => p.status === "done").length;
-  if (batch[batch.length - 1].status !== "done")
-    $("progress").hidden = true;
-  else if (ok !== batch.length)
-    $("progress-title").textContent = `Finished ${ok} of ${batch.length}`;
+  const note = $("queue-note");
+  note.classList.toggle("warn", ok !== batch.length);
+  note.textContent = ok === batch.length
+    ? `All ${batch.length} packs are ready.`
+    : `Finished ${ok} of ${batch.length}. A failed pack stays on its row.`;
+  note.hidden = false;
   // One report document at a time. The others stay blob URLs until chosen,
   // or until the next batch revokes them.
   if (selected < 0) {
@@ -179,7 +211,12 @@ function convertAt(i) {
   const item = batch[i];
   item.status = "running";
   renderQueue();
-  for (const li of $("stages").children) li.className = "";
+  for (const li of $("stages").children) {
+    li.className = "";
+    li.removeAttribute("aria-current");
+  }
+  $("meter").classList.remove("holding");
+  setMeter(0, $("stages").children.length);
   $("progress-title").textContent = `Converting ${item.file.name}`;
   $("progress").hidden = false;
   setReady(false, batch.length > 1 ? `Converting ${i + 1} of ${batch.length}…` : "Converting…");
@@ -190,7 +227,7 @@ function convertAt(i) {
   }).catch((err) => {
     if (batch[i] !== item || item.status !== "running") return;
     failCurrent(err && err.message ? err.message : "Could not read the file",
-                "Drop a 1.8.9 resource pack here");
+                "Drop 1.8.9 resource packs here");
   });
 }
 
@@ -208,13 +245,15 @@ function start(input) {
     outName: "", counts: null,
   }));
   $("queue").hidden = list.length < 2;
+  $("queue-note").hidden = true;
   renderQueue();
-  if (list.length > 1) $("queue").scrollIntoView({ behavior: "smooth" });
+  if (list.length > 1) reveal($("queue"));
   convertAt(0);
 }
 
 function showResult(r) {
   const c = r.counts;
+  $("result").classList.toggle("has-errors", Boolean(c.error));
   $("result-title").textContent = c.error ? "Converted, with errors" : "Converted";
   $("counts").textContent = `${c.error} errors, ${c.warning} warnings, ${c.info} notes`;
   urls.forEach(URL.revokeObjectURL);
@@ -229,9 +268,11 @@ function showResult(r) {
   $("report-save").href = report;
   $("report-save").download = r.name.replace(/\.zip$/i, "") + "-report.html";
   $("report-frame").src = report;
+  // The stages have been watched. The download is the next thing to do.
+  $("progress").hidden = true;
   $("result").hidden = false;
   $("report-view").hidden = false;
-  $("result").scrollIntoView({ behavior: "smooth" });
+  reveal($("result"));
   a.click();
 }
 
@@ -240,16 +281,25 @@ worker.onmessage = ({ data }) => {
     case "ready":
       renderTargets(data.targets, data.default);
       renderStages(data.stages);
-      setReady(true, "Drop a 1.8.9 resource pack here");
+      setReady(true, "Drop 1.8.9 resource packs here");
       break;
     case "stage":
       [...$("stages").children].forEach((li, k) => {
-        li.className = k + 1 < data.i ? "done" : k + 1 === data.i ? "running" : "";
+        const state = k + 1 < data.i ? "done" : k + 1 === data.i ? "running" : "";
+        li.className = state;
+        if (state === "running") li.setAttribute("aria-current", "step");
+        else li.removeAttribute("aria-current");
       });
-      $("progress-title").textContent = `Stage ${data.i} of ${data.total}: ${data.stage}`;
+      setMeter(data.i, data.total);
+      $("progress-title").textContent = `Stage ${data.i} of ${data.total}: ${stageLabel(data.stage)}`;
       break;
     case "report":
-      for (const li of $("stages").children) li.className = "done";
+      for (const li of $("stages").children) {
+        li.className = "done";
+        li.removeAttribute("aria-current");
+      }
+      setMeter($("stages").children.length, $("stages").children.length);
+      $("meter").classList.add("holding");
       $("progress-title").textContent = "Building the texture report…";
       break;
     case "done":
@@ -265,7 +315,7 @@ worker.onmessage = ({ data }) => {
       convertAt(current + 1);
       break;
     case "problem":
-      failCurrent(data.message, "Drop a 1.8.9 resource pack here");
+      failCurrent(data.message, "Drop 1.8.9 resource packs here");
       break;
     case "crash":
       if (batch.length > 1 && current >= 0 && batch[current].status === "running")

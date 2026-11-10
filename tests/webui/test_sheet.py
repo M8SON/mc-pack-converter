@@ -527,6 +527,23 @@ def test_every_ore_tile_is_the_packs_own_pixels_pasted_not_redrawn(tmp_path):
         assert list(tile.getdata()) == list(sources[tile.getpixel((0, 0))].getdata())
 
 
+def test_the_progress_bar_is_cut_from_the_wall_and_digs_toward_diamond(tmp_path):
+    """The page's bar: the wall's own stone and ore tiles, pasted whole, iron
+    first and diamond last."""
+    from mc_pack_converter.webui.wall import BAR, build_ore_bar, build_wall
+    stone_png, strip_png = build_ore_bar(build_wall(_terrain_zip(tmp_path)))
+    with Image.open(io.BytesIO(stone_png)) as s, Image.open(io.BytesIO(strip_png)) as o:
+        assert s.size == (16, 16) and s.convert("RGBA").getpixel((0, 0)) == STONE_RGB
+        assert o.size == (16 * len(BAR), 16)
+        o = o.convert("RGBA")
+        tiles = [o.crop((i * 16, 0, i * 16 + 16, 16)) for i in range(len(BAR))]
+    names = {"I": "iron_ore", "G": "gold_ore", "D": "diamond_ore"}
+    for k, tile in zip(BAR, tiles):
+        src = Image.open(io.BytesIO(_speckled(ORE_RGB[names[k]]))).convert("RGBA")
+        assert list(tile.getdata()) == list(src.getdata())
+    assert BAR[0] == "I" and BAR[-1] == "D"
+
+
 def test_the_ores_do_not_land_in_the_same_place_every_row(tmp_path):
     """Scattered, not striped: a seeded shuffle that happened to deal one ore
     per row would read as a pattern, not as ore."""
