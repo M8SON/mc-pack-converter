@@ -820,6 +820,20 @@ CTM mapping working, because the lookup normalises underscores to spaces.
 
 ## 16. Five textures are measured per pack, and 91% of packs lose the enchanting table
 
+> **⚠ PARTLY SUPERSEDED 2026-11-09.** Most of the 91% were not bad art but
+> **1.7-era** art: one slot at (24,46), between 1.8.9's two. When a panel is
+> exactly that layout, `conformance` now **redraws** it instead of dropping it
+> — the pack's own slot copied to both 1.8.9 positions with a pixel of margin,
+> the old one covered with the pack's own panel from just above it — and
+> records `redrawn:` at WARNING. Detection reads alpha, so see-through GUIs
+> (M8SON) qualify. Measured on the corpus: **81 of 142 now keep their table
+> (13 pass as before, 68 redrawn), 61 still drop**; every other warning class
+> is unchanged across all 170 converted packs. All 68 redraws were inspected
+> by eye; one (#T-Zone, a slot framed a pixel outside its box) needed the
+> margin. M8SON, Avery Unreleased, Tory EUM3 Revamp and #T-Zone were checked
+> in-game in Horizon. The rest of this section is the record of the drop
+> threshold, which still decides everything that is not the 1.7 layout.
+
 **Status:** deliberate behaviour, set 2026-08-02 · not a defect · **the most
 user-visible decision the converter makes**
 **Supersedes:** §4's closing decision ("goes back on the drop list") and all of §9

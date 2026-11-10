@@ -12,8 +12,9 @@ the findings so the decision is explainable rather than asserted. The predicates
 and their calibration live in data/conformance.json.
 
 A texture that fails is deleted, exactly like a drop_list entry, so modern
-Minecraft renders its own. There is no third outcome and nothing is referred
-back to the user: convert it correctly or drop it.
+Minecraft renders its own -- unless its predicate names a repair and the art
+is exactly the layout that repair knows (the 1.7 enchanting table, below).
+Nothing is referred back to the user: keep it, redraw it, or drop it.
 """
 from __future__ import annotations
 import statistics
