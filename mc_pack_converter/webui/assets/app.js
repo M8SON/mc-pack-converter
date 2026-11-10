@@ -26,13 +26,34 @@ function renderFindings(d) {
 
 function renderSheet(sheet) {
   const flagged = new Set(window._flagged || []);
-  const parts = sheet.sections.map((s) => `<h2>${esc(s.label)} · ${s.tiles.length}</h2>
-    <div class="grid">${s.tiles.map((t) => tile(t, s.label, flagged)).join("")}</div>`);
+  const screen = (t) => t.w >= 256 && t.h >= 256;
+  const grid = (tiles, label, large = false) =>
+    `<div class="grid ${large ? "gui-grid" : ""}">${tiles.map((t) => tile(t, label, flagged)).join("")}</div>`;
+  const parts = sheet.sections.map((s) => `<h2>${esc(s.label)} · ${s.tiles.length}</h2>` +
+    (s.label === "GUI" ? grid(s.tiles.filter(screen), s.label, true) +
+      grid(s.tiles.filter((t) => !screen(t)), s.label) : grid(s.tiles, s.label)));
   if (sheet.excluded.length)
     parts.push(`<h2>Not shown</h2><p class="muted">` +
       sheet.excluded.map((e) => `${e.count} ${esc(e.label.toLowerCase())}`).join(" · ") +
       `</p>`);
-  $("textures").innerHTML = parts.join("");
+  $("textures").innerHTML = `<div class="texture-tools" role="group" aria-label="Texture size">
+    <span>Texture size</span>${["S", "M", "L"].map((size) =>
+      `<button data-size="${size}" aria-pressed="false">${size}</button>`).join("")}
+    <span class="muted">Click a texture to enlarge</span></div>` + parts.join("");
+  let size = "M";
+  try { size = localStorage.getItem("mcpc-texture-size") || size; } catch (_) {}
+  function setSize(value) {
+    if (!["S", "M", "L"].includes(value)) value = "M";
+    $("textures").dataset.size = value;
+    for (const b of $("textures").querySelectorAll("button[data-size]"))
+      b.setAttribute("aria-pressed", String(b.dataset.size === value));
+  }
+  setSize(size);
+  for (const b of $("textures").querySelectorAll("button[data-size]"))
+    b.onclick = () => {
+      setSize(b.dataset.size);
+      try { localStorage.setItem("mcpc-texture-size", b.dataset.size); } catch (_) {}
+    };
   // `full` is up to 512px of base64 (sheet.py's FULL cap). Measured: stamping
   // that into a data- attribute is what stopped WebView2 responding, so it
   // stays in a side map keyed by path, same as the animation frames below.
@@ -52,7 +73,9 @@ function tile(t, label, flagged) {
   // stops responding under it.
   if (t.frames) window._frames[t.path] = t.frames;
   const frames = t.frames ? ` data-anim="1" data-ft="${t.frametime}"` : "";
-  const src = t.frames ? t.frames[0] : t.thumb;
+  // GUI screens already have a larger lightbox image in the model. Reuse
+  // those pixels rather than embedding a second, larger thumbnail.
+  const src = t.frames ? t.frames[0] : label === "GUI" ? (t.full || t.thumb) : t.thumb;
   return `<div class="${cls}" data-path="${esc(t.path)}"${frames}>
     <img src="${src}" alt=""><span class="cap">${esc(t.name)}</span>
     <span class="cap">${t.size ? esc(t.size) : `${t.w}×${t.h}`}</span></div>`;

@@ -145,3 +145,22 @@ def test_a_closing_script_tag_in_the_data_cannot_escape(tmp_path):
     assert "</script><b>hi" not in html
     blob = re.search(r"window\.MODEL\s*=\s*(\{.*?\});", html, re.S).group(1)
     assert json.loads(blob)["findings"][0]["message"] == "</script><b>hi"
+
+
+def test_gui_previews_reuse_the_lightbox_pixels():
+    js = _asset("app.js")
+    assert 't.w >= 256 && t.h >= 256' in js
+    assert 'label === "GUI" ? (t.full || t.thumb) : t.thumb' in js
+    assert 'gui-grid' in _asset("app.css")
+
+
+def test_texture_size_storage_is_optional_in_the_sandbox():
+    js = _asset("app.js")
+    assert 'try { size = localStorage.getItem(' in js
+    assert 'try { localStorage.setItem(' in js
+    assert 'catch (_) {}' in js
+    assert 'aria-pressed' in js
+
+
+def test_report_has_a_phone_viewport():
+    assert 'name="viewport" content="width=device-width, initial-scale=1"' in _asset("index.html")
