@@ -122,7 +122,7 @@ a:focus-visible, button:focus-visible, .button:focus-visible {
 .button.primary:hover { background: #4e9434; color: #fff; }
 
 /* The drop target: the whole window accepts a pack, so this is a sign rather
-   than a small button to hunt for. The chest sits in an inventory slot. */
+   than a small button to hunt for. */
 #dropzone {
   padding: 32px 24px 24px;
   text-align: center;
@@ -143,43 +143,7 @@ body.dragging.busy #dropzone {
 body.dragging:not(.busy) #drop-hint { color: var(--ok); }
 body.dragging:not(.busy) #drop-hint::after { content: " — release to convert"; }
 body.dragging.busy #drop-hint::after { content: " — still working"; color: var(--warn); }
-.slot {
-  width: 72px; height: 72px;
-  margin: 0 auto 16px;
-  display: grid; place-items: center;
-  background: #8b8b8b;
-  border: var(--px) solid #000;
-  box-shadow: inset var(--px) var(--px) 0 #555555,
-              inset calc(var(--px) * -1) calc(var(--px) * -1) 0 #ffffff;
-  transition: transform 120ms linear;
-}
 body.booting #targets { display: none; }
-.chest {
-  position: relative;
-  width: 44px; height: 32px;
-  background: #a06b32;
-  border: var(--px) solid #000;
-  box-shadow: inset var(--px) var(--px) 0 #d39a55,
-              inset calc(var(--px) * -1) calc(var(--px) * -1) 0 #6b4218;
-}
-.chest::before {   /* the lid seam */
-  content: ""; position: absolute; left: calc(var(--px) * -1); right: calc(var(--px) * -1); top: 12px;
-  height: var(--px); background: #000;
-}
-.chest::after {    /* the gold latch */
-  content: ""; position: absolute; left: 50%; top: 8px;
-  width: 10px; height: 12px; margin-left: -5px;
-  background: var(--warn);
-  border: var(--px) solid #000;
-  box-shadow: inset 1px 1px 0 #ffe080, inset -1px -1px 0 #a86b00;
-}
-#dropzone:hover .slot,
-body.dragging:not(.busy) #dropzone .slot { transform: translateY(-4px); }
-body.dragging:not(.busy) #dropzone .slot {
-  box-shadow: inset var(--px) var(--px) 0 #555555,
-              inset calc(var(--px) * -1) calc(var(--px) * -1) 0 #ffffff,
-              0 0 0 var(--px) var(--ok);
-}
 #choose { min-width: min(100%, 240px); margin-top: 16px; padding: 10px 18px; }
 
 /* Versions are one choice. The pressed one is grass, the way a selected
