@@ -73,6 +73,27 @@ def _png() -> bytes:
     return buf.getvalue()
 
 
+def test_page_takes_several_packs_and_drops_old_blob_urls():
+    """The static page, not the Python glue: several zips, and blob URLs revoked.
+
+    Pyodide cannot run here. This locks the contract the browser relies on:
+    the file input accepts more than one zip, a batch does not click every
+    download (browsers block that), and blob URLs are revoked.
+    """
+    web = WORKER.parent
+    html = (web / "index.html").read_text()
+    js = (web / "app.js").read_text()
+    tag = re.search(r"<input id=\"file\"[^>]*>", html).group(0)
+    assert "multiple" in tag
+    assert 'id="queue"' in html and 'id="packs"' in html
+    assert 'id="report-frame"' in html
+    assert "URL.revokeObjectURL" in js
+    # The file dialog is the other click. The converted zip is clicked once,
+    # from the single-pack result, never once per pack in a batch.
+    assert '$("file").click()' in js
+    assert js.count("a.click()") == 1
+
+
 def test_convert_refuses_a_non_zip_in_the_desktop_s_words(glue, tmp_path):
     bad = tmp_path / "notes.zip"
     bad.write_text("not a zip")

@@ -58,6 +58,8 @@ button, .button {
   font: inherit; color: var(--ink); text-shadow: inherit; text-decoration: none;
   background: var(--btn); border: var(--px) solid #000;
   padding: 8px 16px; cursor: pointer;
+  /* Long pack names must wrap inside a phone-width window. */
+  white-space: normal; max-width: 100%; overflow-wrap: anywhere;
   box-shadow: inset var(--px) var(--px) 0 0 var(--btn-hi),
               inset calc(var(--px) * -1) calc(var(--px) * -1) 0 0 #3a3a3a;
 }
@@ -101,13 +103,38 @@ ol li.running { color: #ffffa0; }
 ol li.running::before { content: "▣ "; }
 ol li.done { color: var(--ink); }
 ol li.done::before { content: "■ "; color: var(--ok); }
-.actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 0; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 0; max-width: 100%; }
+.actions > * { min-width: 0; }
 #counts { margin: 0; }
-.problem { color: var(--err); margin: 16px 0 0; text-align: center; }
+.problem { color: var(--err); margin: 16px 0 0; text-align: center; overflow-wrap: anywhere; }
+
+/* One row per pack when several were dropped. A single pack never shows this. */
+#queue h2 { margin-bottom: 4px; }
+#queue .muted { margin: 0 0 8px; }
+#packs { list-style: none; margin: 0; padding: 0; }
+#packs li {
+  display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center;
+  padding: 10px 0; border-top: var(--px) solid #3f3f3f; min-width: 0;
+}
+#packs li:first-child { border-top: none; padding-top: 0; }
+#packs li.selected { background: rgba(85, 255, 85, .08); }
+#packs .name { flex: 1 1 10em; min-width: 0; overflow-wrap: anywhere; }
+#packs .status { font-size: 13px; color: var(--ink-dim); }
+#packs .status.running { color: #ffffa0; }
+#packs .status.done { color: var(--ok); }
+#packs .status.failed { color: var(--err); }
+#packs .counts { flex: 1 0 100%; }
+#packs .error {
+  flex: 1 0 100%; margin: 0; color: var(--err); font-size: 13px;
+  overflow-wrap: anywhere;
+}
+#packs a.button, #packs button { padding: 6px 12px; }
 
 /* The report is a wide page of its own, so it gets the window's width
    rather than the 760px column. */
-#report-view { padding: 0 16px; }
+#report-view { padding: 0 16px; max-width: 100%; }
+#report-tools { max-width: 760px; margin: 12px auto 10px; }
+#report-for { flex: 1 1 100%; overflow-wrap: anywhere; }
 #report-frame {
   display: block;
   width: 100%;
@@ -116,4 +143,4 @@ ol li.done::before { content: "■ "; color: var(--ok); }
   background: #2b2622;
 }
 footer { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; font-size: 13px; }
-footer a { color: var(--ink-dim); }
+footer a { color: var(--ink-dim); overflow-wrap: anywhere; }
