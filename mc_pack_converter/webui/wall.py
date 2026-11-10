@@ -122,6 +122,38 @@ def build_grass(zip_path: Path) -> bytes | None:
         return None
 
 
+# The page's progress bar is mined out of the wall: stone where it is empty,
+# ore where it has filled. Read left to right it digs deeper, so the ore turns
+# rarer the way it does going down: I iron, G gold, D diamond.
+BAR = "IIIGIIGIGIGGDGIGDGGDGDDD"
+
+
+def build_ore_bar(wall: bytes) -> tuple[bytes, bytes] | None:
+    """(stone tile, ore strip) cut whole from a wall build_wall made: the
+    commonest tile is the stone, the rest rank iron, gold, diamond by count."""
+    with Image.open(io.BytesIO(wall)) as im:
+        im = im.convert("RGBA")
+        px = im.width // FIELD
+        tiles: dict[bytes, list] = {}
+        for i in range(FIELD * FIELD):
+            t = im.crop(((i % FIELD) * px, (i // FIELD) * px,
+                         (i % FIELD + 1) * px, (i // FIELD + 1) * px))
+            tiles.setdefault(t.tobytes(), [t, 0])[1] += 1
+    ranked = [t for t, _ in sorted(tiles.values(), key=lambda e: -e[1])]
+    if len(ranked) != 1 + len(ORES):
+        return None                                # not a stone-and-ore field
+    stone, ores = ranked[0], dict(zip("IGD", ranked[1:]))
+    strip = Image.new("RGBA", (px * len(BAR), px))
+    for i, k in enumerate(BAR):
+        strip.paste(ores[k], (i * px, 0))
+    out = []
+    for im in (stone, strip):
+        buf = io.BytesIO()
+        im.save(buf, "PNG", optimize=True)
+        out.append(buf.getvalue())
+    return out[0], out[1]
+
+
 def main(argv: list[str] | None = None) -> int:
     """Rebuild the wall the app ships, from a converted pack.
 
@@ -141,6 +173,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     (assets / "wall.png").write_bytes(ground)
     (assets / "grass.png").write_bytes(grass)
+    bar = build_ore_bar(ground)
+    if bar:
+        (assets / "bar-stone.png").write_bytes(bar[0])
+        (assets / "bar-ore.png").write_bytes(bar[1])
     print(f"wrote {assets / 'wall.png'} and {assets / 'grass.png'}")
     return 0
 

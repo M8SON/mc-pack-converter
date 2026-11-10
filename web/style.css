@@ -183,26 +183,30 @@ body.booting #targets { display: none; }
   border: var(--px) solid #000;
 }
 
-/* Experience bar: the fill width is --pct, set from the stage events. */
+/* A seam of stone mined into ore: the fill width is --pct, set from the stage
+   events, and it grows a whole block at a time. The tiles are the wall's own
+   (wall.py build_ore_bar), so the bar is the pack's art like the background;
+   unmined stone is darkened the way the page darkens the wall. */
 .meter {
   --pct: 0%;
-  height: 14px;
-  background: #141414;
+  --tile: 32px;
+  height: calc(var(--tile) + var(--px) * 2);
+  background: linear-gradient(rgba(0, 0, 0, .6), rgba(0, 0, 0, .6)),
+              url("bar-stone.png") 0 0 / var(--tile) var(--tile) repeat-x;
   border: var(--px) solid #000;
-  box-shadow: inset var(--px) var(--px) 0 #2a2a2a,
-              inset calc(var(--px) * -1) calc(var(--px) * -1) 0 #3f3f3f;
   overflow: hidden;
+  image-rendering: pixelated;
 }
 .meter::before {
   content: "";
   display: block;
   width: var(--pct);
+  width: min(100%, round(up, var(--pct), var(--tile)));
   height: 100%;
-  background: linear-gradient(#9dff4a, #3ea016);
-  box-shadow: inset 0 var(--px) 0 #d8ff9a, inset 0 calc(var(--px) * -1) 0 #2f7a12;
-  transition: width 180ms linear;
+  background: url("bar-ore.png") 0 0 / auto 100% repeat-x;
+  transition: width 180ms steps(1, end);
 }
-#boot-bar { max-width: 240px; margin: 16px auto 0; }
+#boot-bar { --tile: 16px; max-width: 240px; margin: 16px auto 0; }
 body:not(.booting) #boot-bar { display: none !important; }
 /* A full bar that blinks, so the loading state is a bar even between frames.
    A sliding chunk spends half its time off the ends and looks empty. */
